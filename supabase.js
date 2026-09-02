@@ -27,13 +27,14 @@ function setAuthMsg(m){
 }
 
 function setAuthLoading(on){
+  const ids = ['auth-login','auth-register','auth-forgot','auth-reset'];
+  const show = on ? [] : [authMode];
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('dn', show.indexOf(id)===-1);
+  });
   const loadEl = document.getElementById('auth-loading');
-  const loginEl = document.getElementById('auth-login');
-  const regEl = document.getElementById('auth-register');
   if(loadEl) loadEl.classList.toggle('dn', !on);
-  if(on){ loginEl.classList.add('dn'); regEl.classList.add('dn'); }
-  else if(authMode==='login'){ loginEl.classList.remove('dn'); regEl.classList.add('dn'); }
-  else { loginEl.classList.add('dn'); regEl.classList.remove('dn'); }
 }
 
 function showLogin(){
@@ -41,6 +42,8 @@ function showLogin(){
   setAuthMsg('');
   document.getElementById('auth-login').classList.remove('dn');
   document.getElementById('auth-register').classList.add('dn');
+  document.getElementById('auth-forgot').classList.add('dn');
+  document.getElementById('auth-reset').classList.add('dn');
 }
 
 function showRegister(){
@@ -48,6 +51,24 @@ function showRegister(){
   setAuthMsg('');
   document.getElementById('auth-login').classList.add('dn');
   document.getElementById('auth-register').classList.remove('dn');
+  document.getElementById('auth-forgot').classList.add('dn');
+  document.getElementById('auth-reset').classList.add('dn');
+}
+
+function showForgot(){
+  authMode = 'forgot';
+  setAuthMsg('');
+  document.getElementById('auth-login').classList.add('dn');
+  document.getElementById('auth-register').classList.add('dn');
+  document.getElementById('auth-forgot').classList.remove('dn');
+  document.getElementById('auth-reset').classList.add('dn');
+}
+
+function showReset(){
+  authMode = 'reset';
+  setAuthMsg('');
+  ['auth-login','auth-register','auth-forgot'].forEach(id=>document.getElementById(id).classList.add('dn'));
+  document.getElementById('auth-reset').classList.remove('dn');
 }
 
 function setSyncStatus(txt){
@@ -94,7 +115,14 @@ async function doRegister(){
   setAuthLoading(true);
   const { data, error } = await SUPABASE_CLIENT.auth.signUp({ email, password: p1 });
   setAuthLoading(false);
-  if(error){ setAuthMsg('Erro: '+error.message); return; }
+  if(error){
+    if(/already|existente|cadastrad/i.test(error.message) || error.code==='user_already_exists'){
+      setAuthMsg('Este e-mail já está cadastrado. Use <a href="#" onclick="showLogin();return false">Entrar</a> ou "Esqueci minha senha".');
+    } else {
+      setAuthMsg('Erro: '+error.message);
+    }
+    return;
+  }
   if(data.session){
     await onSession(data.session);
   } else {
@@ -112,6 +140,41 @@ async function doLogout(){
   showLogin();
   setAuthMsg('Faça login para acessar seus dados de qualquer lugar.');
   renderAuthHeader();
+}
+
+async function doForgot(){
+  if(!SUPABASE_CLIENT){ setAuthMsg('Supabase não configurado. Verifique a anon key em supabase-config.js.'); return; }
+  const email = document.getElementById('forgot-email').value.trim();
+  setAuthMsg('');
+  if(!email){ setAuthMsg('Informe seu e-mail.'); return; }
+  setAuthLoading(true);
+  const { error } = await SUPABASE_CLIENT.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  setAuthLoading(false);
+  if(error){ setAuthMsg('Erro: '+error.message); return; }
+  setAuthMsg('Se este e-mail estiver cadastrado, enviamos um link de recuperação. Verifique sua caixa de entrada e clique no link.');
+  showLogin();
+}
+
+async function doResetPassword(){
+  if(!SUPABASE_CLIENT){ return; }
+  const p1 = document.getElementById('reset-pass').value;
+  const p2 = document.getElementById('reset-pass2').value;
+  setAuthMsg('');
+  if(!p1){ setAuthMsg('Informe a nova senha.'); return; }
+  if(p1 !== p2){ setAuthMsg('As senhas não conferem.'); return; }
+  if(p1.length < 6){ setAuthMsg('A senha deve ter ao menos 6 caracteres.'); return; }
+  setAuthLoading(true);
+  const { data, error } = await SUPABASE_CLIENT.auth.updateUser({ password: p1 });
+  setAuthLoading(false);
+  if(error){ setAuthMsg('Erro: '+error.message); return; }
+  if(data.session){
+    await onSession(data.session);
+  } else {
+    setAuthMsg('Senha atualizada! Agora entre com a nova senha.');
+    showLogin();
+  }
 }
 
 /* ===== Carga/gravação no Supabase ===== */
@@ -194,6 +257,10 @@ async function onSession(session){
 
 /* ===== Inicialização (chamada no fim do script principal) ===== */
 
+function isRecoveryLink(){
+  return /[#?].*type=recovery/i.test(location.hash) || /[#?].*type=recovery/i.test(location.search);
+}
+
 async function initAuth(){
   load();
   if(!SUPABASE_CLIENT){
@@ -203,7 +270,24 @@ async function initAuth(){
     renderAuthHeader();
     return;
   }
+  SUPABASE_CLIENT.auth.onAuthStateChange((event, session)=>{
+    if(event === 'PASSWORD_RECOVERY'){
+      document.getElementById('auth-screen').classList.remove('dn');
+      showReset();
+      setAuthMsg('Defina uma nova senha para continuar.');
+    } else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      renderAuthHeader();
+    }
+  });
   const { data: { session } } = await SUPABASE_CLIENT.auth.getSession();
+  if(session && isRecoveryLink()){
+    document.getElementById('auth-screen').classList.remove('dn');
+    showReset();
+    setAuthMsg('Defina uma nova senha para continuar.');
+    renderAuthHeader();
+    return;
+  }
   if(session){
     await onSession(session);
   } else {

@@ -228,7 +228,7 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
       <label>Senha</label>
       <input id="auth-pass" type="password" autocomplete="current-password" placeholder="••••••••">
       <button class="btn" onclick="doLogin()">Entrar</button>
-      <div class="auth-links">Não tem conta? <a href="#" onclick="showRegister();return false">Criar conta</a></div>
+      <div class="auth-links">Não tem conta? <a href="#" onclick="showRegister();return false">Criar conta</a> · <a href="#" onclick="showForgot();return false">Esqueci minha senha</a></div>
     </div>
     <div id="auth-register" class="dn">
       <label>E-mail</label>
@@ -239,6 +239,20 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
       <input id="reg-pass2" type="password" autocomplete="new-password" placeholder="repita a senha">
       <button class="btn" onclick="doRegister()">Criar conta</button>
       <div class="auth-links">Já tem conta? <a href="#" onclick="showLogin();return false">Entrar</a></div>
+    </div>
+    <div id="auth-forgot" class="dn">
+      <label>E-mail cadastrado</label>
+      <input id="forgot-email" type="email" autocomplete="email" placeholder="seu@email.com">
+      <button class="btn" onclick="doForgot()">Enviar link de recuperação</button>
+      <div class="auth-links"><a href="#" onclick="showLogin();return false">← Voltar ao login</a></div>
+    </div>
+    <div id="auth-reset" class="dn">
+      <label>Nova senha</label>
+      <input id="reset-pass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+      <label>Confirmar nova senha</label>
+      <input id="reset-pass2" type="password" autocomplete="new-password" placeholder="repita a senha">
+      <button class="btn" onclick="doResetPassword()">Definir nova senha</button>
+      <div class="auth-links"><a href="#" onclick="showLogin();return false">← Voltar ao login</a></div>
     </div>
     <div id="auth-loading" class="dn" style="text-align:center;padding:18px 0">
       <span class="spinner"></span>Sincronizando dados…
