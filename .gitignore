@@ -4,8 +4,18 @@
 *.orig
 *.tmp
 
+# Arquivos de trabalho da extração de provas
+pdf para extracao/
+extrato.txt
+extracao*.json
+extracao*.txt
+extracao.js
+extract_pdf.py
+layout_check.py
+
 # Configurações locais e chaves de API
 config*.js
+!supabase-config.js
 .env
 .env.local
 *.local.js

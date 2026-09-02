@@ -161,6 +161,22 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 .anotacoes-ocultas .resp-comment{display:none!important}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+
+/* ===== LOGIN / AUTH ===== */
+#auth-screen{position:fixed;inset:0;background:rgba(11,18,32,.97);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.auth-card h2{font-size:18px;font-weight:800;margin-bottom:4px}
+.auth-card .sub{color:var(--muted);font-size:12px;margin-bottom:18px}
+.auth-card label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+.auth-card input{margin-bottom:14px}
+.auth-card .btn{width:100%;margin-top:4px}
+.auth-card .auth-links{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
+.auth-card .auth-links a{color:var(--accent2);text-decoration:none;font-weight:600}
+.auth-card .auth-links a:hover{text-decoration:underline}
+.auth-msg{font-size:13px;color:var(--amber);margin-bottom:12px;line-height:1.5;min-height:0}
+#auth-user{display:none;align-items:center;gap:8px}
+#auth-email-label{font-size:12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sync-status{font-size:11px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -174,6 +190,11 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
       <label style="font-size:11px;color:var(--muted);margin:0;white-space:nowrap">Concurso:</label>
       <select id="sel-concurso" onchange="switchConcurso(this.value)" style="width:auto;min-width:180px;font-weight:700"></select>
+      <div id="auth-user">
+        <span id="auth-email-label"></span>
+        <span id="sync-status"></span>
+        <button class="btn ghost sm" onclick="doLogout()">Sair</button>
+      </div>
     </div>
   </div>
 </header>
@@ -194,8 +215,40 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 
 </main>
 
-<footer>Seus dados ficam salvos apenas neste navegador. Use "Exportar backup" em Ajustes para guardar uma cópia.</footer>
+<footer>Seus dados ficam salvos na nuvem (Supabase) e sincronizam entre dispositivos. Você ainda pode exportar um backup em Ajustes.</footer>
 
+<div id="auth-screen" class="dn">
+  <div class="auth-card">
+    <h2>🔐 <span class="grad">Desempenho Concurso</span></h2>
+    <div class="sub">Acesse sua conta para ver seus dados de qualquer lugar.</div>
+    <div id="auth-msg" class="auth-msg"></div>
+    <div id="auth-login">
+      <label>E-mail</label>
+      <input id="auth-email" type="email" autocomplete="email" placeholder="seu@email.com">
+      <label>Senha</label>
+      <input id="auth-pass" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button class="btn" onclick="doLogin()">Entrar</button>
+      <div class="auth-links">Não tem conta? <a href="#" onclick="showRegister();return false">Criar conta</a></div>
+    </div>
+    <div id="auth-register" class="dn">
+      <label>E-mail</label>
+      <input id="reg-email" type="email" autocomplete="email" placeholder="seu@email.com">
+      <label>Senha</label>
+      <input id="reg-pass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+      <label>Confirmar senha</label>
+      <input id="reg-pass2" type="password" autocomplete="new-password" placeholder="repita a senha">
+      <button class="btn" onclick="doRegister()">Criar conta</button>
+      <div class="auth-links">Já tem conta? <a href="#" onclick="showLogin();return false">Entrar</a></div>
+    </div>
+    <div id="auth-loading" class="dn" style="text-align:center;padding:18px 0">
+      <span class="spinner"></span>Sincronizando dados…
+    </div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script src="regras-extracao.js"></script>
 <script>
 const LS_KEY = 'desempenho-concurso-v1';
@@ -539,6 +592,8 @@ function save(){
   try{
     const json = JSON.stringify(state);
     localStorage.setItem(LS_KEY, json);
+    if(currentUser){ try{ localStorage.setItem(LS_KEY+':'+currentUser.id, json); }catch(e){} }
+    queueSync();
     console.log('SAVE OK ('+json.length+' bytes)');
   }catch(e){
     console.error('ERRO AO SALVAR:', e.message);
@@ -3566,8 +3621,7 @@ window.addEventListener('scroll', ()=>{
   respSpyScroll();
 }, {passive:true});
 
-load();
-renderAll();
+initAuth();
 </script>
 </body>
 </html>
