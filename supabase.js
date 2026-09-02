@@ -16,6 +16,7 @@ let currentUser = null;
 let syncTimer = null;
 let syncDirty = false;
 let authMode = 'login';
+let recoveryPending = false;
 
 function isLoggedIn(){ return !!currentUser; }
 
@@ -168,6 +169,7 @@ async function doResetPassword(){
   setAuthLoading(true);
   const { data, error } = await SUPABASE_CLIENT.auth.updateUser({ password: p1 });
   setAuthLoading(false);
+  recoveryPending = false;
   if(error){ setAuthMsg('Erro: '+error.message); return; }
   if(data.session){
     await onSession(data.session);
@@ -272,16 +274,19 @@ async function initAuth(){
   }
   SUPABASE_CLIENT.auth.onAuthStateChange((event, session)=>{
     if(event === 'PASSWORD_RECOVERY'){
+      recoveryPending = true;
       document.getElementById('auth-screen').classList.remove('dn');
       showReset();
       setAuthMsg('Defina uma nova senha para continuar.');
     } else if(event === 'SIGNED_OUT'){
       currentUser = null;
+      recoveryPending = false;
       renderAuthHeader();
     }
   });
   const { data: { session } } = await SUPABASE_CLIENT.auth.getSession();
-  if(session && isRecoveryLink()){
+  if(session && (recoveryPending || isRecoveryLink())){
+    recoveryPending = true;
     document.getElementById('auth-screen').classList.remove('dn');
     showReset();
     setAuthMsg('Defina uma nova senha para continuar.');
