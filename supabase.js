@@ -4,6 +4,8 @@
    e das funções do app (load, save, renderAll, state, LS_KEY).
    ============================================================ */
 
+const __RECOVERY_LINK = /[#?].*type=recovery/i.test(location.hash) || /[#?].*type=recovery/i.test(location.search);
+
 let SUPABASE_CLIENT = null;
 try{
   const hasKey = window.SUPABASE_ANON_KEY && window.SUPABASE_ANON_KEY.indexOf('COLE_A_') !== 0;
@@ -179,6 +181,25 @@ async function doResetPassword(){
   }
 }
 
+async function doChangePassword(){
+  const p1 = document.getElementById('cp-pass').value;
+  const p2 = document.getElementById('cp-pass2').value;
+  const msgEl = document.getElementById('cp-msg');
+  if(!SUPABASE_CLIENT || !currentUser){ if(msgEl) msgEl.textContent = 'Faça login para alterar a senha.'; return; }
+  if(!p1){ if(msgEl) msgEl.textContent = 'Informe a nova senha.'; return; }
+  if(p1 !== p2){ if(msgEl) msgEl.textContent = 'As senhas não conferem.'; return; }
+  if(p1.length < 6){ if(msgEl) msgEl.textContent = 'A senha deve ter ao menos 6 caracteres.'; return; }
+  if(msgEl){ msgEl.textContent = 'Salvando…'; msgEl.style.color = 'var(--muted)'; }
+  const { error } = await SUPABASE_CLIENT.auth.updateUser({ password: p1 });
+  if(error){
+    if(msgEl){ msgEl.textContent = 'Erro: '+error.message; msgEl.style.color = 'var(--red)'; }
+    return;
+  }
+  document.getElementById('cp-pass').value = '';
+  document.getElementById('cp-pass2').value = '';
+  if(msgEl){ msgEl.textContent = '✓ Senha alterada com sucesso!'; msgEl.style.color = 'var(--green)'; }
+}
+
 /* ===== Carga/gravação no Supabase ===== */
 
 function cacheKey(){ return LS_KEY + ':' + (currentUser ? currentUser.id : 'guest'); }
@@ -285,7 +306,7 @@ async function initAuth(){
     }
   });
   const { data: { session } } = await SUPABASE_CLIENT.auth.getSession();
-  if(session && (recoveryPending || isRecoveryLink())){
+  if(session && (recoveryPending || __RECOVERY_LINK || isRecoveryLink())){
     recoveryPending = true;
     document.getElementById('auth-screen').classList.remove('dn');
     showReset();
