@@ -460,38 +460,35 @@ function renameConcurso(id, name){
   save();
 }
 
-function load(){
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    if(raw){
-      const p = JSON.parse(raw);
-      if(p && (Array.isArray(p.concursos) || Array.isArray(p.subjects))) state = p;
-    }
-  }catch(e){}
-  console.log('LOAD: state=', state ? (state.concursos ? 'formato NOVO ('+state.concursos.length+' concursos)' : 'formato ANTIGO ('+(state.subjects||[]).length+' subjects)') : 'null');
-  if(state && state.concursos){
-    state.currentConcursoId = state.currentConcursoId || state.concursos[0].id;
-    if(!state.keymap || typeof state.keymap!=='object') state.keymap = Object.assign({}, DEFAULT_KEYMAP);
-    if(state.keymapAtivo==null) state.keymapAtivo = true;
-    if(state._v) save();
-  } else if(state){
-    state.subjects = (state.subjects||[]).map(s=>Object.assign({qtd:0, grupo:''}, s));
-    if(state.corte==null) state.corte = 0;
-    if(!Array.isArray(state.provas)) state.provas = [];
-    if(state._v !== 2){
-      const t = state.targets || (state.targets = {});
-      state.subjects.forEach(s=>{
+function defaultState(){
+  return {concursos:[defaultConcurso('pprn','PPRN — Polícia Penal',DEFAULT_SUBJECTS)], currentConcursoId:'pprn'};
+}
+
+function normalizeState(p){
+  let st = p;
+  if(!(st && (Array.isArray(st.concursos) || Array.isArray(st.subjects)))) st = null;
+  if(st && st.concursos){
+    st.currentConcursoId = st.currentConcursoId || st.concursos[0].id;
+    if(!st.keymap || typeof st.keymap!=='object') st.keymap = Object.assign({}, DEFAULT_KEYMAP);
+    if(st.keymapAtivo==null) st.keymapAtivo = true;
+  } else if(st){
+    st.subjects = (st.subjects||[]).map(s=>Object.assign({qtd:0, grupo:''}, s));
+    if(st.corte==null) st.corte = 0;
+    if(!Array.isArray(st.provas)) st.provas = [];
+    if(st._v !== 2){
+      const t = st.targets || (st.targets = {});
+      st.subjects.forEach(s=>{
         const oldMax = s.max;
         const newMax = (Number(s.qtd)||0) * s.weight;
         if(oldMax>0 && newMax>0 && oldMax!==newMax && t[s.id]!=null && t[s.id] > newMax){
           t[s.id] = Math.round(t[s.id]/oldMax*newMax*10)/10;
         }
       });
-      state._v = 2;
+      st._v = 2;
     }
-    if(state._v !== 3){
-      const t = state.targets || (state.targets = {});
-      state.subjects.forEach(s=>{
+    if(st._v !== 3){
+      const t = st.targets || (st.targets = {});
+      st.subjects.forEach(s=>{
         const q = Number(s.qtd)||0;
         const oldMax = s.max;
         if(q>0 && t[s.id]!=null && t[s.id] > q){
@@ -499,42 +496,42 @@ function load(){
           else t[s.id] = Math.round(q*0.7*10)/10;
         }
       });
-      state._v = 3;
+      st._v = 3;
     }
-    if(state._v !== 4){
-      state.subjects.forEach(s=>{ s.short = abbrev(s.name); });
-      state._v = 4;
+    if(st._v !== 4){
+      st.subjects.forEach(s=>{ s.short = abbrev(s.name); });
+      st._v = 4;
     }
-    if(state._v !== 5){
+    if(st._v !== 5){
       const OLD = ['port','hist','geo','eti','const','adm','dh','penal','leg','proc','lesp'];
-      const hasOld = OLD.filter(id=>state.subjects.some(s=>s.id===id));
+      const hasOld = OLD.filter(id=>st.subjects.some(s=>s.id===id));
       if(hasOld.length >= 9){
         const REMAP = {port:'port', eti:'eti', const:'const', adm:'adm', dh:'dh', penal:'pen', hist:'hist', geo:'hist', leg:'lesp', proc:'pen', lesp:'lesp'};
         const newSubs = DEFAULT_SUBJECTS.map(s=>Object.assign({},s));
-        state.subjects.filter(s=>!OLD.includes(s.id) && !newSubs.some(n=>n.id===s.id)).forEach(s=>newSubs.push(Object.assign({},s)));
-        const t = state.targets || (state.targets = {});
+        st.subjects.filter(s=>!OLD.includes(s.id) && !newSubs.some(n=>n.id===s.id)).forEach(s=>newSubs.push(Object.assign({},s)));
+        const t = st.targets || (st.targets = {});
         const nt = {};
-        newSubs.forEach(n=>{ const old = state.subjects.find(s=>s.id===n.id); if(old && t[old.id]!=null) nt[n.id] = t[old.id]; });
-        state.targets = nt;
-        state.simulados.forEach(sim=>{
+        newSubs.forEach(n=>{ const old = st.subjects.find(s=>s.id===n.id); if(old && t[old.id]!=null) nt[n.id] = t[old.id]; });
+        st.targets = nt;
+        st.simulados.forEach(sim=>{
           const ns = {};
           newSubs.forEach(n=>{
-            const olds = state.subjects.filter(s=>REMAP[s.id]===n.id);
+            const olds = st.subjects.filter(s=>REMAP[s.id]===n.id);
             let sum = 0, any = false;
             olds.forEach(o=>{ const v = sim.scores[o.id]; if(v!=null && !isNaN(Number(v))){ sum += Number(v); any = true; } });
             ns[n.id] = any ? sum : null;
           });
           sim.scores = ns;
         });
-        (state.provas||[]).forEach(p=>p.questoes.forEach(q=>{ if(REMAP[q.materiaId]) q.materiaId = REMAP[q.materiaId]; }));
-        state.subjects = newSubs;
+        (st.provas||[]).forEach(p=>p.questoes.forEach(q=>{ if(REMAP[q.materiaId]) q.materiaId = REMAP[q.materiaId]; }));
+        st.subjects = newSubs;
       }
-      state._v = 5;
+      st._v = 5;
     }
-    if(state._v !== 7){
+    if(st._v !== 7){
       const MAP = {};
       DEFAULT_SUBJECTS.forEach(s=>MAP[s.id]=s);
-      state.subjects.forEach(s=>{
+      st.subjects.forEach(s=>{
         const nd = MAP[s.id];
         if(nd){
           s.name = nd.name;
@@ -544,26 +541,26 @@ function load(){
           if(!s.grupo && nd.grupo) s.grupo = nd.grupo;
         }
       });
-      state._v = 7;
+      st._v = 7;
     }
-    if(state._v !== 8){
-      (state.provas||[]).forEach(p=>{
+    if(st._v !== 8){
+      (st.provas||[]).forEach(p=>{
         p.questoes.forEach(q=>{ if(!q.status) q.status = wizStatusOf(q); });
       });
-      state._v = 8;
+      st._v = 8;
     }
-    if(state._v !== 9){
-      (state.provas||[]).forEach(p=>{
+    if(st._v !== 9){
+      (st.provas||[]).forEach(p=>{
         if(p.finalizado || !p.respondendo){
           p.questoes.forEach(q=>{ q.status = wizStatusOf(q); });
         }
       });
-      state._v = 9;
+      st._v = 9;
     }
-    if(state._v !== 10){
-      (state.provas||[]).forEach(p=>{
+    if(st._v !== 10){
+      (st.provas||[]).forEach(p=>{
         if(p.finalizado || !p.respondendo){
-          const sim = state.simulados.find(s=>s.id===p.simuladoId);
+          const sim = st.simulados.find(s=>s.id===p.simuladoId);
           p.questoes.forEach(q=>{ q.status = wizStatusOf(q); });
           if(sim){
             const certos = {}, qtd = {};
@@ -572,40 +569,32 @@ function load(){
               qtd[q.materiaId] = (qtd[q.materiaId]||0)+1;
               if(q.status==='certo') certos[q.materiaId] = (certos[q.materiaId]||0)+1;
             });
-            state.subjects.forEach(s=>{
+            st.subjects.forEach(s=>{
               if(qtd[s.id]!=null) sim.scores[s.id] = certos[s.id]||0;
             });
           }
         }
       });
-      state._v = 10;
+      st._v = 10;
     }
-    if(state._v) save();
   }
-  if(!state){
-    state = {concursos:[defaultConcurso('pprn','PPRN — Polícia Penal',DEFAULT_SUBJECTS)], currentConcursoId:'pprn'};
-    save();
+  if(!st) return defaultState();
+  if(!st.concursos){
+    const c = defaultConcurso('pprn','PPRN — Polícia Penal', st.subjects||DEFAULT_SUBJECTS.map(s=>Object.assign({},s)));
+    c.targets = st.targets || {};
+    c.simulados = st.simulados || [];
+    c.provas = st.provas || [];
+    c.corte = st.corte || 0;
+    st = {concursos:[c], currentConcursoId:'pprn', _v:11};
   }
-  if(!state.concursos){
-    const c = defaultConcurso('pprn','PPRN — Polícia Penal', state.subjects||DEFAULT_SUBJECTS.map(s=>Object.assign({},s)));
-    c.targets = state.targets || {};
-    c.simulados = state.simulados || [];
-    c.provas = state.provas || [];
-    c.corte = state.corte || 0;
-    state = {concursos:[c], currentConcursoId:'pprn', _v:11};
-    save();
+  if(!st.currentConcursoId && st.concursos && st.concursos.length){
+    st.currentConcursoId = st.concursos[0].id;
   }
-  if(!state.currentConcursoId && state.concursos && state.concursos.length){
-    state.currentConcursoId = state.concursos[0].id;
-    save();
-  }
-  const cc = state.concursos?.find(c=>c.id===state.currentConcursoId);
-  console.log('LOAD FINAL: concursos=', state.concursos?.length, 'current=', state.currentConcursoId, 'simulados=', cc?.simulados?.length);
+  return st;
 }
 function save(){
   try{
     const json = JSON.stringify(state);
-    localStorage.setItem(LS_KEY, json);
     if(currentUser){ try{ localStorage.setItem(LS_KEY+':'+currentUser.id, json); }catch(e){} }
     queueSync();
     console.log('SAVE OK ('+json.length+' bytes)');
@@ -1612,7 +1601,7 @@ function importJSON(input){
 function resetAll(){
   if(!confirm('Tem certeza? Todos os seus dados serão apagados.')) return;
   if(!confirm('Última confirmação: isso apagará todos os concursos, simulados e metas.')) return;
-  state = {concursos:[defaultConcurso('pprn','PPRN — Polícia Penal',DEFAULT_SUBJECTS)], currentConcursoId:'pprn'};
+  state = defaultState();
   save(); renderAll();
 }
 

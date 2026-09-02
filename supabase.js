@@ -250,21 +250,24 @@ async function loadCloudState(){
   try{ serverData = await fetchServerState(); }
   catch(e){ console.error('fetch server:', e.message); }
   if(serverData){
-    state = serverData;
-    try{ localStorage.setItem(ck, JSON.stringify(serverData)); }catch(e){}
+    state = normalizeState(serverData);
+    try{ localStorage.setItem(ck, JSON.stringify(state)); }catch(e){}
+    save();
     return;
   }
-  let local = null;
+  let cached = null;
   try{
     const raw = localStorage.getItem(ck);
-    if(raw) local = JSON.parse(raw);
+    if(raw) cached = JSON.parse(raw);
   }catch(e){}
-  if(!local) local = state;
-  if(local && local.concursos){
-    state = local;
-    await pushState();
-    try{ localStorage.setItem(ck, JSON.stringify(local)); }catch(e){}
+  if(cached && cached.concursos){
+    state = normalizeState(cached);
+    save();
+    return;
   }
+  state = defaultState();
+  await pushState();
+  try{ localStorage.setItem(ck, JSON.stringify(state)); }catch(e){}
 }
 
 async function onSession(session){
@@ -285,7 +288,6 @@ function isRecoveryLink(){
 }
 
 async function initAuth(){
-  load();
   if(!SUPABASE_CLIENT){
     document.getElementById('auth-screen').classList.remove('dn');
     showLogin();
