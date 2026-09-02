@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: aprova
+    runtime: static
+    repo: https://github.com/OrnilioNeto/aprova
+    plan: free
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
