@@ -1,0 +1,19 @@
+# Backups locais (contêm dados pessoais/marca d'água das provas)
+*backup*.json
+*.bak
+*.orig
+*.tmp
+
+# Configurações locais e chaves de API
+config*.js
+.env
+.env.local
+*.local.js
+
+# Sistema/editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
