@@ -143,6 +143,23 @@ const NOMES = {
   lesp:'LEGISLAÇÃO ESPECÍFICA',
   pen:'DIREITO PENAL E PROCESSO PENAL'
 };
+const NOMES_PPPE = {
+  port:'LÍNGUA PORTUGUESA',
+  lest:'LEGISLAÇÃO ESTADUAL',
+  eti:'ÉTICA NO SERVIÇO PÚBLICO',
+  info:'NOÇÕES DE INFORMÁTICA',
+  log:'RACIOCÍNIO LÓGICO',
+  adm:'DIREITO ADMINISTRATIVO',
+  const:'DIREITO CONSTITUCIONAL',
+  pen:'DIREITO PENAL',
+  proc:'DIREITO PROCESSUAL PENAL',
+  lesp:'LEGISLAÇÃO ESPECIAL',
+  exec:'EXECUÇÃO PENAL',
+  dh:'NOÇÕES DE DIREITOS HUMANOS E PARTICIPAÇÃO SOCIAL'
+};
+function nomeMateria(layout, id){
+  return (layout && layout.id==='PPPE-PREEDITAL' ? NOMES_PPPE[id] : undefined) || NOMES[id] || id;
+}
 const FAIXAS = { port:[1,15], hist:[16,20], eti:[21,25], const:[26,35], adm:[36,45], dh:[46,55], exec:[56,70], lesp:[71,90], pen:[91,100] };
 
 const tmpDir = 'tmp_raw';
@@ -192,6 +209,7 @@ function nomeSaida(base){
   if(/MANS[AÃ]O|ECHOO/i.test(base)) return 'simulado-mansao.txt';
   if(/AMOSTRA/i.test(base)) return 'simulado-amostra.txt';
   if(/OFICIAL|PROVA/i.test(base)) return 'simulado-pprn-2026.txt';
+  if(/PPPE/i.test(base)) return 'simulado-pppe.txt';
   const num = (base.match(/(\d{1,2})/)||[])[1];
   return 'simulado-'+(num?String(parseInt(num,10)).padStart(2,'0'):'amostra')+'.txt';
 }
@@ -231,7 +249,7 @@ for(const f of files){
   for(const id of ordemOut){
     const g = qs.filter(q=>q.materiaId===id).sort((a,b)=>a.n-b.n);
     if(!g.length) continue;
-    out.push(NOMES[id]);
+    out.push(nomeMateria(layout, id));
     for(const q of g){
       out.push(String(q.n).padStart(2,'0')+') '+q.texto);
       for(const k of ['A','B','C','D','E']){
@@ -250,7 +268,7 @@ for(const f of files){
       const [lo,hi] = layout.faixas[id] || FAIXAS[id];
       const keys = gKeys.filter(n=>n>=lo && n<=hi);
       if(!keys.length) continue;
-      out.push(NOMES[id]);
+      out.push(nomeMateria(layout, id));
       for(const n of keys) out.push(n+' - '+gab[n]);
       out.push('');
     }

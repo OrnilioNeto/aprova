@@ -11,7 +11,7 @@
    =================================================================== */
 
 const REGRAS = {
-  versao: 6,
+  versao: 7,
 
   /* ===================================================================
      PADRÕES CONHECIDOS DE PROVAS
@@ -83,6 +83,34 @@ const REGRAS = {
       ],
       variacoes: {
         'Execução Penal': ['LEP','LEI DE EXECUÇÃO PENAL','LEI DE EXECUCAO PENAL','EXECUÇÃO PENAL','LEP - LEI DE EXECUÇÃO PENAL']
+      }
+    },
+    {
+      id: 'PPPE-PREEDITAL',
+      nome: 'PPPE — Polícia Penal de PE (Pré-Edital 2026)',
+      totalQuestoes: 60,
+      materias: [
+        { id:'port',  nome:'Língua Portuguesa',                    faixa:[1,8],   qtd:8,  peso:1 },
+        { id:'lest',  nome:'Legislação Estadual',                  faixa:[9,12],  qtd:4,  peso:1 },
+        { id:'eti',   nome:'Ética no Serviço Público',             faixa:[13,14], qtd:2,  peso:1 },
+        { id:'info',  nome:'Noções de Informática',                faixa:[15,17], qtd:3,  peso:1 },
+        { id:'log',   nome:'Raciocínio Lógico',                    faixa:[18,20], qtd:3,  peso:1 },
+        { id:'adm',   nome:'Direito Administrativo',               faixa:[21,25], qtd:5,  peso:1 },
+        { id:'const', nome:'Direito Constitucional',               faixa:[26,29], qtd:4,  peso:1 },
+        { id:'pen',   nome:'Direito Penal',                        faixa:[30,34], qtd:5,  peso:1 },
+        { id:'proc',  nome:'Direito Processual Penal',             faixa:[35,39], qtd:5,  peso:1 },
+        { id:'lesp',  nome:'Legislação Especial',                  faixa:[40,44], qtd:5,  peso:1 },
+        { id:'exec',  nome:'Execução Penal',                       faixa:[45,54], qtd:10, peso:1 },
+        { id:'dh',    nome:'Noções de Direitos Humanos e Participação Social', faixa:[55,60], qtd:6, peso:1 }
+      ],
+      variacoes: {
+        'Legislação Estadual':             ['LEGISLAÇÃO ESTADUAL','LEG. ESTADUAL','LEGISLACAO ESTADUAL'],
+        'Noções de Informática':           ['NOÇÕES DE INFORMÁTICA','NOÇÕES DE INFORMATICA','NOCOES DE INFORMATICA','INFORMÁTICA','INFORMATICA'],
+        'Raciocínio Lógico':               ['RACIOCÍNIO LÓGICO','RACIOCINIO LOGICO','RACIOCÍNIO LÓGICO E QUANTITATIVO','RACIOCINIO LOGICO E QUANTITATIVO','LÓGICA'],
+        'Direito Penal':                   ['DIREITO PENAL'],
+        'Direito Processual Penal':        ['DIREITO PROCESSUAL PENAL','PROCESSUAL PENAL','DIR. PROCESSUAL PENAL','D. PROCESSUAL PENAL'],
+        'Legislação Especial':             ['LEGISLAÇÃO ESPECIAL','LEG. ESPECIAL','LEGISLACAO ESPECIAL'],
+        'Noções de Direitos Humanos e Participação Social': ['NOÇÕES DE DIREITOS HUMANOS E PARTICIPAÇÃO SOCIAL','NOÇÕES DE DIREITOS HUMANOS E PARTICIPAÇÃO','NOCOES DE DIREITOS HUMANOS E PARTICIPACAO','NOÇÕES DE DIREITOS HUMANOS']
       }
     }
   ],

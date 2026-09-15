@@ -12,7 +12,7 @@ JUNK = [
     'simulaprovas.com.br', 'adquira o pacote', 'equipe simula provas',
     'simulando seu sucesso', 'folha de resposta', 'prova objetiva', 'nivel superior',
     '100 questoes', 'tempo:', 'simulado padrao instituto', 'policia penal do rio grande do norte',
-    'simulado amostra – pprn', 'simuladosbr',
+    'simulado amostra – pprn', 'simuladosbr', 'simulado gratuito', 'policia penal de pe', 'ebn cursos',
 ]
 
 def is_junk(line):
@@ -51,6 +51,10 @@ HEADER_LINES = [
     'EXECUÇÃO PENAL','EXEC. PENAL','LEP','EXECUCAO PENAL','LEI DE EXECUÇÃO PENAL – LEP','LEI DE EXECUÇÃO PENAL - LEP',
     'LEI DE EXECUCAO PENAL - LEP','EXECUÇÃO PENAL – LEP','EXECUÇÃO PENAL - LEP','EXECUCAO PENAL - LEP',
     'LEGISLAÇÃO ESPECÍFICA','LEG. ESPECÍFICA','LEIS ESPECIAIS','LEGISLACAO ESPECIFICA','LEIS COMPLEMENTARES Nº 122/566',
+    'LEGISLAÇÃO ESTADUAL','LEGISLAÇÃO ESPECIAL','LEGISLACAO ESTADUAL','LEGISLACAO ESPECIAL',
+    'NOÇÕES DE INFORMÁTICA','NOCOES DE INFORMATICA','RACIOCÍNIO LÓGICO','RACIOCINIO LOGICO',
+    'NOÇÕES DE DIREITOS HUMANOS E PARTICIPAÇÃO SOCIAL','NOÇÕES DE DIREITOS HUMANOS E PARTICIPAÇÃO',
+    'NOCOES DE DIREITOS HUMANOS E PARTICIPACAO','SOCIAL','DISCURSIVA',
     'DIREITO PENAL E PROCESSO PENAL','D. PENAL E PROCESSO PENAL','PENAL E PROCESSO','DIREITO PENAL',
     'PROCESSUAL PENAL','DIREITO PROCESSUAL PENAL','DIR. PROCESSUAL PENAL','D. PROCESSUAL PENAL',
     'PENAL','DIR. PENAL','D. PENAL'
@@ -62,18 +66,23 @@ for _h in HEADER_LINES:
     n = norm(_h)
     if 'lingua portuguesa' in n or n == 'portuguesa' or n == 'portugues': HEADER_IDS[n] = 'port'
     elif 'historia' in n or 'aspectos geo' in n or 'geoeconomicos' in n: HEADER_IDS[n] = 'hist'
+    elif 'legislacao estadual' in n or n == 'leg. estadual': HEADER_IDS[n] = 'lest'
+    elif 'noções de informática' in n or 'nocoes de informatica' in n or n == 'informatica': HEADER_IDS[n] = 'info'
+    elif 'raciocínio lógico' in n or 'raciocinio logico' in n or n == 'logica': HEADER_IDS[n] = 'log'
+    elif 'processual' in n or n == 'proc': HEADER_IDS[n] = 'proc'
     elif 'etica' in n: HEADER_IDS[n] = 'eti'
     elif 'constitucional' in n or n == 'const': HEADER_IDS[n] = 'const'
     elif 'administrativo' in n or n == 'adm': HEADER_IDS[n] = 'adm'
     elif 'direitos humanos' in n or n == 'dh' or n == 'd. humanos' or n == 'dir. humanos': HEADER_IDS[n] = 'dh'
     elif 'execucao penal' in n or 'lep' in n or n == 'exec. penal': HEADER_IDS[n] = 'exec'
-    elif 'legislacao' in n or 'leis' in n or 'legisla' in n or n == 'leg. especifica': HEADER_IDS[n] = 'lesp'
-    elif 'processual' in n or 'penal' in n or n == 'pen': HEADER_IDS[n] = 'pen'
+    elif 'legislacao' in n or 'leis' in n or n == 'leg. especifica' or n == 'especial': HEADER_IDS[n] = 'lesp'
+    elif 'penal' in n or n == 'pen': HEADER_IDS[n] = 'pen'
 
 LAYOUTS = {
     'pprn': {'port':[1,15],'hist':[16,20],'eti':[21,25],'const':[26,35],'adm':[36,45],'dh':[46,55],'exec':[56,70],'lesp':[71,90],'pen':[91,100]},
     'v-simulado': {'port':[1,15],'eti':[16,20],'hist':[21,25],'const':[26,35],'pen':[36,45],'adm':[46,55],'lesp':[56,75],'dh':[76,85],'exec':[86,100]},
     'ii-simulado': {'port':[1,15],'eti':[16,20],'hist':[21,25],'adm':[26,35],'const':[36,45],'pen':[46,55],'lesp':[56,75],'dh':[76,85],'exec':[86,100]},
+    'PPPE-PREEDITAL': {'port':[1,8],'lest':[9,12],'eti':[13,14],'info':[15,17],'log':[18,20],'adm':[21,25],'const':[26,29],'pen':[30,34],'proc':[35,39],'lesp':[40,44],'exec':[45,54],'dh':[55,60]},
 }
 
 def is_subject_header(line):
@@ -110,7 +119,17 @@ def detect_layout(lines):
     return best, pairs
 
 def extract_pdf_text(doc):
-    return '\n'.join(p.get_text('text') for p in doc)
+    """Extrai o texto por página, pulando páginas que são tabelas de gabarito
+    (muitos números, poucas letras A-E e marcador GABARITO)."""
+    out = []
+    for p in doc:
+        t = p.get_text('text')
+        nums = len(re.findall(r'^\d{1,3}\s*$', t, re.M))
+        lets = len(re.findall(r'^\s*[A-Ea-e]\s*$', t, re.M))
+        if nums >= 40 and lets < 5 and re.search(r'GABARITO', t, re.I):
+            continue
+        out.append(t)
+    return '\n'.join(out)
 
 def strip_comentarios(lines, gab):
     """Simulado_09: remove seções 'Comentário' até 'Gabarito: X' (ou próxima questão).
@@ -253,31 +272,38 @@ def process(pdf):
             continue
         if is_gabarito_cut(st):
             break
+        if norm(st) == 'discursiva':
+            break
         if is_subject_header(st):
             continue
         out.append(st)
 
-    if 'Amostra' in base or not any(re.match(r'^[A-E]\)', l) for l in out):
-        out2 = []
-        for l in out:
-            m = re.match(r'^\(([A-Ea-e])\)\s*(.*)$', l)
-            if m:
-                out2.append(m.group(1).upper() + ') ' + m.group(2))
-                continue
-            m = re.match(r'^([A-E])\s{2,}(.*)$', l)
-            if m:
-                out2.append(m.group(1) + ') ' + m.group(2))
-                continue
-            m = re.match(r'^([A-E])\s*$', l)
-            if m:
-                out2.append(m.group(1) + ')')
-                continue
-            m = re.match(r'^(\d{1,2}|100)$', l)
-            if m:
-                out2.append(m.group(1) + '.')
-                continue
-            out2.append(l)
-        out = out2
+    marcadores = set()
+    for l in out:
+        m = re.match(r'^(\d{1,2}|100)\s*[.)]', l)
+        if m:
+            marcadores.add(int(m.group(1)))
+    tem_questao = len(marcadores) >= 20
+    out2 = []
+    for l in out:
+        m = re.match(r'^\(([A-Ea-e])\)\s*(.*)$', l)
+        if m:
+            out2.append(m.group(1).upper() + ') ' + m.group(2))
+            continue
+        m = re.match(r'^([A-E])\s{2,}(.*)$', l)
+        if m:
+            out2.append(m.group(1) + ') ' + m.group(2))
+            continue
+        m = re.match(r'^([A-E])\s*$', l)
+        if m:
+            out2.append(m.group(1) + ')')
+            continue
+        m = re.match(r'^(\d{1,2}|100)$', l)
+        if m and tem_questao and int(m.group(1)) not in marcadores:
+            out2.append(m.group(1) + '.')
+            continue
+        out2.append(l)
+    out = out2
 
     raw_txt = '\n'.join(out) + '\n'
     with open(os.path.join(TMP, base + '.txt'), 'w', encoding='utf-8') as f:
@@ -299,5 +325,7 @@ def process(pdf):
     doc.close()
 
 if __name__ == '__main__':
-    for pdf in sorted(glob.glob(os.path.join(SRC, '*.pdf'))):
+    import sys
+    folder = sys.argv[1] if len(sys.argv) > 1 else SRC
+    for pdf in sorted(glob.glob(os.path.join(folder, '*.pdf'))):
         process(pdf)
