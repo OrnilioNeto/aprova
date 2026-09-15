@@ -230,7 +230,7 @@ def table_gabarito(doc):
             n, l = tokens[i], tokens[i + 1]
             if re.fullmatch(r'\d{1,3}', n) and re.fullmatch(r'[A-Ea-e]', l):
                 q = int(n)
-                if 1 <= q <= 100:
+                if 1 <= q <= 100 and q not in gab:
                     gab[q] = l.lower()
         return gab
     nums, lets = [], []
@@ -313,6 +313,8 @@ def process(pdf):
         t = table_gabarito(doc)
         if len(t) > len(gab):
             gab = t
+    max_q = max((hi for faixas in [LAYOUTS.get(layout_id, {})] for lo, hi in faixas.values()), default=100)
+    gab = {str(k): v for k, v in gab.items() if 1 <= int(k) <= max_q}
     with open(os.path.join(TMP, base + '.gab.json'), 'w', encoding='utf-8') as f:
         json.dump({str(k): v for k, v in gab.items()}, f, ensure_ascii=False)
     with open(os.path.join(TMP, base + '.layout.json'), 'w', encoding='utf-8') as f:

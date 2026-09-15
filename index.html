@@ -104,6 +104,51 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 24px;color:var(--muted);fon
   .resp-nav-wrap{display:none}
   .resp-content{padding-bottom:56px}
 }
+.resp-notes-wrap{display:flex;gap:14px;align-items:flex-start}
+.resp-notes{position:sticky;top:84px;width:400px;flex:none;display:flex;flex-direction:column;max-height:calc(100vh - 104px);background:var(--card);border:1px solid var(--accent);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:width .15s ease}
+.resp-notes.collapsed{width:40px!important}
+.resp-notes.collapsed .resp-notes-body{display:none}
+.resp-notes-head{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card2);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;white-space:nowrap}
+.resp-notes.collapsed .resp-notes-head{border-bottom:none;writing-mode:vertical-rl;transform:rotate(180deg);height:100%;justify-content:flex-end;padding:10px 8px}
+.resp-notes-head .resp-notes-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.resp-notes-head .resp-notes-count{font-size:10px;color:var(--muted);font-weight:600}
+.resp-notes-head button{flex:none;width:22px;height:22px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.resp-notes-head button:hover{border-color:var(--accent);color:var(--text)}
+.resp-notes-head button.rn-clear:hover{border-color:var(--red);color:var(--red)}
+.resp-notes-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.resp-notes-tabs{display:flex;gap:4px;padding:6px 8px 0}
+.resp-notes-tabs .rn-tab{background:var(--card);color:var(--muted);border:1px solid var(--border);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;transition:.15s}
+.resp-notes-tabs .rn-tab:hover{color:var(--text)}
+.resp-notes-tabs .rn-tab.active{background:linear-gradient(90deg,#1a1147,#123a4a);color:#fff;border-color:var(--accent)}
+.resp-notes-pane{display:flex;flex-direction:column;flex:1;min-height:0;padding:8px}
+.resp-notes-pane textarea{flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px;resize:none;outline:none;min-height:280px;font-family:inherit;line-height:1.6;border-radius:8px}
+.resp-notes-pane textarea:focus{border-color:var(--accent)}
+.resp-notes-pane textarea::placeholder{color:#4b5a75}
+.notes-svg{width:100%;flex:1;min-height:280px;background:var(--card2);border:1px solid var(--border);border-radius:8px;touch-action:none;pointer-events:none}
+.resp-notes.tool-caneta .notes-svg{pointer-events:all;cursor:crosshair}
+.resp-notes.tool-borracha .notes-svg{pointer-events:none}
+.resp-notes.tool-borracha .notes-svg path{pointer-events:stroke;cursor:pointer}
+.resp-notes.tool-borracha .notes-svg path:hover{filter:brightness(1.5);stroke-width:8!important}
+.resp-notes-foot{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)}
+.resp-notes-save{color:var(--green);font-weight:700}
+.resp-notes-resize{position:absolute;right:-5px;top:0;bottom:0;width:10px;cursor:col-resize;z-index:5}
+.resp-notes-resize::after{content:'';position:absolute;left:4px;top:20%;bottom:20%;width:2px;background:var(--border);border-radius:2px}
+.resp-notes-resize:hover::after{background:var(--accent)}
+.resp-notes-resize-b{position:absolute;left:0;right:0;bottom:-5px;height:10px;cursor:row-resize;z-index:5}
+.resp-notes-resize-b::after{content:'';position:absolute;top:4px;left:20%;right:20%;height:2px;background:var(--border);border-radius:2px}
+.resp-notes-resize-b:hover::after{background:var(--accent)}
+.resp-questions{flex:1;min-width:0}
+.resp-notes-save{color:var(--green);font-weight:700}
+@media(max-width:900px){
+  .resp-notes-wrap{flex-direction:column}
+  .resp-notes{position:static;width:100%!important;max-height:none}
+  .resp-notes.collapsed{width:100%!important}
+  .resp-notes.collapsed .resp-notes-head{writing-mode:horizontal-tb;transform:none;height:auto;justify-content:flex-start}
+  .resp-notes.collapsed .resp-notes-title{display:none}
+  .resp-notes.collapsed .resp-notes-count{display:none}
+  .resp-notes-resize{display:none}
+  .resp-notes-resize-b{display:none}
+}
 .resp-alt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--card2);transition:.12s}
 .resp-alt:hover{border-color:#33456b}
 .resp-alt.resp-sel{border-color:var(--accent);background:rgba(139,92,246,.12)}
@@ -1490,6 +1535,7 @@ function normalizeState(p){
     if(c.dataProva==null) c.dataProva = '';
     if(!Array.isArray(c.estudo.tarefas)) c.estudo.tarefas = [];
     if(!Array.isArray(c.estudo.calendario)) c.estudo.calendario = [];
+    if(recuperarMateriaIds(c)) st._v = (st._v||0)+1;
   });
   return st;
 }
@@ -2358,9 +2404,11 @@ function addSubject(){
   save(); renderAll();
 }
 function removeSubject(id){
-  if(!confirm('Remover esta matéria? As notas antigas dela serão ignoradas.')) return;
+  if(!confirm('Remover esta matéria? As questões dela nos simulados também serão removidas.')) return;
   cur().subjects = cur().subjects.filter(s=>s.id!==id);
   delete cur().targets[id];
+  (cur().provas||[]).forEach(p=>{ p.questoes = (p.questoes||[]).filter(q=>q.materiaId!==id); });
+  (cur().simulados||[]).forEach(s=>{ delete s.scores[id]; if(s.materias) delete s.materias[id]; });
   save(); renderAll();
 }
 
@@ -2542,6 +2590,10 @@ function applyCaneteToolUI(){
     q.classList.remove('tool-caneta','tool-borracha','tool-riscar','tool-comentar','tool-destaque');
     if(caneteTool) q.classList.add('tool-'+caneteTool);
   });
+  document.querySelectorAll('.resp-notes').forEach(n=>{
+    n.classList.remove('tool-caneta','tool-borracha','tool-riscar','tool-comentar','tool-destaque');
+    if(caneteTool) n.classList.add('tool-'+caneteTool);
+  });
 }
 function rerenderResponderSeAtivo(){
   if(responderSimId && cur().provas.find(p=>p.simuladoId===responderSimId)) renderResponder(responderSimId);
@@ -2563,6 +2615,7 @@ function setCaneteSize(s){ caneteSize=s; document.querySelectorAll('.canete-size
 function toggleAnotacoes(){
   caneteShowAnnotations = !caneteShowAnnotations;
   document.querySelectorAll('.resp-q').forEach(q=>q.classList.toggle('anotacoes-ocultas',!caneteShowAnnotations));
+  document.querySelectorAll('.resp-notes').forEach(n=>n.classList.toggle('anotacoes-ocultas',!caneteShowAnnotations));
   const btn = document.getElementById('canete-toggle-eye');
   if(btn) btn.innerHTML = caneteShowAnnotations?'👁️':'🚫';
 }
@@ -2635,15 +2688,26 @@ function moveDraw(e){
 
 function endDraw(e){
   if(!drawState) return;
-  const prova = cur().provas.find(p=>p.simuladoId===drawState.simId);
-  if(prova){
-    const q = prova.questoes.find(x=>x.n===drawState.n);
-    if(q){
-      ensureAnotacoes(q);
-      q.anotacoes.caneta.push({
+  if(drawState.notes){
+    const prova = cur().provas.find(p=>p.simuladoId===drawState.simId);
+    if(prova){
+      ensureNotesDraw(prova);
+      prova.anotacoesLateralDraw.caneta.push({
         id: uid(), points: drawState.pts, color: drawState.color, size: drawState.size
       });
       save();
+    }
+  } else {
+    const prova = cur().provas.find(p=>p.simuladoId===drawState.simId);
+    if(prova){
+      const q = prova.questoes.find(x=>x.n===drawState.n);
+      if(q){
+        ensureAnotacoes(q);
+        q.anotacoes.caneta.push({
+          id: uid(), points: drawState.pts, color: drawState.color, size: drawState.size
+        });
+        save();
+      }
     }
   }
   drawState = null;
@@ -2923,6 +2987,8 @@ function renderResponder(simId){
   const prova = cur().provas.find(p=>p.simuladoId===simId);
   const sim = cur().simulados.find(s=>s.id===simId);
   if(!prova){ responderSimId=null; renderSimuladoView(); return; }
+  if(prova.anotacoesLateral==null) prova.anotacoesLateral = '';
+  ensureNotesDraw(prova);
   const subj = id=>cur().subjects.find(s=>s.id===id);
   const qs = prova.questoes;
   const fin = prova.finalizado;
@@ -3018,11 +3084,165 @@ function renderResponder(simId){
     <div class="resp-content">
       ${renderCaneteToolbar(simId)}
       ${keymapAtivo()?`<div class="hint" style="margin:-8px 0 12px;font-size:11px">⌨️ Atalhos: ${kbHintText()}</div>`:''}
-      ${cards}
-      <div id="gab-box" style="display:none;margin-top:12px"></div>
+      <div class="resp-notes-wrap">
+        <div class="resp-notes ${respNotesOpen?'':'collapsed'} ${caneteTool?'tool-'+caneteTool:''}" id="resp-notes" style="width:${respNotesOpen?respNotesW+'px':'40px'};height:${respNotesOpen&&respNotesH?respNotesH+'px':'auto'}">
+          <div class="resp-notes-head">
+            <span class="resp-notes-title">📝 Anotações do simulado</span>
+            <span class="resp-notes-count">${(prova.anotacoesLateral||'').length} chars</span>
+            <button class="rn-clear" onclick="clearNotesDraw('${simId}')" title="Limpar desenho do painel">🧹</button>
+            <button onclick="respNotesToggle()" title="${respNotesOpen?'Recolher':'Expandir'}">${respNotesOpen?'›':'‹'}</button>
+          </div>
+          <div class="resp-notes-body">
+            <div class="resp-notes-tabs">
+              <button class="rn-tab ${respNotesTab==='texto'?'active':''}" onclick="respNotesSetTab('texto')">📝 Texto</button>
+              <button class="rn-tab ${respNotesTab==='desenho'?'active':''}" onclick="respNotesSetTab('desenho')">✏️ Desenho</button>
+            </div>
+            <div class="resp-notes-pane ${respNotesTab==='texto'?'':'dn'}">
+              <textarea id="resp-notes-ta" placeholder="Espaço livre para anotações durante a resolução: dúvidas, marcações, chutes, pontos para revisar depois…&#10;&#10;O texto fica salvo automaticamente." oninput="respNotesSave(this.value)">${esc(prova.anotacoesLateral||'')}</textarea>
+            </div>
+            <div class="resp-notes-pane ${respNotesTab==='desenho'?'':'dn'}">
+              <svg class="notes-svg svg-overlay" xmlns="http://www.w3.org/2000/svg"
+                onmousedown="startNotesDraw(event,'${simId}')"
+                onmousemove="moveDraw(event)"
+                onmouseup="endDraw(event)"
+                onmouseleave="endDraw(event)"
+                ontouchstart="startNotesDraw(event,'${simId}')"
+                ontouchmove="moveDraw(event)"
+                ontouchend="endDraw(event)">${renderNotesDraw(prova, simId)}</svg>
+              <div class="hint" style="font-size:10px;margin-top:6px">Ative <b>🖊️ Caneta</b> na barra de ferramentas acima e desenhe aqui · <b>🧹 Borracha</b> apaga · arraste as bordas (lateral e inferior) do painel para redimensionar.</div>
+            </div>
+            <div class="resp-notes-foot"><span id="resp-notes-status"></span><span class="resp-notes-save">salvo automaticamente</span></div>
+          </div>
+          <div class="resp-notes-resize" onmousedown="respNotesResizeStart(event)" title="Arraste para redimensionar a largura"></div>
+          <div class="resp-notes-resize-b" onmousedown="respNotesResizeStartY(event)" title="Arraste para redimensionar a altura"></div>
+        </div>
+        <div class="resp-questions">
+          ${cards}
+          <div id="gab-box" style="display:none;margin-top:12px"></div>
+        </div>
+      </div>
     </div>
     <div class="resp-rail">${rail}</div>`;
   respSpyScroll();
+}
+let respNotesOpen = true;
+let respNotesTab = 'texto';
+let respNotesW = 400;
+let respNotesH = 0;
+function respNotesToggle(){
+  respNotesOpen = !respNotesOpen;
+  renderResponder(responderSimId);
+}
+function respNotesSetTab(tab){
+  respNotesTab = tab;
+  renderResponder(responderSimId);
+}
+function respNotesResizeStart(e){
+  e.preventDefault();
+  const panel = document.getElementById('resp-notes');
+  if(!panel) return;
+  const startX = e.clientX, startW = panel.offsetWidth;
+  const move = ev => {
+    const w = Math.max(280, Math.min(640, startW + (ev.clientX - startX)));
+    panel.style.width = w+'px';
+    respNotesW = w;
+  };
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+}
+function respNotesResizeStartY(e){
+  e.preventDefault();
+  const panel = document.getElementById('resp-notes');
+  if(!panel) return;
+  const startY = e.clientY, startH = panel.offsetHeight;
+  const move = ev => {
+    const h = Math.max(300, Math.min(window.innerHeight - 120, startH + (ev.clientY - startY)));
+    panel.style.height = h+'px';
+    respNotesH = h;
+  };
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+}
+function ensureNotesDraw(prova){
+  if(!prova.anotacoesLateralDraw) prova.anotacoesLateralDraw = {caneta:[]};
+  if(!Array.isArray(prova.anotacoesLateralDraw.caneta)) prova.anotacoesLateralDraw.caneta = [];
+}
+function startNotesDraw(e, simId){
+  e.preventDefault();
+  const prova = cur().provas.find(p=>p.simuladoId===simId);
+  if(!prova) return;
+  ensureNotesDraw(prova);
+  const svg = e.currentTarget;
+  const rect = svg.getBoundingClientRect();
+  const x = (e.touches?e.touches[0].clientX:e.clientX) - rect.left;
+  const y = (e.touches?e.touches[0].clientY:e.clientY) - rect.top;
+  if(caneteTool==='borracha') return;
+  drawState = {simId, n:null, notes:true, pts:[[x,y]], color:caneteColor, size:caneteSize};
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', 'M'+x+','+y);
+  path.setAttribute('stroke', caneteColor);
+  path.setAttribute('stroke-width', caneteSize);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  path.setAttribute('opacity', '0.85');
+  path.classList.add('canete-path');
+  svg.appendChild(path);
+}
+function eraseNotesPath(e, simId, pathId){
+  e.stopPropagation();
+  if(caneteTool!=='borracha') return;
+  const prova = cur().provas.find(p=>p.simuladoId===simId);
+  if(!prova || !prova.anotacoesLateralDraw) return;
+  prova.anotacoesLateralDraw.caneta = prova.anotacoesLateralDraw.caneta.filter(p=>p.id!==pathId);
+  save();
+  renderResponder(simId);
+}
+function clearNotesDraw(simId){
+  const prova = cur().provas.find(p=>p.simuladoId===simId);
+  if(!prova) return;
+  ensureNotesDraw(prova);
+  if(!prova.anotacoesLateralDraw.caneta.length) return;
+  if(!confirm('Limpar todo o desenho do painel de anotações?')) return;
+  prova.anotacoesLateralDraw.caneta = [];
+  save();
+  renderResponder(simId);
+}
+function renderNotesDraw(prova, simId){
+  ensureNotesDraw(prova);
+  const erasable = caneteTool==='borracha';
+  return prova.anotacoesLateralDraw.caneta.map(p=>{
+    const er = erasable ? ' onclick="event.stopPropagation();eraseNotesPath(event,\''+simId+'\',\''+p.id+'\')"' : '';
+    return `<path d="${pointsToD(p.points)}" stroke="${p.color}" stroke-width="${p.size}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" class="canete-path" data-pid="${p.id}"${er} />`;
+  }).join('');
+}
+function respNotesSave(v){
+  const prova = cur().provas.find(p=>p.simuladoId===responderSimId);
+  if(!prova) return;
+  prova.anotacoesLateral = String(v||'');
+  save();
+  const st = document.getElementById('resp-notes-status');
+  if(st){
+    st.textContent = '✓ salvo · '+String(v||'').length+' caracteres';
+    clearTimeout(st._t);
+    st._t = setTimeout(()=>{ st.textContent = ''; }, 2500);
+  }
 }
 const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints>0);
 let lastScrollTime = 0;
@@ -3520,7 +3740,7 @@ function suggestSubject(blockName){
   }
   for(const pat of REGRAS.padroes[0].materias){
     const pn = normTxt(pat.nome);
-    if(bn.includes(pn) || pn.includes(bn)) return pat.id;
+    if((bn.includes(pn) || pn.includes(bn)) && cur().subjects.find(x=>x.id===pat.id)) return pat.id;
   }
   let best = null, bestScore = 0;
   for(const s of cur().subjects){
@@ -3537,6 +3757,26 @@ function suggestSubject(blockName){
     if(score>bestScore){ bestScore = score; best = s.id; }
   }
   return best;
+}
+function recuperarMateriaIds(c){
+  if(!c || !Array.isArray(c.subjects) || !Array.isArray(c.provas) || typeof REGRAS === 'undefined' || !REGRAS) return false;
+  const ids = new Set(c.subjects.map(s=>s.id));
+  const nomePorId = {};
+  (REGRAS.padroes||[]).forEach(p=>(p.materias||[]).forEach(m=>{
+    const nm = String(m.nome||'');
+    if(!nomePorId[m.id] || nomePorId[m.id].length < nm.length) nomePorId[m.id] = nm;
+  }));
+  let mudou = false;
+  c.provas.forEach(p=>(p.questoes||[]).forEach(q=>{
+    if(!q.materiaId || ids.has(q.materiaId)) return;
+    const nome = nomePorId[q.materiaId];
+    if(!nome) return;
+    const sn = normTxt(nome);
+    const s = c.subjects.find(x=>normTxt(x.name)===sn)
+           || c.subjects.find(x=>{ const xn = normTxt(x.name); return xn.includes(sn) || sn.includes(xn); });
+    if(s){ q.materiaId = s.id; mudou = true; }
+  }));
+  return mudou;
 }
 function openDetail(id){ detailSimId = id; detailFiltro = { mat:'all', status:'all', peso:'all', grupo:'all', q:'' }; renderSimuladoView(); }
 function downloadFile(name, content, mime){
@@ -3908,7 +4148,8 @@ function wizBuildQuestions(){
   const qMap = {};
   (W.questoes||[]).forEach(q=>{ qMap[q.n] = q; });
   W.blocks.forEach(b=>{
-    const sid = W.map[b.name];
+    let sid = W.map[b.name];
+    if(sid && sid!=='__new__' && !cur().subjects.find(x=>x.id===sid)) sid = suggestSubject(b.name);
     getItensBQ(b).forEach(it=>{
       const q = qMap[it.n] || { n: it.n, texto:'', alts:{} };
       qs.push({
@@ -3987,7 +4228,12 @@ function wizConfirm(){
     let sid = W.map[b.name];
     const ehExtra = !!W.grupos[b.name];
     const itens = getItensWiz(b);
-    if(sid==='__new__'){
+    const sidValido = ()=> sid!=='__new__' && !!cur().subjects.find(x=>x.id===sid);
+    if(sid && sid!=='__new__' && !sidValido()){
+      sid = suggestSubject(b.name);
+      if(sid) W.map[b.name] = sid;
+    }
+    if(sid==='__new__' || !sidValido()){
       const i = W.blocks.indexOf(b);
       const name = (document.getElementById('wg-nn-'+i)?.value||'').trim() || b.name;
       const w = parseInt(document.getElementById('wg-nw-'+i)?.value,10) || 2;
@@ -4257,7 +4503,12 @@ function rpConfirm(){
     let sid = W.map[b.name];
     const ehExtra = !!W.grupos[b.name];
     const itens = getItensRp(b);
-    if(sid==='__new__'){
+    const sidValido = ()=> sid!=='__new__' && !!cur().subjects.find(x=>x.id===sid);
+    if(sid && sid!=='__new__' && !sidValido()){
+      sid = suggestSubject(b.name);
+      if(sid) W.map[b.name] = sid;
+    }
+    if(sid==='__new__' || !sidValido()){
       const i = W.blocks.indexOf(b);
       const name = (document.getElementById('wg-nn-'+i)?.value||'').trim() || b.name;
       const w = parseInt(document.getElementById('wg-nw-'+i)?.value,10) || 2;

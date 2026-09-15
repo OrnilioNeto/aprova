@@ -187,6 +187,7 @@ function tokensNome(base){
   const rm = u.match(/\b(?:I{1,3}V?|V?I{1,3}|X{1,3}|IX|IV|VI|VII|VIII|IX|X|\d{1,2})\b/);
   if(rm) t.add(rm[0]);
   if(/MANS[AÃ]O|ECHOO/.test(u)) t.add('MANSÃO');
+  if(/PPPE/.test(u)) t.add('PPPE');
   return [...t];
 }
 function parearGabProva(gab, base){
@@ -195,7 +196,7 @@ function parearGabProva(gab, base){
   const toks = tokensNome(base);
   const candidatos = files.filter(f=>{
     if(f === base + '.txt') return false;
-    if(!/^GABARITO/i.test(f) && !/COMENTADO/i.test(f)) return false;
+    if(!/GABARITO/i.test(f) && !/COMENTADO/i.test(f)) return false;
     return toks.some(t=>f.toUpperCase().indexOf(t)>=0);
   });
   for(const c of candidatos){
@@ -225,12 +226,12 @@ for(const f of files){
     Object.entries(it.alts||{}).forEach(([k,v])=>{ alts[k]=String(v).trim(); });
     return { n: it.n, materiaId: materiaPorNumero(it.n, layout.faixas), texto: String(it.texto).trim(), alts };
   }).sort((a,b)=>a.n-b.n);
-  const temProvaIrma = /COMENTADO/i.test(base) && files.some(x=>{
+  const temProvaIrma = (/COMENTADO/i.test(base) || /GABARITO/i.test(base)) && files.some(x=>{
     const bx = x.slice(0,-4);
-    if(x===f || /COMENTADO/i.test(bx) || /^GABARITO/i.test(bx)) return false;
+    if(x===f || /COMENTADO/i.test(bx) || /GABARITO/i.test(bx)) return false;
     return tokensNome(bx).some(t=>base.toUpperCase().indexOf(t)>=0);
   });
-  if((/^GABARITO/i.test(base) && qs.length < 20) || (temProvaIrma && qs.length >= 20)){
+  if(temProvaIrma && (qs.length >= 20 || /GABARITO/i.test(base))){
     console.log('=== '+base+' ===');
     console.log('arquivo de gabarito/comentado (pareado com a prova).');
     continue;
@@ -275,7 +276,8 @@ for(const f of files){
   }
 
   const saida = nomeSaida(base);
-  fs.writeFileSync(saida, out.join('\n'), 'utf-8');
+  const alvo = /PPPE/i.test(base) && saida === 'simulado-pppe.txt' ? path.join('PP','PPPE','simulado-pppe.txt') : saida;
+  fs.writeFileSync(alvo, out.join('\n'), 'utf-8');
   console.log('=== '+base+' ===');
   if(process.env.DEBUG){
     blocks.forEach((b,i)=>console.log('   bloco['+i+'] name='+JSON.stringify(b.name)+' nums='+JSON.stringify((b.itens||b.items||[]).map(it=>it.n))));
