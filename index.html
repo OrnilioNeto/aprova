@@ -162,6 +162,108 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
 
+/* ===== ABA ESTUDOS (Cronograma de Estudos) ===== */
+.subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.subnav button{background:var(--card);color:var(--muted);border:1px solid var(--border);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
+.subnav button:hover{color:var(--text);border-color:#33456b}
+.subnav button.active{background:linear-gradient(90deg,#1a1147,#123a4a);color:#fff;border-color:var(--accent)}
+.est-tab{display:none}
+.est-tab.active{display:block;animation:fade .25s ease}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.kpi .k-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi .k-value{font-size:22px;font-weight:800}
+.kpi .k-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.kpi.k-green::before{background:var(--green)}
+.kpi.k-amber::before{background:var(--amber)}
+.kpi.k-red::before{background:var(--red)}
+.kpi.k-blue::before{background:var(--blue)}
+.est-mat-row{display:flex;gap:8px;align-items:center;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+.est-mat-row input[type=text]{width:auto;flex:1}
+.mini-check{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
+.mini-check input{width:auto;accent-color:var(--accent)}
+.num-input{width:64px!important;text-align:center}
+.crono-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px;background:var(--card2);border:1px solid var(--accent);border-radius:14px;text-align:center}
+.crono-display{font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.crono-display.running{color:#fff;-webkit-text-fill-color:#fff}
+.crono-accum{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.crono-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.crono-btns .btn{padding:9px 16px;font-size:12px}
+.btn.start{background:linear-gradient(90deg,#065f46,#34d399);color:#052e22}
+.btn.stop{background:linear-gradient(90deg,#7f1d1d,#f87171);color:#2a0a0a}
+.est-topic-table .t-ok{width:44px;text-align:center}
+.est-topic-table td input[type=checkbox]{width:auto;accent-color:var(--green);transform:scale(1.25);cursor:pointer}
+.est-topic-table td input[type=number]{width:64px;text-align:center}
+.est-topic-table tr.tp-feito td{opacity:.55}
+.est-topic-table tr.tp-feito td:first-child{opacity:1}
+.tp-name{font-size:13px}
+.tp-check{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tp-check label{display:flex;gap:4px;align-items:center;margin:0;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tp-check input{width:auto;accent-color:var(--accent2)}
+.progress-mini{height:6px;background:var(--card2);border-radius:99px;overflow:hidden;border:1px solid var(--border);flex:1;min-width:60px}
+.progress-mini .bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+.agenda-grid{display:grid;grid-template-columns:90px repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.agenda-grid .ag-cell{background:var(--card2);padding:6px}
+.agenda-grid .ag-head{background:var(--card);font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding:8px 4px;text-transform:uppercase;letter-spacing:.4px}
+.agenda-grid .ag-time{background:var(--card);font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;padding:6px 4px;text-align:center}
+.agenda-grid input{background:transparent;border:none;padding:4px;font-size:11px;width:100%;text-align:center}
+.agenda-grid input:focus{border:1px solid var(--accent);border-radius:6px}
+.agenda-grid .ag-hoje{outline:2px solid var(--accent);outline-offset:-2px}
+.agenda-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.agenda-legend span{display:flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.cal-head{background:var(--card);font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding:8px 4px;text-transform:uppercase;letter-spacing:.4px}
+.cal-cell{background:var(--card2);padding:8px;min-height:96px;display:flex;flex-direction:column;gap:6px}
+.cal-cell .cal-date{font-size:11px;font-weight:700;color:var(--muted)}
+.cal-cell.passado{opacity:.55}
+.cal-slot{display:flex;gap:4px;align-items:center}
+.cal-slot select{width:auto;flex:1;font-size:11px;padding:4px 6px;background:var(--card);min-width:0}
+.cal-slot button{flex:none;width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.cal-slot button:hover{border-color:var(--accent);color:var(--text)}
+.cal-slot button.ok{border-color:var(--green);color:var(--green)}
+.cal-slot button.ok:hover{color:var(--green)}
+.cal-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.est-obs{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 11px;font-size:13px;resize:vertical;min-height:70px;outline:none;font-family:inherit}
+.est-obs:focus{border-color:var(--accent)}
+.rev-dates{display:flex;gap:8px;flex-wrap:wrap}
+.rev-dates label{display:flex;gap:6px;align-items:center;margin:0;font-size:12px;color:var(--muted);font-weight:600}
+.rev-dates input{width:auto;background:var(--card2)}
+/* Calendário dinâmico de tarefas */
+.cald-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.cald-nav .cald-title{font-size:16px;font-weight:800;flex:1;min-width:140px}
+.cald-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px}
+.cald-form input,.cald-form select{width:auto}
+.cald-form input[type=text]{flex:1;min-width:180px}
+.cald-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.cald-head{background:var(--card);font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding:8px 4px;text-transform:uppercase;letter-spacing:.4px}
+.cald-cell{background:var(--card2);padding:6px;min-height:112px;display:flex;flex-direction:column;gap:4px}
+.cald-cell.cald-out{background:rgba(15,22,38,.4);opacity:.5}
+.cald-cell.cald-hoje{outline:2px solid var(--accent);outline-offset:-2px;background:rgba(139,92,246,.06)}
+.cald-top{display:flex;align-items:center;gap:4px;margin-bottom:2px}
+.cald-num{font-size:12px;font-weight:800;color:var(--muted);flex:1}
+.cald-cell.cald-hoje .cald-num{color:var(--accent2)}
+.cald-top button{flex:none;width:20px;height:20px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.cald-top button:hover{border-color:var(--accent);color:var(--text)}
+.cald-tasks{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:190px}
+.cald-task{display:flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:3px 5px;font-size:11px}
+.cald-task.feita{opacity:.5}
+.cald-task.feita .cald-tit{text-decoration:line-through}
+.cald-task input[type=checkbox]{width:auto;accent-color:var(--green);margin:0;flex:none}
+.cald-task input[type=time]{width:56px;background:transparent;border:none;color:var(--muted);font-size:10px;padding:0;flex:none}
+.cald-task .cald-tit{flex:1;background:transparent;border:none;color:var(--text);font-size:11px;padding:0;min-width:0}
+.cald-task .cald-tit:focus{border:1px solid var(--accent);border-radius:4px}
+.cald-task .cald-mat{flex:none;font-size:9px;font-weight:700;color:#c4b5fd;background:rgba(139,92,246,.15);border-radius:5px;padding:1px 5px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+.cald-task .cald-del{flex:none;width:18px;height:18px;border-radius:5px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:10px;padding:0;display:flex;align-items:center;justify-content:center;line-height:1}
+.cald-task .cald-del:hover{color:var(--red)}
+details.card summary{cursor:pointer;user-select:none}
+details.card summary::-webkit-details-marker{color:var(--muted)}
+@media(max-width:900px){
+  .cald-grid{grid-template-columns:repeat(7,minmax(120px,1fr));overflow-x:auto}
+  .cald-cell{min-height:90px}
+}
+
 /* ===== LOGIN / AUTH ===== */
 #auth-screen{position:fixed;inset:0;background:rgba(11,18,32,.97);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
 .auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
@@ -190,6 +292,9 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
       <label style="font-size:11px;color:var(--muted);margin:0;white-space:nowrap">Concurso:</label>
       <select id="sel-concurso" onchange="switchConcurso(this.value)" style="width:auto;min-width:180px;font-weight:700"></select>
+      <label style="font-size:11px;color:var(--muted);margin:0;white-space:nowrap">Prova:</label>
+      <input type="date" id="inp-data-prova" onchange="setDataProva(this.value)" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;outline:none" title="Data da prova — informe para ver a contagem regressiva">
+      <span id="countdown-prova"></span>
       <div id="auth-user">
         <span id="auth-email-label"></span>
         <span id="sync-status"></span>
@@ -202,6 +307,7 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 <nav>
   <button data-view="dashboard" class="active">📈 Painel</button>
   <button data-view="simulados">📝 Simulados</button>
+  <button data-view="estudos">📚 Estudos</button>
   <button data-view="metas">🎯 Metas</button>
   <button data-view="ajustes">⚙️ Ajustes</button>
 </nav>
@@ -210,6 +316,7 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 
   <section id="view-dashboard" class="view active"></section>
   <section id="view-simulados" class="view"></section>
+  <section id="view-estudos" class="view"></section>
   <section id="view-metas" class="view"></section>
   <section id="view-ajustes" class="view"></section>
 
@@ -266,6 +373,730 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 <script src="regras-extracao.js"></script>
 <script>
 const LS_KEY = 'desempenho-concurso-v1';
+/* ===== ABA ESTUDOS — Cronograma de Estudos (importado do Cronograma-Estudos -PPPB.xlsm) ===== */
+
+const ESTUDO_SEED = [{n:"PORTUGUÊS",tp:[{n:"Compreensão e interpretação de textos",p:0,v:0,a:0,q:0,c:0},{n:"Tipos e gêneros textuais",p:0,v:0,a:0,q:0,c:0},{n:"Significação de palavras e expressões",p:0,v:0,a:0,q:0,c:0},{n:"Sinônimos e antônimos",p:0,v:0,a:0,q:0,c:0},{n:"Ortografia oficial",p:0,v:0,a:0,q:0,c:0},{n:"Classes de palavras: variáveis e invariáveis e suas funções no texto",p:0,v:0,a:0,q:0,c:0},{n:"Concordâncias: verbal e nominal",p:0,v:0,a:0,q:0,c:0},{n:"Tempos simples dos verbos",p:0,v:0,a:0,q:0,c:0},{n:"Conjugações verbais",p:0,v:0,a:0,q:0,c:0},{n:"Colocação de pronomes nas frases",p:0,v:0,a:0,q:0,c:0},{n:"Sintaxe: termos essenciais, integrantes e acessórios da oração",p:0,v:0,a:0,q:0,c:0},{n:"Tipos de predicado",p:0,v:0,a:0,q:0,c:0},{n:"Classificação das palavras quanto ao número de sílabas",p:0,v:0,a:0,q:0,c:0},{n:"Dígrafos, encontros vocálicos e consonantais",p:0,v:0,a:0,q:0,c:0},{n:"Divisão silábica",p:0,v:0,a:0,q:0,c:0},{n:"Processos de formação de palavras: derivação, composição e outros processos",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:0},{n:"Hist. Asp Geoecon",tp:[{n:"A Capitania do Rio Grande na história das capitanias donatárias (Século XVI)",p:0,v:0,a:0,q:0,c:0},{n:"Indígenas nos sertões do Rio Grande colonial",p:0,v:0,a:0,q:0,c:0},{n:"Economia e fiscalidade no período colonial: Arrecadação de tributos na Capitania do Rio Grande",p:0,v:0,a:0,q:0,c:0},{n:"A seca e a questão sanitária no Século XIX",p:0,v:0,a:0,q:0,c:0},{n:"Terra dos salineiros: Trabalhadores da extração de sal no Rio Grande do Norte",p:0,v:0,a:0,q:0,c:0},{n:"30 de setembro e a política abolicionista de vanguarda mossoroense",p:0,v:0,a:0,q:0,c:0},{n:"Motim das Mulheres",p:0,v:0,a:0,q:0,c:0},{n:"Representatividade potiguar na comunicação nacional com o jornal “O Mossoroense”, o 3º jornal mais antigo do Brasil",p:0,v:0,a:0,q:0,c:0},{n:"Política e sociedade: Mossoró e a resistência ao bando de Lampião",p:0,v:0,a:0,q:0,c:0},{n:"O movimento de 1930 no Rio Grande do Norte",p:0,v:0,a:0,q:0,c:0},{n:"Revolta de Princesa",p:0,v:0,a:0,q:0,c:0},{n:"Guerra de Polícia: o confronto da polícia militar com os “homens de bem” nos sertões de 1929",p:0,v:0,a:0,q:0,c:0},{n:"Regime Militar no Rio Grande do Norte (1964-1985)",p:0,v:0,a:0,q:0,c:0},{n:"Aspectos geoeconômicos do Rio Grande do Norte",p:0,v:0,a:0,q:0,c:0},{n:"O RN na atualidade: turismo, economia, indústria, política e sociedade",p:0,v:0,a:0,q:0,c:0},{n:"Interação da natureza com o processo produtivo no RN",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:0},{n:"Est.do Servidor",tp:[{n:"Lei nº 6.174/1993 — Estatuto do Servidor",p:0,v:0,a:0,q:0,c:0},{n:"Regime disciplinar",p:0,v:0,a:0,q:0,c:0},{n:"Direitos, deveres e proibições",p:0,v:0,a:0,q:0,c:0},{n:"Processo administrativo disciplinar",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:0},{n:"LEI EX. PENAL",tp:[{n:"Lei de Execução Penal — Lei nº 7.210/84",p:0,v:0,a:0,q:0,c:0},{n:"Objeto e aplicação",p:0,v:0,a:0,q:0,c:0},{n:"Órgãos da execução penal",p:0,v:0,a:0,q:0,c:0},{n:"Estabelecimentos penais",p:0,v:0,a:0,q:0,c:0},{n:"Classificação dos condenados",p:0,v:0,a:0,q:0,c:0},{n:"Progressão e regressão de regime",p:0,v:0,a:0,q:0,c:0},{n:"Trabalho do preso",p:0,v:0,a:0,q:0,c:0},{n:"Deveres e direitos do preso",p:0,v:0,a:0,q:0,c:0},{n:"Assistência ao preso",p:0,v:0,a:0,q:0,c:0},{n:"Faltas disciplinares",p:0,v:0,a:0,q:0,c:0},{n:"Remição",p:0,v:0,a:0,q:0,c:0},{n:"Livramento condicional",p:0,v:0,a:0,q:0,c:0},{n:"Prisão albergue domiciliar",p:0,v:0,a:0,q:0,c:0},{n:"Monitoração eletrônica",p:0,v:0,a:0,q:0,c:0},{n:"Saída temporária",p:0,v:0,a:0,q:0,c:0},{n:"Execução das penas em espécie",p:0,v:0,a:0,q:0,c:0},{n:"Execução das medidas de segurança",p:0,v:0,a:0,q:0,c:0},{n:"Recursos na execução penal",p:0,v:0,a:0,q:0,c:0},{n:"Prisão preventiva",p:0,v:0,a:0,q:0,c:0},{n:"Prisão temporária",p:0,v:0,a:0,q:0,c:0},{n:"Cumprimento de pena provisória",p:0,v:0,a:0,q:0,c:0},{n:"Estabelecimentos penais federais",p:0,v:0,a:0,q:0,c:0},{n:"Regime Disciplinar Diferenciado (RDD)",p:0,v:0,a:0,q:0,c:0},{n:"Competência para execução penal",p:0,v:0,a:0,q:0,c:0},{n:"Incidentes da execução",p:0,v:0,a:0,q:0,c:0},{n:"Suspensão condicional da pena (surse)",p:0,v:0,a:0,q:0,c:0},{n:"Pena de multa na execução",p:0,v:0,a:0,q:0,c:0},{n:"Extinção da punibilidade",p:0,v:0,a:0,q:0,c:0},{n:"Conselho Penitenciário",p:0,v:0,a:0,q:0,c:0},{n:"Patronato e assistência aos egressos",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:0},{n:"DIREITOS HUMANOS",tp:[{n:"Declaração Universal dos Direitos Humanos (1948)",p:0,v:0,a:0,q:0,c:0},{n:"Direitos humanos na Constituição Federal de 1988",p:0,v:0,a:0,q:0,c:0},{n:"Tratados internacionais de direitos humanos",p:0,v:0,a:0,q:0,c:0},{n:"Sistema interamericano de direitos humanos",p:0,v:0,a:0,q:0,c:0},{n:"Pacto de San José da Costa Rica",p:0,v:0,a:0,q:0,c:0},{n:"Convenção contra a Tortura",p:0,v:0,a:0,q:0,c:0},{n:"Regras de Mandela (Regras Mínimas para o Tratamento de Presos)",p:0,v:0,a:0,q:0,c:0},{n:"Convenção sobre os Direitos da Criança",p:0,v:0,a:0,q:0,c:0},{n:"Convenção sobre a Eliminação de Todas as Formas de Discriminação contra a Mulher",p:0,v:0,a:0,q:0,c:0},{n:"Convenção Internacional sobre a Eliminação de Todas as Formas de Discriminação Racial",p:0,v:0,a:0,q:0,c:0},{n:"Pessoas com deficiência: Lei Brasileira de Inclusão",p:0,v:0,a:0,q:0,c:0},{n:"Direitos humanos e o sistema prisional",p:0,v:0,a:0,q:0,c:0},{n:"Direitos humanos e a atuação policial",p:0,v:0,a:0,q:0,c:0},{n:"Tortura e tratamento degradante",p:0,v:0,a:0,q:0,c:0},{n:"Igualdade e não discriminação",p:0,v:0,a:0,q:0,c:0},{n:"Direitos sociais",p:0,v:0,a:0,q:0,c:0},{n:"Direitos civis e políticos",p:0,v:0,a:0,q:0,c:0},{n:"Direitos econômicos, sociais e culturais",p:0,v:0,a:0,q:0,c:0},{n:"Responsabilidade do Estado na proteção dos direitos humanos",p:0,v:0,a:0,q:0,c:0},{n:"Povos indígenas e comunidades tradicionais",p:0,v:0,a:0,q:0,c:0},{n:"Refugiados e migrantes",p:0,v:0,a:0,q:0,c:0},{n:"Direito à vida, à liberdade e à segurança pessoal",p:0,v:0,a:0,q:0,c:0},{n:"Direito à privacidade",p:0,v:0,a:0,q:0,c:0},{n:"Liberdade de expressão",p:0,v:0,a:0,q:0,c:0},{n:"Direito de reunião e associação",p:0,v:0,a:0,q:0,c:0},{n:"Devido processo legal",p:0,v:0,a:0,q:0,c:0},{n:"Presunção de inocência",p:0,v:0,a:0,q:0,c:0},{n:"Direito à educação",p:0,v:0,a:0,q:0,c:0},{n:"Direito à saúde",p:0,v:0,a:0,q:0,c:0},{n:"Direito à moradia",p:0,v:0,a:0,q:0,c:0},{n:"Direito ao trabalho",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:0},{n:"DIREITO ADMINISTRATIVO",tp:[{n:"Conceito e fontes do Direito Administrativo",p:0,v:0,a:0,q:0,c:0},{n:"Regime jurídico administrativo",p:0,v:0,a:0,q:0,c:0},{n:"Princípios da Administração Pública",p:0,v:0,a:0,q:0,c:0},{n:"Poderes administrativos",p:0,v:0,a:0,q:0,c:0},{n:"Poder de polícia",p:0,v:0,a:0,q:0,c:0},{n:"Ato administrativo: conceito, requisitos e atributos",p:0,v:0,a:0,q:0,c:0},{n:"Classificação dos atos administrativos",p:0,v:0,a:0,q:0,c:0},{n:"Extinção e invalidação dos atos administrativos",p:0,v:0,a:0,q:0,c:0},{n:"Discricionariedade e vinculação",p:0,v:0,a:0,q:0,c:0},{n:"Organização administrativa",p:0,v:0,a:0,q:0,c:0},{n:"Administração direta e indireta",p:0,v:0,a:0,q:0,c:0},{n:"Autarquias",p:0,v:0,a:0,q:0,c:0},{n:"Fundações públicas",p:0,v:0,a:0,q:0,c:0},{n:"Empresas públicas e sociedades de economia mista",p:0,v:0,a:0,q:0,c:0},{n:"Órgãos públicos",p:0,v:0,a:0,q:0,c:0},{n:"Agentes públicos: espécies",p:0,v:0,a:0,q:0,c:0},{n:"Servidores públicos",p:0,v:0,a:0,q:0,c:0},{n:"Licitação: conceito, princípios e modalidades",p:0,v:0,a:0,q:0,c:0},{n:"Lei nº 14.133/2021 — Nova Lei de Licitações",p:0,v:0,a:0,q:0,c:0},{n:"Contratos administrativos",p:0,v:0,a:0,q:0,c:0},{n:"Convênios e consórcios públicos",p:0,v:0,a:0,q:0,c:0},{n:"Serviços públicos",p:0,v:0,a:0,q:0,c:0},{n:"Concessão, permissão e autorização de serviços públicos",p:0,v:0,a:0,q:0,c:0},{n:"Parcerias público-privadas (PPP)",p:0,v:0,a:0,q:0,c:0},{n:"Intervenção do Estado na propriedade",p:0,v:0,a:0,q:0,c:0},{n:"Desapropriação",p:0,v:0,a:0,q:0,c:0},{n:"Limitações administrativas",p:0,v:0,a:0,q:0,c:0},{n:"Ocupação temporária",p:0,v:0,a:0,q:0,c:0},{n:"Requisição administrativa",p:0,v:0,a:0,q:0,c:0},{n:"Servidões administrativas",p:0,v:0,a:0,q:0,c:0},{n:"Controle da Administração Pública",p:0,v:0,a:0,q:0,c:0},{n:"Controle interno e externo",p:0,v:0,a:0,q:0,c:0},{n:"Responsabilidade civil do Estado",p:0,v:0,a:0,q:0,c:0},{n:"Responsabilidade por atos legislativos e judiciais",p:0,v:0,a:0,q:0,c:0},{n:"Ação regressiva",p:0,v:0,a:0,q:0,c:0},{n:"Prescrição administrativa",p:0,v:0,a:0,q:0,c:0},{n:"Improbidade administrativa — Lei nº 8.429/92",p:0,v:0,a:0,q:0,c:0},{n:"Processo administrativo — Lei nº 9.784/99",p:0,v:0,a:0,q:0,c:0},{n:"Lei do Processo Administrativo Estadual do RN",p:0,v:0,a:0,q:0,c:0},{n:"Bens públicos",p:0,v:0,a:0,q:0,c:0},{n:"Classificação e regime jurídico dos bens públicos",p:0,v:0,a:0,q:0,c:0},{n:"Alienação e aquisição de bens públicos",p:0,v:0,a:0,q:0,c:0},{n:"Uso dos bens públicos por terceiros",p:0,v:0,a:0,q:0,c:0},{n:"Lei de acesso à informação (Lei nº 12.527/2011)",p:0,v:0,a:0,q:0,c:0},{n:"Transparência na Administração Pública",p:0,v:0,a:0,q:0,c:0},{n:"Proteção de dados (LGPD — Lei nº 13.709/2018)",p:0,v:0,a:0,q:0,c:0},{n:"Sistema de precedentes administrativos",p:0,v:0,a:0,q:0,c:0},{n:"Atuação do Estado em rede",p:0,v:0,a:0,q:0,c:0},{n:"Negócio jurídico administrativo",p:0,v:0,a:0,q:0,c:0},{n:"Arbitragem no direito administrativo",p:0,v:0,a:0,q:0,c:0},{n:"Medidas sancionadoras administrativas",p:0,v:0,a:0,q:0,c:0},{n:"Gestão de riscos e compliance público",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:0},{n:"PROCESSO PENAL",tp:[],rev:[],o:"",tm:0},{n:"DIREITO PENAL",tp:[{n:"Princípios do Direito Penal",p:0,v:0,a:0,q:0,c:0},{n:"Aplicação da lei penal",p:0,v:0,a:0,q:0,c:0},{n:"Tempo e lugar do crime",p:0,v:0,a:0,q:0,c:0},{n:"Territorialidade e extraterritorialidade",p:0,v:0,a:0,q:0,c:0},{n:"Crime impossível",p:0,v:0,a:0,q:0,c:0},{n:"Iter criminis",p:0,v:0,a:0,q:0,c:0},{n:"Concurso de crimes",p:0,v:0,a:0,q:0,c:0},{n:"Teorias do crime",p:0,v:0,a:0,q:0,c:0},{n:"Fato típico",p:0,v:0,a:0,q:0,c:0},{n:"Dolo e culpa",p:0,v:0,a:0,q:0,c:0},{n:"Ilícito e culpabilidade",p:0,v:0,a:0,q:0,c:0},{n:"Excludentes de ilicitude e de culpabilidade",p:0,v:0,a:0,q:0,c:0},{n:"Penas: espécies, cominação e aplicação",p:0,v:0,a:0,q:0,c:0},{n:"Suspensão condicional da pena",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a pessoa",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra o patrimônio",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a Administração Pública",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a fé pública",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a dignidade sexual",p:0,v:0,a:0,q:0,c:0},{n:"Crimes de perigo",p:0,v:0,a:0,q:0,c:0},{n:"Crimes omissivos",p:0,v:0,a:0,q:0,c:0},{n:"Crimes hediondos",p:0,v:0,a:0,q:0,c:0},{n:"Tráfico de drogas (Lei nº 11.343/2006)",p:0,v:0,a:0,q:0,c:0},{n:"Estatuto do desarmamento (Lei nº 10.826/2003)",p:0,v:0,a:0,q:0,c:0},{n:"Lei Maria da Penha (Lei nº 11.340/2006)",p:0,v:0,a:0,q:0,c:0},{n:"Crimes ambientais (Lei nº 9.605/1998)",p:0,v:0,a:0,q:0,c:0},{n:"Crimes de trânsito (Lei nº 9.503/1997)",p:0,v:0,a:0,q:0,c:0},{n:"Estatuto da Criança e do Adolescente (parte penal)",p:0,v:0,a:0,q:0,c:0},{n:"Estatuto do Idoso (parte penal)",p:0,v:0,a:0,q:0,c:0},{n:"Crimes resultantes de preconceito de raça ou de cor",p:0,v:0,a:0,q:0,c:0},{n:"Genocídio",p:0,v:0,a:0,q:0,c:0},{n:"Tortura (Lei nº 9.455/1997)",p:0,v:0,a:0,q:0,c:0},{n:"Organização criminosa (Lei nº 12.850/2013)",p:0,v:0,a:0,q:0,c:0},{n:"Lei de Abuso de Autoridade (Lei nº 13.869/2019)",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra o sistema financeiro",p:0,v:0,a:0,q:0,c:0},{n:"Crimes de lavagem de dinheiro (Lei nº 9.613/1998)",p:0,v:0,a:0,q:0,c:0},{n:"Crimes falimentares",p:0,v:0,a:0,q:0,c:0},{n:"Crimes eleitorais",p:0,v:0,a:0,q:0,c:0},{n:"Crimes previdenciários",p:0,v:0,a:0,q:0,c:0},{n:"Crimes tributários (Lei nº 8.137/1990)",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a honra",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a incolumidade pública",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra a saúde pública",p:0,v:0,a:0,q:0,c:0},{n:"Crimes contra os costumes",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:3427},{n:"EXTRAVAGANTE",tp:[],rev:[],o:"",tm:4223},{n:"D. CONSTITUCIONAL",tp:[{n:"Constituição: conceito, classificação e aplicabilidade",p:0,v:0,a:0,q:0,c:0},{n:"Poder Constituinte",p:0,v:0,a:0,q:0,c:0},{n:"Princípios fundamentais",p:0,v:0,a:0,q:0,c:0},{n:"Direitos e garantias fundamentais",p:0,v:0,a:0,q:0,c:0},{n:"Direitos e deveres individuais e coletivos",p:0,v:0,a:0,q:0,c:0},{n:"Direitos sociais",p:0,v:0,a:0,q:0,c:0},{n:"Nacionalidade",p:0,v:0,a:0,q:0,c:0},{n:"Direitos políticos",p:0,v:0,a:0,q:0,c:0},{n:"Partidos políticos",p:0,v:0,a:0,q:0,c:0},{n:"Organização do Estado",p:0,v:0,a:0,q:0,c:0},{n:"União, Estados, Municípios e Distrito Federal",p:0,v:0,a:0,q:0,c:0},{n:"Organização político-administrativa",p:0,v:0,a:0,q:0,c:0},{n:"Administração Pública na Constituição",p:0,v:0,a:0,q:0,c:0},{n:"Servidores públicos",p:0,v:0,a:0,q:0,c:0},{n:"Organização dos Poderes",p:0,v:0,a:0,q:0,c:0},{n:"Poder Legislativo",p:0,v:0,a:0,q:0,c:0},{n:"Processo legislativo",p:0,v:0,a:0,q:0,c:0},{n:"Fiscalização contábil, financeira e orçamentária",p:0,v:0,a:0,q:0,c:0},{n:"Poder Executivo",p:0,v:0,a:0,q:0,c:0},{n:"Poder Judiciário",p:0,v:0,a:0,q:0,c:0},{n:"Funções essenciais à Justiça",p:0,v:0,a:0,q:0,c:0},{n:"Defesa do Estado e das instituições democráticas",p:0,v:0,a:0,q:0,c:0},{n:"Segurança pública",p:0,v:0,a:0,q:0,c:0},{n:"Sistema Tributário Nacional",p:0,v:0,a:0,q:0,c:0},{n:"Orçamento público",p:0,v:0,a:0,q:0,c:0},{n:"Ordem econômica e financeira",p:0,v:0,a:0,q:0,c:0},{n:"Ordem social",p:0,v:0,a:0,q:0,c:0},{n:"Controle de constitucionalidade",p:0,v:0,a:0,q:0,c:0},{n:"Ações constitucionais",p:0,v:0,a:0,q:0,c:0},{n:"Remédios constitucionais",p:0,v:0,a:0,q:0,c:0},{n:"Direitos humanos na Constituição",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:2811},{n:"ÉTICA",tp:[{n:"Ética e cidadania.",p:0,v:0,a:0,q:0,c:0},{n:"Ética e moral.",p:0,v:0,a:0,q:0,c:0},{n:"Ética, princípios e valores.",p:0,v:0,a:0,q:0,c:0},{n:"Ética e função pública.",p:0,v:0,a:0,q:0,c:0},{n:"Ética no setor público.",p:0,v:0,a:0,q:0,c:0},{n:"Decreto nº 26.995/2020 — Código de Ética do RN",p:0,v:0,a:0,q:0,c:0},{n:"Código de conduta da Polícia Penal",p:0,v:0,a:0,q:0,c:0}],rev:[],o:"",tm:2811}];
+
+function defaultEstudo(){
+  return {
+    materias: ESTUDO_SEED.map(m=>({
+      id: uid(), name: m.n,
+      topicos: m.tp.map(t=>({id: uid(), name: t.n, pdf: t.p, va: t.v, assistido: !!t.a, qResolvidas: t.q, qCorretas: t.c})),
+      revisoes: m.rev.slice(), obs: m.o, tempo: m.tm
+    })),
+    cronometro: null,
+    agenda: { DOM:{}, SEG:{}, TER:{}, QUA:{}, QUI:{}, SEX:{}, SAB:{} },
+    tarefas: [],
+    calendario: []
+  };
+}
+
+let estTab = 'painel';
+let estMatSel = null;
+let estTimerId = null;
+let estTickLast = 0;
+let estCalAnoMes = null;
+let estTarefaForm = { data:'', hora:'', materiaId:'' };
+
+function estudo(){ return cur().estudo || (cur().estudo = defaultEstudo()); }
+function estMaterias(){ return estudo().materias; }
+function estMateria(id){ return estMaterias().find(m=>m.id===id) || null; }
+function estTotals(){
+  const mats = estMaterias();
+  let tot=0, ok=0, qr=0, qc=0, tempo=0, matsAtivas=0;
+  mats.forEach(m=>{
+    tot += m.topicos.length;
+    ok += m.topicos.filter(t=>t.assistido).length;
+    qr += m.topicos.reduce((a,t)=>a+(Number(t.qResolvidas)||0),0);
+    qc += m.topicos.reduce((a,t)=>a+(Number(t.qCorretas)||0),0);
+    tempo += Number(m.tempo)||0;
+    if(m.topicos.length) matsAtivas++;
+  });
+  return { tot, ok, rest: tot-ok, pct: tot? ok/tot*100 : 0, qr, qc, qe: qr-qc, acert: qr? qc/qr*100 : 0, tempo, matsAtivas };
+}
+function fmtTempo(sec){
+  if(sec==null || isNaN(sec)) return '00:00:00';
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  const p = n=>(n<10?'0':'')+n;
+  return p(h)+':'+p(m)+':'+p(s);
+}
+function fmtTempoShort(sec){
+  if(sec==null || isNaN(sec)) return '0h';
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+  if(h>0) return h+'h '+(m>0?m+'min':'');
+  if(m>0) return m+'min';
+  return sec+'s';
+}
+function estNextRev(m){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  let next = null;
+  (m.revisoes||[]).forEach(r=>{
+    if(!r) return;
+    const d = new Date(r+'T00:00:00');
+    if(d < hoje) return;
+    if(!next || d < next) next = d;
+  });
+  return next;
+}
+function estRevStatus(m){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const pend = (m.revisoes||[]).filter(r=>r && new Date(r+'T00:00:00') >= hoje);
+  const past = (m.revisoes||[]).filter(r=>r && new Date(r+'T00:00:00') < hoje);
+  return { pendentes: pend.length, passadas: past.length };
+}
+
+/* ===== CRONÔMETRO ===== */
+function estCronoTick(){
+  if(!estTimerId) return;
+  const cm = estudo().cronometro;
+  if(!cm || !cm.running) return;
+  const now = Date.now();
+  const sec = Math.floor((now - cm.inicio)/1000) + (cm.sessao||0);
+  if(now - estTickLast > 15000){
+    estTickLast = now;
+    save();
+  }
+  const el = document.getElementById('crono-display');
+  if(el){
+    el.textContent = fmtTempo(sec);
+    el.classList.add('running');
+  }
+  const acc = document.getElementById('crono-acumulado');
+  if(acc) acc.textContent = '⏱ Acumulado: '+fmtTempo(estCronoTempoAtual(cm));
+}
+function estCronoTempoAtual(cm){
+  if(!cm) return 0;
+  const base = estMateria(cm.materiaId);
+  return (base?Number(base.tempo)||0:0) + (cm.running ? Math.floor((Date.now()-cm.inicio)/1000) + (cm.sessao||0) : (cm.sessao||0));
+}
+function estCronoSync(){
+  const cm = estudo().cronometro;
+  if(!cm || !cm.running) return;
+  const now = Date.now();
+  const m = estMateria(cm.materiaId);
+  if(m){
+    m.tempo = (Number(m.tempo)||0) + Math.floor((now - cm.inicio)/1000) + (cm.sessao||0);
+  }
+  cm.running = false;
+  cm.inicio = 0;
+  cm.sessao = 0;
+}
+function estCronoStart(mid){
+  estCronoSync();
+  if(!mid) return;
+  estudo().cronometro = { materiaId: mid, running: true, inicio: Date.now(), sessao: 0 };
+  clearInterval(estTimerId);
+  estTickLast = Date.now();
+  estTimerId = setInterval(estCronoTick, 250);
+  save();
+  renderEstudos();
+}
+function estCronoStop(){
+  const cm = estudo().cronometro;
+  if(cm && cm.running){
+    cm.sessao = Math.floor((Date.now()-cm.inicio)/1000) + (cm.sessao||0);
+    cm.inicio = 0;
+    cm.running = false;
+    save();
+  }
+  renderEstudos();
+}
+function estCronoZerarSessao(){
+  const cm = estudo().cronometro;
+  if(cm){ cm.sessao = 0; cm.inicio = cm.running ? Date.now() : 0; }
+  save();
+  renderEstudos();
+}
+function estCronoZerarAcumulado(mid){
+  if(!confirm('Zerar o tempo acumulado desta matéria?')) return;
+  const m = estMateria(mid);
+  if(m){ m.tempo = 0; if(estudo().cronometro && estudo().cronometro.materiaId===mid) estCronoSync(); }
+  save();
+  renderEstudos();
+}
+function estCronoTimerInit(){
+  const cm = estudo().cronometro;
+  if(cm && cm.running){
+    clearInterval(estTimerId);
+    estTimerId = setInterval(estCronoTick, 250);
+  }
+}
+
+/* ===== CRUD MATÉRIAS E TÓPICOS ===== */
+function estAddMateria(){
+  const el = document.getElementById('est-nova-mat');
+  const name = (el && el.value || '').trim();
+  if(!name){ alert('Digite o nome da matéria.'); return; }
+  estudo().materias.push({ id: uid(), name, topicos: [], revisoes: [], obs: '', tempo: 0 });
+  if(el) el.value = '';
+  estMatSel = estudo().materias[estudo().materias.length-1].id;
+  save(); renderEstudos();
+}
+function estRenameMateria(id, name){
+  const m = estMateria(id);
+  if(m && name) m.name = name;
+  save();
+}
+function estRemoveMateria(id){
+  const m = estMateria(id);
+  if(!m) return;
+  if(!confirm('Excluir a matéria "'+m.name+'" e todos os seus sub-tópicos?')) return;
+  estudo().materias = estMaterias().filter(x=>x.id!==id);
+  if(estudo().cronometro && estudo().cronometro.materiaId===id){ estudo().cronometro = null; clearInterval(estTimerId); estTimerId = null; }
+  if(estMatSel===id) estMatSel = estMaterias()[0] ? estMaterias()[0].id : null;
+  save(); renderEstudos();
+}
+function estAddTopico(mid){
+  const el = document.getElementById('est-novo-topico');
+  const name = (el && el.value || '').trim();
+  if(!name){ alert('Digite o nome do sub-tópico.'); return; }
+  const m = estMateria(mid);
+  if(m){ m.topicos.push({ id: uid(), name, pdf: 0, va: 0, assistido: false, qResolvidas: 0, qCorretas: 0 }); }
+  if(el) el.value = '';
+  save(); renderEstudos();
+}
+function estSetTopico(mid, tid, field, value){
+  const m = estMateria(mid);
+  const t = m && m.topicos.find(x=>x.id===tid);
+  if(!t) return;
+  if(field==='assistido') t.assistido = !!value;
+  else if(field==='pdf') t.pdf = value?1:0;
+  else if(field==='va') t.va = value?1:0;
+  else if(field==='qResolvidas' || field==='qCorretas'){
+    const n = Math.max(0, parseInt(value,10)||0);
+    t[field] = n;
+    if(field==='qCorretas' && t.qCorretas > t.qResolvidas) t.qResolvidas = t.qCorretas;
+  }
+  save();
+  renderEstudos();
+}
+function estRenameTopico(mid, tid, name){
+  const m = estMateria(mid);
+  const t = m && m.topicos.find(x=>x.id===tid);
+  if(t && name) t.name = name;
+  save();
+}
+function estRemoveTopico(mid, tid){
+  const m = estMateria(mid);
+  if(!m) return;
+  m.topicos = m.topicos.filter(x=>x.id!==tid);
+  save(); renderEstudos();
+}
+function estSetRev(mid, idx, val){
+  const m = estMateria(mid);
+  if(!m) return;
+  m.revisoes = m.revisoes || [];
+  m.revisoes[idx] = val || '';
+  save();
+}
+function estSetObs(mid, val){
+  const m = estMateria(mid);
+  if(!m) return;
+  m.obs = val;
+  save();
+}
+
+/* ===== ROTINA SEMANAL (modelo) ===== */
+const EST_DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+const EST_DIAS_LONG = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+function estAgendaSet(dia, hora, val){
+  const a = estudo().agenda[dia] || (estudo().agenda[dia] = {});
+  if(val.trim()) a[hora] = val.trim();
+  else delete a[hora];
+  save();
+}
+function estAgendaHoras(){
+  const set = new Set();
+  Object.keys(estudo().agenda).forEach(d=>Object.keys(estudo().agenda[d]||{}).forEach(h=>set.add(h)));
+  if(set.size < 10){
+    for(let h=5; h<=23; h++) set.add((h<10?'0':'')+h+':00');
+  }
+  return Array.from(set).sort();
+}
+
+/* ===== CALENDÁRIO DINÂMICO: tarefas ===== */
+function estTarefasDoDia(dataISO){
+  return estudo().tarefas.filter(t=>t.data===dataISO).sort((a,b)=>String(a.hora||'99:99').localeCompare(String(b.hora||'99:99')));
+}
+function estAddTarefaForm(){
+  const data = document.getElementById('tf-data').value;
+  const hora = document.getElementById('tf-hora').value;
+  const titulo = document.getElementById('tf-titulo').value.trim();
+  if(!data || !titulo){ alert('Informe a data e o título da tarefa.'); return; }
+  const materiaId = document.getElementById('tf-materia').value;
+  estudo().tarefas.push({ id: uid(), data, hora, titulo, materiaId, feita: false });
+  document.getElementById('tf-titulo').value = '';
+  estTarefaForm = { data, hora, materiaId: '' };
+  save(); renderEstudos();
+  const el = document.getElementById('tf-titulo');
+  if(el) el.focus();
+}
+function estSetTarefa(id, field, val){
+  const t = estudo().tarefas.find(x=>x.id===id);
+  if(!t) return;
+  if(field==='feita') t.feita = !!val;
+  else if(field==='hora') t.hora = val;
+  else if(field==='titulo') t.titulo = val;
+  else if(field==='materiaId') t.materiaId = val;
+  save();
+}
+function estRemoveTarefa(id){
+  estudo().tarefas = estudo().tarefas.filter(t=>t.id!==id);
+  save(); renderEstudos();
+}
+function estCalFormDia(dataISO){
+  estTarefaForm.data = dataISO;
+  renderEstudos();
+  const el = document.getElementById('tf-titulo');
+  if(el) el.focus();
+}
+function estAplicarRotina(dataISO, dia){
+  const tpl = estudo().agenda[dia] || {};
+  const horas = Object.keys(tpl).sort();
+  if(!horas.length){
+    alert('A rotina de '+EST_DIAS_LONG[EST_DIAS.indexOf(dia)]+' está vazia. Edite o modelo de rotina na seção "Rotina Semanal" abaixo.');
+    return;
+  }
+  let added = 0;
+  horas.forEach(h=>{
+    const tit = tpl[h];
+    if(!tit) return;
+    const existe = estudo().tarefas.find(t=>t.data===dataISO && t.titulo===tit && t.hora===h);
+    if(!existe){ estudo().tarefas.push({ id: uid(), data: dataISO, hora: h, titulo: tit, materiaId: '', feita: false }); added++; }
+  });
+  save(); renderEstudos();
+  if(added) alert(added+' tarefa(s) da rotina aplicada(s) em '+fmtDate(dataISO)+'.');
+}
+function estAplicarRotinaSemana(){
+  const ws = estCalWeekStart(new Date());
+  let added = 0;
+  for(let i=0;i<7;i++){
+    const date = new Date(ws.getTime() + i*86400000);
+    const iso = date.toISOString().slice(0,10);
+    const dia = EST_DIAS[date.getDay()];
+    const tpl = estudo().agenda[dia] || {};
+    Object.keys(tpl).sort().forEach(h=>{
+      const tit = tpl[h];
+      if(!tit) return;
+      const existe = estudo().tarefas.find(t=>t.data===iso && t.titulo===tit && t.hora===h);
+      if(!existe){ estudo().tarefas.push({ id: uid(), data: iso, hora: h, titulo: tit, materiaId: '', feita: false }); added++; }
+    });
+  }
+  save(); renderEstudos();
+  if(added) alert(added+' tarefa(s) da rotina aplicada(s) à semana atual.');
+  else alert('A semana atual já está com a rotina aplicada (ou o modelo está vazio).');
+}
+function estCalNavRef(){
+  if(estCalAnoMes) return new Date(estCalAnoMes.ano, estCalAnoMes.mes, 1);
+  const h = new Date();
+  return new Date(h.getFullYear(), h.getMonth(), 1);
+}
+function estCalNav(dir){
+  if(dir===0){ estCalAnoMes = null; }
+  else {
+    const ref = estCalNavRef();
+    const d = new Date(ref.getFullYear(), ref.getMonth()+dir, 1);
+    estCalAnoMes = { ano: d.getFullYear(), mes: d.getMonth() };
+  }
+  renderEstudos();
+}
+
+/* ===== CALENDÁRIO DE ESTUDO (semanal) ===== */
+function estCalWeekStart(ref){
+  const d = new Date(ref.getTime());
+  const dow = (d.getDay()+6)%7;
+  d.setDate(d.getDate()-dow);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function estCalSlotId(weekStartISO, dateISO, slotIdx){
+  return weekStartISO+'|'+dateISO+'|'+slotIdx;
+}
+function estCalCell(slotId){
+  const e = estudo().calendario.find(x=>x.id===slotId);
+  if(e) return e;
+  const c = { id: slotId, materiaId: '', ok: false };
+  estudo().calendario.push(c);
+  return c;
+}
+function estCalSet(slotId, field, val){
+  const c = estCalCell(slotId);
+  if(field==='materiaId') c.materiaId = val;
+  else if(field==='ok') c.ok = !!val;
+  save();
+  renderEstudos();
+}
+function estCalReset(){
+  estudo().calendario = [];
+  save(); renderEstudos();
+}
+function estCalTotals(){
+  const tot = estudo().calendario.length;
+  const feito = estudo().calendario.filter(c=>c.ok).length;
+  const pend = tot - feito;
+  return { tot, feito, pend, pct: tot? feito/tot*100 : 0 };
+}
+
+/* ===== RENDERIZAÇÃO ===== */
+function estSubnav(){
+  const tabs = [['painel','📊 Painel de Controle'],['materias','📚 Matérias'],['cronograma','🗓️ Cronograma']];
+  return '<div class="subnav">'+tabs.map(t=>'<button class="'+(estTab===t[0]?'active':'')+'" onclick="estGo(\''+t[0]+'\')">'+t[1]+'</button>').join('')+'</div>';
+}
+function estGo(tab){ estTab = tab; renderEstudos(); }
+
+function renderEstudos(){
+  const el = document.getElementById('view-estudos');
+  if(!el) return;
+  const t = estTotals();
+  const c = estCalTotals();
+  let html = estSubnav();
+  if(estTab==='painel') html += estRenderPainel(t, c);
+  else if(estTab==='materias') html += estRenderMaterias();
+  else html += estRenderCronograma();
+  el.innerHTML = html;
+  estCronoTimerInit();
+}
+
+function estKpi(label, value, sub, cls){
+  return '<div class="kpi '+(cls||'')+'"><div class="k-label">'+label+'</div><div class="k-value">'+value+'</div>'+(sub?'<div class="k-sub">'+sub+'</div>':'')+'</div>';
+}
+
+function estRenderPainel(t, c){
+  const mats = estMaterias();
+  const rows = mats.map(m=>{
+    const tot = m.topicos.length;
+    const ok = m.topicos.filter(x=>x.assistido).length;
+    const qr = m.topicos.reduce((a,x)=>a+(Number(x.qResolvidas)||0),0);
+    const qc = m.topicos.reduce((a,x)=>a+(Number(x.qCorretas)||0),0);
+    const pct = tot? ok/tot*100 : 0;
+    const acert = qr? qc/qr*100 : null;
+    const next = estNextRev(m);
+    const rev = estRevStatus(m);
+    return '<tr>'+
+      '<td><b>'+esc(m.name)+'</b></td>'+
+      '<td class="right">'+tot+'</td>'+
+      '<td class="right">'+ok+'</td>'+
+      '<td class="right">'+(tot-ok)+'</td>'+
+      '<td><div style="display:flex;align-items:center;gap:8px"><div class="progress-mini"><div class="bar" style="width:'+pct.toFixed(0)+'%"></div></div><b style="font-size:12px;min-width:38px;text-align:right">'+fmtPct(pct)+'</b></div></td>'+
+      '<td class="right" style="white-space:nowrap">'+fmtTempoShort(m.tempo)+'</td>'+
+      '<td class="right">'+qr+'</td>'+
+      '<td class="right">'+qc+'</td>'+
+      '<td class="right">'+(acert!=null?fmtPct(acert):'—')+'</td>'+
+      '<td style="white-space:nowrap">'+(next? '<span class="badge b-amber">'+fmtDate(next.toISOString().slice(0,10))+'</span>' : (rev.passadas? '<span class="badge b-red">Revisão em atraso</span>' : '<span class="muted">—</span>'))+'</td>'+
+      '<td style="max-width:180px"><span class="muted" style="font-size:11px">'+esc(m.obs||'').slice(0,60)+'</span></td>'+
+      '</tr>';
+  }).join('');
+  const tempoTotal = fmtTempo(t.tempo);
+  const tempoMedio = t.matsAtivas? fmtTempo(Math.round(t.tempo/t.matsAtivas)) : '00:00:00';
+  const calInfo = c.tot? c.pct.toFixed(0)+'% ('+c.feito+'/'+c.tot+')' : '—';
+  return `
+    ${countdownBanner()}
+    <div class="kpi-grid" style="margin-bottom:16px">
+      ${estKpi('Sub Tópicos', t.tot, 'conteúdo programático', 'k-blue')}
+      ${estKpi('Concluídos', t.ok, 'assistidos (√)', 'k-green')}
+      ${estKpi('Restantes', t.rest, 'a estudar', 'k-amber')}
+      ${estKpi('Conclusão', fmtPct(t.pct), 'do edital', '')}
+      ${estKpi('Q. Resolvidas', t.qr, 'total', 'k-blue')}
+      ${estKpi('Acertividade', t.qr? fmtPct(t.acert) : '—', t.qc+' corretas · '+t.qe+' erradas', t.acert>=70?'k-green':(t.acert>=50?'k-amber':'k-red'))}
+      ${estKpi('Tempo de Estudo', tempoTotal, 'total acumulado', '')}
+      ${estKpi('T. Médio/Matéria', tempoMedio, t.matsAtivas+' matérias', '')}
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>📊 Gestão de Estudos <small>— conclusão, tempo e desempenho por matéria</small></h2>
+      <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>Matéria</th><th class="right">Sub<br>Tópicos</th><th class="right">OK</th><th class="right">Rest.</th>
+          <th>Conclusão</th><th class="right">Tempo</th><th class="right">Q Real.</th><th class="right">Q Corr.</th>
+          <th class="right">Acertos %</th><th>Próx. Revisão</th><th>Obs.</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="11" class="muted">Nenhuma matéria cadastrada. Vá na aba <b>Matérias</b> e cadastre.</td></tr>'}</tbody>
+      </table>
+      </div>
+    </div>
+    <div class="grid g-2">
+      <div class="card">
+        <h2>🗓️ Calendário de Estudo</h2>
+        <div class="row"><span class="muted">Dias planejados</span><b>${c.tot}</b></div>
+        <div class="row"><span class="muted" style="color:var(--green)">Realizado</span><b>${c.feito}</b></div>
+        <div class="row"><span class="muted" style="color:var(--amber)">Não realizado</span><b>${c.pend}</b></div>
+        <div class="row"><span class="muted">Realizado %</span><b>${c.tot?fmtPct(c.pct):'—'}</b></div>
+      </div>
+      <div class="card">
+        <h2>🔔 Próximas Revisões</h2>
+        ${mats.filter(m=>estNextRev(m)).sort((a,b)=>estNextRev(a)-estNextRev(b)).slice(0,6).map(m=>{
+          const d = estNextRev(m);
+          const diff = Math.ceil((d - new Date(new Date().setHours(0,0,0,0)))/86400000);
+          return '<div class="row"><span>'+esc(m.name)+'</span><span class="badge '+(diff<=3?'b-red':(diff<=7?'b-amber':'b-green'))+'">'+fmtDate(d.toISOString().slice(0,10))+(diff===0?' (hoje)':diff===1?' (amanhã)':' ('+diff+'d)')+'</span></div>';
+        }).join('') || '<p class="hint">Nenhuma revisão agendada. Defina as datas de revisão na aba <b>Matérias</b>.</p>'}
+      </div>
+    </div>`;
+}
+
+function estRenderMaterias(){
+  const mats = estMaterias();
+  const list = mats.map(m=>{
+    const tot = m.topicos.length;
+    const ok = m.topicos.filter(x=>x.assistido).length;
+    const pct = tot? ok/tot*100 : 0;
+    return '<div class="est-mat-row" style="'+(m.id===estMatSel?'border-color:var(--accent);box-shadow:0 0 8px rgba(139,92,246,.25)':'')+'">'+
+      '<button class="btn '+(m.id===estMatSel?'':'ghost')+' sm" onclick="estSelMat(\''+m.id+'\')">'+(m.id===estMatSel?'✓ ':'')+esc(m.name)+'</button>'+
+      '<span class="hint" style="white-space:nowrap">'+tot+' tópicos · '+ok+' OK · '+fmtPct(pct)+'</span>'+
+      '<button class="btn danger sm" onclick="estRemoveMateria(\''+m.id+'\')" title="Excluir matéria">✕</button>'+
+      '</div>';
+  }).join('');
+  const sel = estMateria(estMatSel);
+  const detail = sel? estRenderMateriaDetail(sel) : '<div class="empty"><span class="big">📚</span>Selecione ou cadastre uma matéria para começar.</div>';
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <h2>📚 Matérias do Edital <small>— cadastre e organize</small></h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="est-nova-mat" type="text" placeholder="Nome da nova matéria (ex.: Direito Penal)" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')estAddMateria()">
+        <button class="btn" onclick="estAddMateria()">➕ Matéria</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0">${list||'<p class="hint">Nenhuma matéria ainda.</p>'}</div>
+    </div>
+    ${detail}`;
+}
+
+function estRenderMateriaDetail(m){
+  const tot = m.topicos.length;
+  const ok = m.topicos.filter(x=>x.assistido).length;
+  const qr = m.topicos.reduce((a,x)=>a+(Number(x.qResolvidas)||0),0);
+  const qc = m.topicos.reduce((a,x)=>a+(Number(x.qCorretas)||0),0);
+  const qe = qr-qc;
+  const pct = tot? ok/tot*100 : 0;
+  const acert = qr? qc/qr*100 : null;
+  const cm = estudo().cronometro;
+  const running = cm && cm.running && cm.materiaId===m.id;
+  const sessaoSec = cm && cm.materiaId===m.id ? Math.floor((Date.now()-cm.inicio)/1000) + (cm.sessao||0) : 0;
+  const rows = m.topicos.map(t=>{
+    const pctT = t.qResolvidas? (t.qCorretas/t.qResolvidas*100).toFixed(0)+'%' : '—';
+    return '<tr class="'+(t.assistido?'tp-feito':'')+'">'+
+      '<td><input type="checkbox" '+(t.assistido?'checked':'')+' onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'assistido\',this.checked)" title="Assistido"></td>'+
+      '<td class="tp-name"><input type="text" value="'+esc(t.name)+'" onchange="estRenameTopico(\''+m.id+'\',\''+t.id+'\',this.value)" style="border:none;background:transparent;padding:2px;width:100%;font-size:13px"></td>'+
+      '<td class="t-ok"><input type="checkbox" '+(t.pdf?'checked':'')+' onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'pdf\',this.checked)" title="PDF"></td>'+
+      '<td class="t-ok"><input type="checkbox" '+(t.va?'checked':'')+' onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'va\',this.checked)" title="Vídeo aula"></td>'+
+      '<td><input type="number" min="0" value="'+t.qResolvidas+'" onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'qResolvidas\',this.value)"></td>'+
+      '<td><input type="number" min="0" value="'+t.qCorretas+'" onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'qCorretas\',this.value)"></td>'+
+      '<td class="right">'+pctT+'</td>'+
+      '<td><button class="btn danger sm" onclick="estRemoveTopico(\''+m.id+'\',\''+t.id+'\')">✕</button></td>'+
+      '</tr>';
+  }).join('');
+  const revs = [0,1,2].map(i=>{
+    const v = (m.revisoes||[])[i] || '';
+    return '<label>Rev '+(i+1)+' <input type="date" value="'+v+'" onchange="estSetRev(\''+m.id+'\','+i+',this.value)"></label>';
+  }).join('');
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="flex-wrap:wrap">📖
+        <input type="text" value="${esc(m.name)}" onchange="estRenameMateria('${m.id}',this.value)" style="width:auto;max-width:280px;font-weight:700;border:1px dashed var(--border)" title="Renomear matéria">
+      </h2>
+      <div class="kpi-grid" style="margin-bottom:14px">
+        ${estKpi('Sub Tópicos', tot, '', 'k-blue')}
+        ${estKpi('Concluídos', ok, 'assistidos', 'k-green')}
+        ${estKpi('Restantes', tot-ok, '', 'k-amber')}
+        ${estKpi('Conclusão', fmtPct(pct), '', '')}
+        ${estKpi('Q. Resolvidas', qr, '', 'k-blue')}
+        ${estKpi('Q. Corretas', qc, qe+' erradas', 'k-green')}
+        ${estKpi('Acertividade', qr?fmtPct(acert):'—', '', acert>=70?'k-green':(acert>=50?'k-amber':'k-red'))}
+        ${estKpi('Tempo Acumulado', fmtTempo(m.tempo), '', '')}
+      </div>
+      <div class="grid g-2" style="margin-bottom:14px">
+        <div class="crono-wrap">
+          <div class="crono-display ${running?'running':''}" id="crono-display">${running?fmtTempo(sessaoSec):'00:00:00'}</div>
+          <div class="crono-accum" id="crono-acumulado">⏱ Acumulado: ${fmtTempo(cm && cm.materiaId===m.id ? estCronoTempoAtual(cm) : m.tempo)}</div>
+          <div class="crono-btns">
+            ${running
+              ? '<button class="btn stop" onclick="estCronoStop()">⏸ Parar</button>'
+              : '<button class="btn start" onclick="estCronoStart(\''+m.id+'\')">▶ Iniciar</button>'}
+            <button class="btn ghost" onclick="estCronoZerarSessao()" title="Zera o cronômetro atual (não mexe no acumulado)">↺ Zerar</button>
+            <button class="btn ghost" onclick="estCronoZerarAcumulado(\''+m.id+'\')" title="Zera o tempo acumulado desta matéria">🧹 Zerar Acumulado</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <fieldset>
+            <legend>🔁 Revisões</legend>
+            <div class="rev-dates">${revs}</div>
+            <p class="hint" style="margin-top:8px">${estNextRev(m)?'Próxima revisão: <b style="color:var(--amber)">'+fmtDate(estNextRev(m).toISOString().slice(0,10))+'</b>':'Nenhuma revisão futura agendada.'}</p>
+          </fieldset>
+          <fieldset style="flex:1">
+            <legend>📝 Observações</legend>
+            <textarea class="est-obs" placeholder="Anotações gerais da matéria…" onchange="estSetObs('${m.id}',this.value)">${esc(m.obs||'')}</textarea>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📋 Sub Tópicos <small>— assinale o que foi assistido (√) e registre questões</small></h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="est-novo-topico" type="text" placeholder="Novo sub-tópico (ex.: 9.1. Ética e cidadania)" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')estAddTopico('${m.id}')">
+        <button class="btn" onclick="estAddTopico('${m.id}')">➕ Sub-tópico</button>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="tbl est-topic-table">
+        <thead><tr>
+          <th class="t-ok">√</th><th>SUB TÓPICOS</th><th class="t-ok">PDF</th><th class="t-ok">V.A</th>
+          <th>Q.Resolvidas</th><th>Q.Corretas</th><th class="right">%</th><th></th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" class="muted">Nenhum sub-tópico. Adicione acima.</td></tr>'}</tbody>
+      </table>
+      </div>
+    </div>`;
+}
+
+function estRenderCronograma(){
+  const hoje = new Date();
+  const hojeISO = hoje.toISOString().slice(0,10);
+  const hojeDia = EST_DIAS[hoje.getDay()];
+  const horas = estAgendaHoras();
+  const diasHtml = EST_DIAS.map(d=>'<div class="ag-cell ag-head '+(d===hojeDia?'ag-hoje':'')+'">'+EST_DIAS_LONG[EST_DIAS.indexOf(d)]+'</div>').join('');
+  const body = horas.map(h=>{
+    const tds = EST_DIAS.map(d=>{
+      const v = (estudo().agenda[d]||{})[h] || '';
+      return '<div class="ag-cell '+(d===hojeDia?'ag-hoje':'')+'"><input type="text" value="'+esc(v)+'" placeholder="—" onchange="estAgendaSet(\''+d+'\',\''+h+'\',this.value)"></div>';
+    }).join('');
+    return '<div class="ag-time">'+h+'</div>'+tds;
+  }).join('');
+
+  const weekStart = estCalWeekStart(hoje);
+  const calTot = estCalTotals();
+  let cal = '';
+  for(let w=0; w<2; w++){
+    const ws = new Date(weekStart.getTime() + w*7*86400000);
+    const wsISO = ws.toISOString().slice(0,10);
+    const heads = EST_DIAS.map((d,di)=>{
+      const date = new Date(ws.getTime() + di*86400000);
+      const iso = date.toISOString().slice(0,10);
+      return '<div class="cal-head">'+EST_DIAS_LONG[di].slice(0,3)+'<br><span style="font-size:10px;color:var(--muted)">'+fmtDate(iso)+'</span></div>';
+    }).join('');
+    const cells = EST_DIAS.map((d,di)=>{
+      const date = new Date(ws.getTime() + di*86400000);
+      const iso = date.toISOString().slice(0,10);
+      const hojeBase = new Date(); hojeBase.setHours(0,0,0,0);
+      const passado = date < hojeBase;
+      const opts = '<option value="">—</option>'+estMaterias().map(m=>'<option value="'+m.id+'" '+(false?'selected':'')+'>'+esc(m.name)+'</option>').join('');
+      let slots = '';
+      for(let s=0; s<2; s++){
+        const id = estCalSlotId(wsISO, iso, s);
+        const cell = estCalCell(id);
+        const optHtml = opts.replace('<option value="'+cell.materiaId+'"', '<option value="'+cell.materiaId+'" selected');
+        slots += '<div class="cal-slot">'+
+          '<select onchange="estCalSet(\''+id+'\',\'materiaId\',this.value)">'+optHtml+'</select>'+
+          '<button class="'+(cell.ok?'ok':'')+'" onclick="estCalSet(\''+id+'\',\'ok\',!('+(cell.ok?'true':'false')+'))" title="Marcar realizado">'+(cell.ok?'✓':'')+'</button>'+
+          '</div>';
+      }
+      return '<div class="cal-cell '+(passado?'passado':'')+'"><div class="cal-date">'+EST_DIAS_LONG[di]+'</div>'+slots+'</div>';
+    }).join('');
+    cal += '<div style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px">Semana de '+fmtDate(wsISO)+'</div><div class="cal-grid">'+heads+cells+'</div>';
+  }
+
+  return `
+    ${estRenderCalendarioDinamico()}
+    <details class="card" style="margin-bottom:16px" open>
+      <summary><h2 style="display:inline">⏰ Rotina Semanal (modelo) <small>— acordar, trabalho, estudo…</small></h2></summary>
+      <div style="margin-top:12px">
+        <p class="hint" style="margin-bottom:10px">Este é o <b>modelo</b> da sua semana. Para usar no calendário acima, clique no botão <b>↻</b> de um dia (aplica a rotina daquele dia da semana) ou aplique a semana inteira abaixo.</p>
+        <div style="overflow-x:auto">
+          <div class="agenda-grid">${diasHtml}${body}</div>
+        </div>
+        <div class="agenda-legend">
+          <span><span class="dot" style="background:var(--accent)"></span> hoje</span>
+          <span>Digite a atividade em cada horário × dia da semana.</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" onclick="estAplicarRotinaSemana()">📋 Aplicar rotina na semana atual</button>
+        </div>
+      </div>
+    </details>
+    <div class="card">
+      <h2>🗓️ Cronograma de Estudo <small>— planeje os estudos da semana e marque o realizado</small></h2>
+      <div class="cal-actions">
+        <span class="badge b-blue">${calTot.tot} dias planejados</span>
+        <span class="badge b-green">${calTot.feito} realizado</span>
+        <span class="badge b-amber">${calTot.pend} não realizado</span>
+        <span class="badge ${calTot.pct>=70?'b-green':(calTot.pct>=40?'b-amber':'b-red')}">${calTot.tot?fmtPct(calTot.pct):'—'} realizado %</span>
+        <button class="btn danger sm" style="margin-left:auto" onclick="estCalReset()">🗑️ Limpar calendário</button>
+      </div>
+      ${cal}
+    </div>`;
+}
+
+function estRenderCalendarioDinamico(){
+  const ref = estCalNavRef();
+  const ano = ref.getFullYear(), mes = ref.getMonth();
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const hojeISO = hoje.toISOString().slice(0,10);
+  const first = new Date(ano, mes, 1);
+  const offset = first.getDay();
+  const daysInMonth = new Date(ano, mes+1, 0).getDate();
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const prefix = ano+'-'+String(mes+1).padStart(2,'0')+'-';
+  const heads = EST_DIAS.map(d=>'<div class="cald-head">'+d+'</div>').join('');
+  let cells = '';
+  for(let i=0;i<offset;i++) cells += '<div class="cald-cell cald-out"></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = prefix+String(d).padStart(2,'0');
+    const ehHoje = iso===hojeISO;
+    const tds = estTarefasDoDia(iso).map(t=>{
+      const mat = estMateria(t.materiaId);
+      return `<div class="cald-task ${t.feita?'feita':''}">
+        <input type="checkbox" ${t.feita?'checked':''} onchange="estSetTarefa('${t.id}','feita',this.checked)" title="Concluir tarefa">
+        <input type="time" value="${esc(t.hora||'')}" onchange="estSetTarefa('${t.id}','hora',this.value)">
+        <input type="text" class="cald-tit" value="${esc(t.titulo||'')}" onchange="estSetTarefa('${t.id}','titulo',this.value)" placeholder="Tarefa">
+        ${mat?'<span class="cald-mat" title="'+esc(mat.name)+'">'+esc(mat.name)+'</span>':''}
+        <button class="cald-del" onclick="estRemoveTarefa('${t.id}')" title="Excluir tarefa">✕</button>
+      </div>`;
+    }).join('');
+    cells += `<div class="cald-cell ${ehHoje?'cald-hoje':''}">
+      <div class="cald-top">
+        <span class="cald-num">${d}${ehHoje?' · hoje':''}</span>
+        <button onclick="estCalFormDia('${iso}')" title="Adicionar tarefa neste dia">+</button>
+        <button onclick="estAplicarRotina('${iso}','${EST_DIAS[new Date(ano,mes,d).getDay()]}')" title="Aplicar a rotina deste dia da semana">↻</button>
+      </div>
+      <div class="cald-tasks">${tds||'<span class="muted" style="font-size:10px">sem tarefas</span>'}</div>
+    </div>`;
+  }
+  const trailing = (7 - (offset+daysInMonth)%7)%7;
+  for(let i=0;i<trailing;i++) cells += '<div class="cald-cell cald-out"></div>';
+  const tarefasMes = estudo().tarefas.filter(t=>t.data.startsWith(prefix));
+  const feitas = tarefasMes.filter(t=>t.feita).length;
+  const pctFeito = tarefasMes.length ? feitas/tarefasMes.length*100 : 0;
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <h2>📅 Calendário Dinâmico <small>— agenda e tarefas do dia a dia</small></h2>
+      <div class="cald-nav">
+        <button class="btn ghost" onclick="estCalNav(-1)" title="Mês anterior">‹</button>
+        <button class="btn ghost" onclick="estCalNav(1)" title="Próximo mês">›</button>
+        <button class="btn ghost sm" onclick="estCalNav(0)">Hoje</button>
+        <div class="cald-title">${meses[mes]} ${ano}</div>
+        <span class="badge b-blue">${tarefasMes.length} tarefas</span>
+        <span class="badge b-green">${feitas} concluídas</span>
+        <span class="badge ${pctFeito>=70?'b-green':(pctFeito>=40?'b-amber':'b-red')}">${tarefasMes.length?fmtPct(pctFeito):'—'} concluído</span>
+      </div>
+      <div class="cald-form">
+        <input type="date" id="tf-data" value="${estTarefaForm.data||hojeISO}" onchange="estTarefaForm.data=this.value">
+        <input type="time" id="tf-hora" value="${estTarefaForm.hora||''}" onchange="estTarefaForm.hora=this.value">
+        <input type="text" id="tf-titulo" placeholder="Título da tarefa (ex.: Estudar Direito Penal)" onkeydown="if(event.key==='Enter')estAddTarefaForm()">
+        <select id="tf-materia" onchange="estTarefaForm.materiaId=this.value">
+          <option value="">Sem matéria</option>
+          ${estMaterias().map(m=>'<option value="'+m.id+'" '+(estTarefaForm.materiaId===m.id?'selected':'')+'>'+esc(m.name)+'</option>').join('')}
+        </select>
+        <button class="btn" onclick="estAddTarefaForm()">➕ Tarefa</button>
+      </div>
+      <div style="overflow-x:auto"><div class="cald-grid">${heads}${cells}</div></div>
+      <div class="agenda-legend" style="margin-top:10px">
+        <span><span class="dot" style="background:var(--accent)"></span> hoje</span>
+        <span><b>+</b> adicionar tarefa · <b>↻</b> aplicar rotina do dia · ✓ concluir · ✕ excluir</span>
+      </div>
+    </div>`;
+}
+
+function estSelMat(id){ estMatSel = id; renderEstudos(); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+window.addEventListener('beforeunload', ()=>{ estCronoSync(); save(); });
 
 /* ===== ATALHOS DE TECLADO (configuráveis na aba Ajustes) ===== */
 const DEFAULT_KEYMAP = { caneta:'c', riscar:'r', comentar:'m', destaque:'d', borracha:'b', selecionar:'s', anotacoes:'e' };
@@ -428,13 +1259,73 @@ function curId(){ return state.currentConcursoId; }
 function allConcursos(){ return state.concursos || []; }
 
 function defaultConcurso(id, name, subjects){
-  return { id, name, subjects: subjects.map(s=>Object.assign({},s)), targets:{}, simulados:[], provas:[], corte:0 };
+  return { id, name, subjects: subjects.map(s=>Object.assign({},s)), targets:{}, simulados:[], provas:[], corte:0, dataProva:'', estudo: defaultEstudo() };
 }
 
 function switchConcurso(id){
   state.currentConcursoId = id;
   save();
   renderAll();
+}
+
+function setDataProva(val){
+  cur().dataProva = val || '';
+  save();
+  renderAll();
+}
+function setDataProvaConcurso(id, val){
+  const c = state.concursos.find(x=>x.id===id);
+  if(c) c.dataProva = val || '';
+  save();
+  renderAll();
+}
+function diasAteProva(){
+  const dp = cur() && cur().dataProva;
+  if(!dp) return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const d = new Date(dp+'T00:00:00');
+  return Math.round((d - hoje)/86400000);
+}
+function countdownBadge(){
+  const dp = cur() && cur().dataProva;
+  if(!dp) return '<span class="muted" style="font-size:11px">sem data</span>';
+  const dias = diasAteProva();
+  if(dias === null) return '';
+  if(dias > 0){
+    const cls = dias<=7 ? 'b-red' : dias<=30 ? 'b-amber' : 'b-blue';
+    return '<span class="badge '+cls+'" style="font-size:12px">⏳ faltam '+dias+' dia'+(dias>1?'s':'')+'</span>';
+  }
+  if(dias === 0) return '<span class="badge b-red" style="font-size:12px">🎯 PROVA HOJE!</span>';
+  return '<span class="badge b-green" style="font-size:12px">✅ prova há '+Math.abs(dias)+' dia'+(Math.abs(dias)>1?'s':'')+'</span>';
+}
+function countdownBanner(){
+  const dp = cur() && cur().dataProva;
+  if(!dp) return '';
+  const dias = diasAteProva();
+  const data = fmtDate(dp);
+  if(dias === null) return '';
+  if(dias < 0){
+    return `<div class="card" style="margin-bottom:16px;border-color:rgba(52,211,153,.4)">
+      <h2>✅ Prova realizada <small>${data}</small></h2>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div class="hint">A prova foi há <b style="color:var(--green)">${Math.abs(dias)} dia${Math.abs(dias)>1?'s':''}</b>. Aguarde o resultado — continue mantendo o ritmo de estudos.</div>
+      </div>
+    </div>`;
+  }
+  const msg = dias===0
+    ? '🎯 <b style="color:var(--red)">É HOJE! Boa prova e boa sorte!</b>'
+    : dias<=7
+      ? '⏳ <b style="color:var(--red)">Reta final! Faltam poucos dias — foco total em revisão.</b>'
+      : dias<=30
+        ? '⏳ <b style="color:var(--amber)">Menos de um mês para a prova — hora de intensificar o ritmo.</b>'
+        : '';
+  return `<div class="card" style="margin-bottom:16px;border-color:rgba(139,92,246,.4)">
+    <h2>🗓️ Prova em ${dias} dia${dias>1?'s':''} <small>${data}</small></h2>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="big grad">${dias} <span class="muted" style="font-size:15px">dias</span></div>
+      <div class="hint" style="flex:1;min-width:200px">${msg||'Mantenha o cronograma: aulas, questões e revisões em dia.'}</div>
+    </div>
+  </div>`;
 }
 
 function addConcurso(name, subjects){
@@ -590,6 +1481,16 @@ function normalizeState(p){
   if(!st.currentConcursoId && st.concursos && st.concursos.length){
     st.currentConcursoId = st.concursos[0].id;
   }
+  if(st._v !== 12){
+    (st.concursos||[]).forEach(c=>{ if(!c.estudo) c.estudo = defaultEstudo(); });
+    st._v = 12;
+  }
+  (st.concursos||[]).forEach(c=>{
+    if(!c.estudo) c.estudo = defaultEstudo();
+    if(c.dataProva==null) c.dataProva = '';
+    if(!Array.isArray(c.estudo.tarefas)) c.estudo.tarefas = [];
+    if(!Array.isArray(c.estudo.calendario)) c.estudo.calendario = [];
+  });
   return st;
 }
 function save(){
@@ -723,6 +1624,12 @@ function renderAll(){
   if(sel && state.concursos){
     sel.innerHTML = state.concursos.map(c=>'<option value="'+c.id+'" '+(c.id===curId()?'selected':'')+'>'+c.name+'</option>').join('');
   }
+  const dpInput = document.getElementById('inp-data-prova');
+  if(dpInput && state.concursos){
+    dpInput.value = (cur() && cur().dataProva) || '';
+    const cd = document.getElementById('countdown-prova');
+    if(cd) cd.innerHTML = countdownBadge();
+  }
   const sub = document.getElementById('header-sub');
   if(sub){
     const c = cur();
@@ -730,7 +1637,7 @@ function renderAll(){
   }
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===currentView));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+currentView));
-  renderDashboard(); renderSimuladoView(); renderMetas(); renderAjustes();
+  renderDashboard(); renderSimuladoView(); renderEstudos(); renderMetas(); renderAjustes();
 }
 
 function ringSVG(pct, label, sublabel){
@@ -814,6 +1721,7 @@ function renderDashboard(){
   const el = document.getElementById('view-dashboard');
   if(!cur().simulados.length){
     el.innerHTML = `
+      ${countdownBanner()}
       <div class="card empty">
         <span class="big">🚀</span>
         <h2 style="justify-content:center">Bem-vindo ao seu painel de desempenho!</h2>
@@ -851,6 +1759,7 @@ function renderDashboard(){
     </div>`;
 
   const cards = `
+    ${countdownBanner()}
     ${filterBar}
     <div class="grid g-4" style="margin-bottom:16px">
       <div class="card" style="text-align:center">
@@ -990,7 +1899,7 @@ function projectionPanel(){
     </div>`;
   }).join('');
   return `<div class="card" style="margin-bottom:16px">
-    <h2>🏛️ Projeção para a prova <small>se o concurso fosse hoje · ${exQtd} questões · máx. ${fmt(totalMax,0)} pts</small></h2>
+    <h2>🏛️ Projeção para a prova <small>${cur().dataProva ? 'prova em '+Math.max(0,diasAteProva())+' dia'+(Math.abs(diasAteProva())>1?'s':'')+' ('+fmtDate(cur().dataProva)+')' : 'se o concurso fosse hoje'} · ${exQtd} questões · máx. ${fmt(totalMax,0)} pts</small></h2>
     <div class="grid g-4" style="margin-bottom:14px">
       <div>
         <div class="muted" style="font-size:12px">Com sua média atual</div>
@@ -1514,8 +2423,10 @@ function renderAjustes(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:10px;background:var(--card2);border:1px solid ${isCur?'var(--accent)':'var(--border)'};border-radius:10px;${isCur?'box-shadow:0 0 10px rgba(139,92,246,.2)':''}">
       <div style="flex:1">
         <input type="text" value="${c.name}" onchange="renameConcurso('${c.id}',this.value)" style="font-weight:700;font-size:14px;border:none;background:transparent;padding:2px;width:100%">
-        <div class="hint" style="font-size:11px">${subCount} matérias · ${simCount} simulados${isCur?' · <b style="color:var(--accent)">ATUAL</b>':''}</div>
+        <div class="hint" style="font-size:11px">${subCount} matérias · ${simCount} simulados${isCur?' · <b style="color:var(--accent)">ATUAL</b>':''}${c.dataProva?' · 🗓️ prova '+fmtDate(c.dataProva):''}</div>
       </div>
+      <label style="font-size:11px;color:var(--muted);margin:0;white-space:nowrap">Prova:</label>
+      <input type="date" value="${c.dataProva||''}" onchange="setDataProvaConcurso('${c.id}',this.value)" style="width:auto;font-size:12px;padding:6px 8px" title="Data da prova">
       <button class="btn ghost sm" onclick="switchConcurso('${c.id}')" ${isCur?'disabled':''}>${isCur?'✓ Atual':'Trocar'}</button>
       <button class="btn danger sm" onclick="removeConcurso('${c.id}')" ${allConcursos().length<=1?'disabled':''}>✕</button>
     </div>`;
@@ -1581,6 +2492,7 @@ function importJSON(input){
       if(!data) throw new Error('vazio');
       if(Array.isArray(data.concursos)){
         state = data;
+        (state.concursos||[]).forEach(c=>{ if(!c.estudo) c.estudo = defaultEstudo(); });
       } else if(Array.isArray(data.subjects)){
         state = {concursos:[defaultConcurso('pprn','PPRN — Polícia Penal',data.subjects)], currentConcursoId:'pprn'};
         state.concursos[0].targets = data.targets||{};

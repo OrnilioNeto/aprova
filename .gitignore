@@ -6,12 +6,21 @@
 
 # Arquivos de trabalho da extração de provas
 pdf para extracao/
+simulado a analisar/
+tmp_raw/
 extrato.txt
 extracao*.json
 extracao*.txt
 extracao.js
 extract_pdf.py
 layout_check.py
+gabarito*.json
+gabarito*.txt
+extract_gabarito.py
+verify_gabarito.py
+extract_gabarito_txt.py
+gerar_txt_questoes.js
+tmp-*
 
 # Configurações locais e chaves de API
 config*.js
