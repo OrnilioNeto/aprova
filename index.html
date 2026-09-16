@@ -9,7 +9,46 @@
   --bg:#0b1220; --card:#121a2e; --card2:#0f1626; --border:#1f2b45;
   --text:#e2e8f0; --muted:#8ea0bd; --accent:#8b5cf6; --accent2:#06b6d4;
   --green:#34d399; --amber:#fbbf24; --red:#f87171; --blue:#60a5fa;
+  --grid:#1f2b45; --ring:#1c2947; --soft:#4b5a75;
+  --polyfill:rgba(139,92,246,.18); --dot:#0b1220;
 }
+/* ===== TEMA CLARO PROFISSIONAL (segurança e confiança) ===== */
+body.theme-light{
+  --bg:#eef2f8; --card:#ffffff; --card2:#f3f6fb; --border:#d6e0ee;
+  --text:#17263f; --muted:#5c6d87; --accent:#1d4ed8; --accent2:#0e7490;
+  --green:#059669; --amber:#d97706; --red:#dc2626; --blue:#2563eb;
+  --grid:#d3dcec; --ring:#d3dcec; --soft:#64748b;
+  --polyfill:rgba(29,78,216,.14); --dot:#eef2f8;
+  background:var(--bg);
+}
+body.theme-light header{background:linear-gradient(135deg,#e3ebf7,#ffffff 60%);border-bottom-color:var(--border)}
+body.theme-light nav button.active{background:linear-gradient(90deg,#e8edf7,#e2f3f8);color:#1d4ed8;border-color:var(--accent)}
+body.theme-light .subnav button.active{background:linear-gradient(90deg,#e8edf7,#e2f3f8);color:#1d4ed8;border-color:var(--accent)}
+body.theme-light .canete-toolbar{background:linear-gradient(135deg,#ffffff,#f3f6fb);border-color:var(--accent);box-shadow:0 4px 20px rgba(15,40,80,.12)}
+body.theme-light .canete-tool.active{background:rgba(29,78,216,.1);color:#1d4ed8;border-color:var(--accent);box-shadow:0 0 8px rgba(29,78,216,.2)}
+body.theme-light .canete-tool.active.tool-destaque{background:rgba(217,119,6,.12);color:#b45309;border-color:#d97706}
+body.theme-light .canete-tool.active.tool-riscar{background:rgba(220,38,38,.1);color:#b91c1c;border-color:#dc2626}
+body.theme-light .canete-tool.active.tool-comentar{background:rgba(37,99,235,.1);color:#1d4ed8;border-color:#2563eb}
+body.theme-light .canete-tool.active.tool-borracha{background:rgba(15,23,42,.06);color:#17263f;border-color:#334155}
+body.theme-light .canete-tool.active.tool-null{background:rgba(5,150,105,.12);color:#047857;border-color:#059669}
+body.theme-light #auth-screen{background:rgba(238,242,248,.97)}
+body.theme-light .auth-card{box-shadow:0 12px 40px rgba(15,40,80,.15)}
+body.theme-light .resp-rail{background:rgba(255,255,255,.96);border-color:var(--border);box-shadow:0 4px 16px rgba(15,40,80,.12)}
+body.theme-light .resp-nav.resp-nav-ok{background:rgba(29,78,216,.1);color:#1d4ed8;border-color:var(--accent)}
+body.theme-light .resp-rail .sn-item.ok{background:rgba(29,78,216,.1);color:#1d4ed8;border-color:var(--accent)}
+body.theme-light .resp-rail .sn-item.cur{background:rgba(14,116,144,.14);color:#0e7490}
+body.theme-light .resp-alt.resp-sel{border-color:var(--accent);background:rgba(29,78,216,.07)}
+body.theme-light .resp-radio{color:var(--accent)}
+body.theme-light .b-purple{background:rgba(124,58,237,.08);color:#6d28d9;border-color:rgba(124,58,237,.28)}
+body.theme-light .chip.active{background:rgba(29,78,216,.12);color:#1d4ed8;border-color:var(--accent)}
+body.theme-light .advice b{color:#6d28d9}
+body.theme-light .comment-popup{box-shadow:0 8px 24px rgba(15,40,80,.15)}
+body.theme-light .cald-out{background:rgba(231,237,248,.6)}
+body.theme-light .cald-cell.cald-hoje{background:rgba(29,78,216,.05)}
+body.theme-light .cald-task .cald-mat{background:rgba(29,78,216,.1);color:#1d4ed8}
+body.theme-light .resp-notes{box-shadow:0 8px 24px rgba(15,40,80,.12)}
+body.theme-light .resp-notes-tabs .rn-tab.active{background:linear-gradient(90deg,#e8edf7,#e2f3f8);color:#1d4ed8;border-color:var(--accent)}
+body.theme-light .canete-size button.active{background:rgba(29,78,216,.12)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,Arial,sans-serif;padding-bottom:60px}
 header{background:linear-gradient(135deg,#1a1147,#0b1220 60%);border-bottom:1px solid var(--border);padding:20px 24px;position:sticky;top:0;z-index:10}
@@ -174,7 +213,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 24px;color:var(--muted);fon
 .canete-colors{display:flex;gap:4px;align-items:center}
 .canete-color{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);cursor:pointer;transition:.15s}
 .canete-color:hover{transform:scale(1.15)}
-.canete-color.active{border-color:#fff;box-shadow:0 0 6px rgba(255,255,255,.4)}
+.canete-color.active{border-color:var(--text);box-shadow:0 0 6px rgba(0,0,0,.3)}
 .canete-size{display:flex;gap:4px;align-items:center}
 .canete-size button{width:28px;height:28px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
 .canete-size button:hover{border-color:var(--accent)}
@@ -340,6 +379,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
       <label style="font-size:11px;color:var(--muted);margin:0;white-space:nowrap">Prova:</label>
       <input type="date" id="inp-data-prova" onchange="setDataProva(this.value)" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;outline:none" title="Data da prova — informe para ver a contagem regressiva">
       <span id="countdown-prova"></span>
+      <button class="btn ghost sm" id="btn-tema" onclick="toggleTema()" title="Alternar tema claro/escuro">🌙</button>
       <div id="auth-user">
         <span id="auth-email-label"></span>
         <span id="sync-status"></span>
@@ -886,7 +926,7 @@ function estRenderMaterias(){
     const tot = m.topicos.length;
     const ok = m.topicos.filter(x=>x.assistido).length;
     const pct = tot? ok/tot*100 : 0;
-    return '<div class="est-mat-row" style="'+(m.id===estMatSel?'border-color:var(--accent);box-shadow:0 0 8px rgba(139,92,246,.25)':'')+'">'+
+    return '<div class="est-mat-row" style="'+(m.id===estMatSel?'border-color:var(--accent);box-shadow:0 0 8px rgba(29,78,216,.2)':'')+'">'+
       '<button class="btn '+(m.id===estMatSel?'':'ghost')+' sm" onclick="estSelMat(\''+m.id+'\')">'+(m.id===estMatSel?'✓ ':'')+esc(m.name)+'</button>'+
       '<span class="hint" style="white-space:nowrap">'+tot+' tópicos · '+ok+' OK · '+fmtPct(pct)+'</span>'+
       '<button class="btn danger sm" onclick="estRemoveMateria(\''+m.id+'\')" title="Excluir matéria">✕</button>'+
@@ -1318,6 +1358,18 @@ function setDataProva(val){
   save();
   renderAll();
 }
+function applyTema(){
+  document.body.classList.toggle('theme-light', state && state.tema==='claro');
+  const btn = document.getElementById('btn-tema');
+  if(btn) btn.textContent = state && state.tema==='claro' ? '☀️' : '🌙';
+  if(btn) btn.title = state && state.tema==='claro' ? 'Usar tema escuro' : 'Usar tema claro';
+}
+function toggleTema(){
+  if(!state) return;
+  state.tema = state.tema==='claro' ? 'escuro' : 'claro';
+  save();
+  applyTema();
+}
 function setDataProvaConcurso(id, val){
   const c = state.concursos.find(x=>x.id===id);
   if(c) c.dataProva = val || '';
@@ -1364,7 +1416,7 @@ function countdownBanner(){
       : dias<=30
         ? '⏳ <b style="color:var(--amber)">Menos de um mês para a prova — hora de intensificar o ritmo.</b>'
         : '';
-  return `<div class="card" style="margin-bottom:16px;border-color:rgba(139,92,246,.4)">
+  return `<div class="card" style="margin-bottom:16px;border-color:rgba(29,78,216,.4)">
     <h2>🗓️ Prova em ${dias} dia${dias>1?'s':''} <small>${data}</small></h2>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="big grad">${dias} <span class="muted" style="font-size:15px">dias</span></div>
@@ -1537,6 +1589,7 @@ function normalizeState(p){
     if(!Array.isArray(c.estudo.calendario)) c.estudo.calendario = [];
     if(recuperarMateriaIds(c)) st._v = (st._v||0)+1;
   });
+  if(!st.tema) st.tema = 'escuro';
   return st;
 }
 function save(){
@@ -1683,6 +1736,7 @@ function renderAll(){
   }
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===currentView));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+currentView));
+  applyTema();
   renderDashboard(); renderSimuladoView(); renderEstudos(); renderMetas(); renderAjustes();
 }
 
@@ -1690,14 +1744,14 @@ function ringSVG(pct, label, sublabel){
   const R=70, C=2*Math.PI*R;
   const v = pct!=null ? Math.max(0,Math.min(100,pct)) : 0;
   return `<svg viewBox="0 0 180 180" style="width:190px;height:190px;display:block;margin:0 auto">
-    <circle cx="90" cy="90" r="${R}" fill="none" stroke="#1c2947" stroke-width="14"/>
+    <circle cx="90" cy="90" r="${R}" fill="none" stroke="var(--ring)" stroke-width="14"/>
     <circle cx="90" cy="90" r="${R}" fill="none" stroke="url(#rg)" stroke-width="14" stroke-linecap="round"
       stroke-dasharray="${(v/100*C).toFixed(1)} ${C}" transform="rotate(-90 90 90)"/>
     <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs>
-    <text x="90" y="86" text-anchor="middle" fill="#fff" font-size="30" font-weight="800">${pct!=null?fmtPct(v):'—'}</text>
-    <text x="90" y="108" text-anchor="middle" fill="#8ea0bd" font-size="11">${label}</text>
-    <text x="90" y="124" text-anchor="middle" fill="#4b5a75" font-size="10">${sublabel}</text>
+      <stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/></linearGradient></defs>
+    <text x="90" y="86" text-anchor="middle" fill="var(--text)" font-size="30" font-weight="800">${pct!=null?fmtPct(v):'—'}</text>
+    <text x="90" y="108" text-anchor="middle" fill="var(--muted)" font-size="11">${label}</text>
+    <text x="90" y="124" text-anchor="middle" fill="var(--soft)" font-size="10">${sublabel}</text>
   </svg>`;
 }
 
@@ -1710,28 +1764,28 @@ function radarSVG(){
   const poly = (vals, extra) => vals.map((v,i)=>pt(i,Math.max(2,R*(Math.min(100,Math.max(0,v||0))/100))).map(x=>Math.round(x*10)/10).join(',')).join(' ');
   let grid='', axes='', labels='';
   [25,50,75,100].forEach(g=>{
-    grid += `<polygon points="${poly(Array(n).fill(g))}" fill="none" stroke="#1f2b45" stroke-width="1"/>`;
+    grid += `<polygon points="${poly(Array(n).fill(g))}" fill="none" stroke="var(--grid)" stroke-width="1"/>`;
   });
   for(let i=0;i<n;i++){
     const [x,y]=pt(i,R);
-    axes += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#1f2b45" stroke-width="1"/>`;
+    axes += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`;
     const [lx,ly]=pt(i,R+20);
     const anchor = Math.abs(lx-cx)<12 ? 'middle' : (lx>cx?'start':'end');
-    labels += `<text x="${lx}" y="${ly+3}" text-anchor="${anchor}" fill="#8ea0bd" font-size="10">${subs[i].short}</text>`;
+    labels += `<text x="${lx}" y="${ly+3}" text-anchor="${anchor}" fill="var(--muted)" font-size="10">${subs[i].short}</text>`;
   }
   const avgVals = subs.map(s=>subjStats(s).avgPct);
   const tgtVals = subs.map(s=>subjStats(s).targetPct);
   return `<svg viewBox="0 0 400 330" style="width:100%;max-width:420px;display:block;margin:0 auto">
     <defs>
-      <linearGradient id="rg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
+      <linearGradient id="rg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/></linearGradient>
     </defs>
     ${grid}${axes}
     <polygon points="${poly(tgtVals)}" fill="rgba(251,191,36,.05)" stroke="#fbbf24" stroke-width="1.6" stroke-dasharray="5 4"/>
-    <polygon points="${poly(avgVals)}" fill="rgba(139,92,246,.18)" stroke="url(#rg2)" stroke-width="2.2"/>
+    <polygon points="${poly(avgVals)}" fill="var(--polyfill)" stroke="url(#rg2)" stroke-width="2.2"/>
     ${labels}
-    <text x="200" y="316" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Desempenho médio vs meta (% por matéria)</text>
-    <rect x="118" y="322" width="10" height="10" fill="#fbbf24" rx="2"/><text x="133" y="331" fill="#8ea0bd" font-size="10">Meta</text>
-    <rect x="190" y="322" width="10" height="10" fill="#8b5cf6" rx="2"/><text x="205" y="331" fill="#8ea0bd" font-size="10">Média</text>
+    <text x="200" y="316" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="700">Desempenho médio vs meta (% por matéria)</text>
+    <rect x="118" y="322" width="10" height="10" fill="#fbbf24" rx="2"/><text x="133" y="331" fill="var(--muted)" font-size="10">Meta</text>
+    <rect x="190" y="322" width="10" height="10" fill="var(--accent)" rx="2"/><text x="205" y="331" fill="var(--muted)" font-size="10">Média</text>
   </svg>`;
 }
 
@@ -1744,8 +1798,8 @@ function lineSVG(){
   const y = v => H-P.b - (v/100)*(H-P.t-P.b);
   let grid='';
   [0,25,50,75,100].forEach(g=>{
-    grid += `<line x1="${P.l}" y1="${y(g)}" x2="${W-P.r}" y2="${y(g)}" stroke="#1f2b45" stroke-width="1"/>`;
-    grid += `<text x="${P.l-6}" y="${y(g)+4}" text-anchor="end" fill="#4b5a75" font-size="10">${g}%</text>`;
+    grid += `<line x1="${P.l}" y1="${y(g)}" x2="${W-P.r}" y2="${y(g)}" stroke="var(--grid)" stroke-width="1"/>`;
+    grid += `<text x="${P.l-6}" y="${y(g)+4}" text-anchor="end" fill="var(--soft)" font-size="10">${g}%</text>`;
   });
   const tgt = overallTargetPct();
   const tgtLine = tgt>0 ? `<line x1="${P.l}" y1="${y(tgt)}" x2="${W-P.r}" y2="${y(tgt)}" stroke="#fbbf24" stroke-width="1.6" stroke-dasharray="6 5"/>
@@ -1753,13 +1807,13 @@ function lineSVG(){
   const line = pts.length>1 ? `<polyline points="${pts.map((v,i)=>x(i)+','+y(v)).join(' ')}" fill="none" stroke="url(#lg)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>` : '';
   const dots = pts.map((v,i)=>{
     const sel = filter!=='all' && sims[i].id===filter;
-    return `<circle cx="${x(i)}" cy="${y(v)}" r="${sel?6:4}" fill="${sel?'#fbbf24':'#0b1220'}" stroke="${sel?'#fbbf24':'#8b5cf6'}" stroke-width="2"/>`;
+    return `<circle cx="${x(i)}" cy="${y(v)}" r="${sel?6:4}" fill="${sel?'#fbbf24':'var(--dot)'}" stroke="${sel?'#fbbf24':'var(--accent)'}" stroke-width="2"/>`;
   }).join('');
-  const xlabs = sims.map((s,i)=>`<text x="${x(i)}" y="${H-P.b+16}" text-anchor="middle" fill="#4b5a75" font-size="10">${fmtDate(s.date).slice(0,5)}</text>`).join('');
+  const xlabs = sims.map((s,i)=>`<text x="${x(i)}" y="${H-P.b+16}" text-anchor="middle" fill="var(--soft)" font-size="10">${fmtDate(s.date).slice(0,5)}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:760px;display:block;margin:0 auto">
-    <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs>
+    <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/></linearGradient></defs>
     ${grid}${tgtLine}${line}${dots}${xlabs}
-    <text x="${P.l}" y="14" fill="#e2e8f0" font-size="11" font-weight="700">Evolução da pontuação ponderada (% )</text>
+    <text x="${P.l}" y="14" fill="var(--text)" font-size="11" font-weight="700">Evolução da pontuação ponderada (% )</text>
   </svg>`;
 }
 
@@ -2442,7 +2496,7 @@ function renderKbCard(){
   const km = getKeymap();
   const rows = KB_TOOLS.map(([id, label])=>{
     const k = km[id];
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card2);border:1px solid ${kbCaptureTool===id?'var(--accent)':'var(--border)'};border-radius:10px;${kbCaptureTool===id?'box-shadow:0 0 0 2px rgba(139,92,246,.25)':''}">
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card2);border:1px solid ${kbCaptureTool===id?'var(--accent)':'var(--border)'};border-radius:10px;${kbCaptureTool===id?'box-shadow:0 0 0 2px rgba(29,78,216,.25)':''}">
       <span style="flex:1;font-size:13px;font-weight:600">${label}</span>
       <button class="btn ghost sm" style="min-width:56px;font-family:monospace" onclick="kbStartCapture('${id}')" ${keymapAtivo()?'':'disabled'} title="Clique e pressione a tecla desejada">${kbCaptureTool===id?'🎯…':kbKeyLabel(k)}</button>
     </div>`;
@@ -2468,7 +2522,7 @@ function renderAjustes(){
     const isCur = c.id===curId();
     const simCount = c.simulados.length;
     const subCount = c.subjects.length;
-    return `<div style="display:flex;gap:8px;align-items:center;padding:10px;background:var(--card2);border:1px solid ${isCur?'var(--accent)':'var(--border)'};border-radius:10px;${isCur?'box-shadow:0 0 10px rgba(139,92,246,.2)':''}">
+    return `<div style="display:flex;gap:8px;align-items:center;padding:10px;background:var(--card2);border:1px solid ${isCur?'var(--accent)':'var(--border)'};border-radius:10px;${isCur?'box-shadow:0 0 10px rgba(29,78,216,.15)':''}">
       <div style="flex:1">
         <input type="text" value="${c.name}" onchange="renameConcurso('${c.id}',this.value)" style="font-weight:700;font-size:14px;border:none;background:transparent;padding:2px;width:100%">
         <div class="hint" style="font-size:11px">${subCount} matérias · ${simCount} simulados${isCur?' · <b style="color:var(--accent)">ATUAL</b>':''}${c.dataProva?' · 🗓️ prova '+fmtDate(c.dataProva):''}</div>
@@ -2813,7 +2867,7 @@ function editFormHtml(q, simId){
       <textarea id="eq-alt-${q.n}-${k}" rows="2" style="flex:1;min-height:52px">${escHtml(e.alts[k])}</textarea>
       <button class="btn danger sm" onclick="removeAlt('${simId}',${q.n},'${k}')" title="Remover alternativa">✕</button>
     </div>`).join('');
-  return `<div style="border:1px solid var(--accent);border-radius:10px;padding:12px;background:rgba(139,92,246,.06);margin-top:4px;position:relative;z-index:6">
+  return `<div style="border:1px solid var(--accent);border-radius:10px;padding:12px;background:rgba(29,78,216,.06);margin-top:4px;position:relative;z-index:6">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
       <b style="font-size:13px">✏️ Editando questão ${q.n}</b>
       <button class="btn sm" onclick="saveQuestao('${simId}',${q.n})">💾 Salvar</button>
