@@ -299,9 +299,11 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px}
 .cal-head{background:var(--card);font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding:8px 4px;text-transform:uppercase;letter-spacing:.4px}
-.cal-cell{background:var(--card2);padding:8px;min-height:96px;display:flex;flex-direction:column;gap:6px}
+.cal-cell{background:var(--card2);padding:8px;min-height:96px;min-width:0;display:flex;flex-direction:column;gap:6px}
 .cal-cell .cal-date{font-size:11px;font-weight:700;color:var(--muted)}
 .cal-cell.passado{opacity:.55}
+.cal-cell.cal-out{background:rgba(15,22,38,.4);opacity:.5}
+.cal-cell.cal-hoje{outline:2px solid var(--accent);outline-offset:-2px}
 .cal-slot{display:flex;gap:4px;align-items:center}
 .cal-slot select{width:auto;flex:1;font-size:11px;padding:4px 6px;background:var(--card);min-width:0}
 .cal-slot button{flex:none;width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
@@ -341,11 +343,42 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 .cald-task .cald-mat{flex:none;font-size:9px;font-weight:700;color:#c4b5fd;background:rgba(139,92,246,.15);border-radius:5px;padding:1px 5px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
 .cald-task .cald-del{flex:none;width:18px;height:18px;border-radius:5px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:10px;padding:0;display:flex;align-items:center;justify-content:center;line-height:1}
 .cald-task .cald-del:hover{color:var(--red)}
+/* Modal / gerador de plano de estudo */
+.modal-back{position:fixed;inset:0;background:rgba(5,10,20,.68);z-index:250;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto}
+.modal-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:780px;box-shadow:0 18px 60px rgba(0,0,0,.55)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.modal-head h2{margin:0;font-size:17px;display:flex;align-items:center;gap:8px}
+.modal-x{background:transparent;border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:13px;line-height:1}
+.modal-x:hover{color:var(--text);border-color:#33456b}
+.plano-sec{border-top:1px solid var(--border);padding-top:14px;margin-top:14px}
+.plano-sec h3{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px}
+.plano-dias{display:flex;gap:6px;flex-wrap:wrap}
+.plano-dia{display:flex;align-items:center;gap:5px;padding:7px 11px;border:1px solid var(--border);border-radius:9px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;margin:0}
+.plano-dia.on{border-color:var(--accent);color:var(--text);background:rgba(139,92,246,.12)}
+.plano-dia input{width:auto;accent-color:var(--accent);margin:0}
+.plano-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:12px}
+.plano-grid label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.plano-grid select{width:100%}
+.plano-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.plano-prio-list{max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:4px 12px;background:var(--card2)}
+.plano-prio{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.plano-prio:last-child{border-bottom:none}
+.plano-prio-info{flex:1;min-width:0;display:flex;flex-direction:column;font-size:13px}
+.plano-prio-info b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plano-prio-info .muted{font-size:11px}
+.plano-prio select{width:auto;flex:none}
+.plano-check{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin:10px 0 0;cursor:pointer;font-weight:600}
+.plano-check input{width:auto;accent-color:var(--accent);margin:0}
+.plano-resumo{margin-top:16px;padding:11px 13px;border-radius:11px;background:var(--card2);border:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.7}
+.plano-resumo b{color:var(--text)}
+.plano-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap}
 details.card summary{cursor:pointer;user-select:none}
 details.card summary::-webkit-details-marker{color:var(--muted)}
 @media(max-width:900px){
   .cald-grid{grid-template-columns:repeat(7,minmax(120px,1fr));overflow-x:auto}
   .cald-cell{min-height:90px}
+  .cal-grid{grid-template-columns:repeat(7,minmax(110px,1fr));overflow-x:auto}
+  .cal-cell{min-height:88px}
 }
 
 /* ===== LOGIN / AUTH ===== */
@@ -452,6 +485,16 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
   </div>
 </div>
 
+<div id="est-plano-modal" class="modal-back dn" onclick="estPlanoModalClick(event)">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>🧠 Gerar plano de estudo</h2>
+      <button class="modal-x" onclick="estFecharPlanoModal()" title="Fechar">✕</button>
+    </div>
+    <div id="est-plano-body"></div>
+  </div>
+</div>
+
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
@@ -472,7 +515,8 @@ function defaultEstudo(){
     cronometro: null,
     agenda: { DOM:{}, SEG:{}, TER:{}, QUA:{}, QUI:{}, SEX:{}, SAB:{} },
     tarefas: [],
-    calendario: []
+    calendario: [],
+    plano: null
   };
 }
 
@@ -686,6 +730,7 @@ function estSetObs(mid, val){
 /* ===== ROTINA SEMANAL (modelo) ===== */
 const EST_DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
 const EST_DIAS_LONG = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const EST_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function estAgendaSet(dia, hora, val){
   const a = estudo().agenda[dia] || (estudo().agenda[dia] = {});
   if(val.trim()) a[hora] = val.trim();
@@ -759,7 +804,7 @@ function estAplicarRotinaSemana(){
   let added = 0;
   for(let i=0;i<7;i++){
     const date = new Date(ws.getTime() + i*86400000);
-    const iso = date.toISOString().slice(0,10);
+    const iso = isoLocal(date);
     const dia = EST_DIAS[date.getDay()];
     const tpl = estudo().agenda[dia] || {};
     Object.keys(tpl).sort().forEach(h=>{
@@ -788,7 +833,11 @@ function estCalNav(dir){
   renderEstudos();
 }
 
-/* ===== CALENDÁRIO DE ESTUDO (semanal) ===== */
+/* ===== CALENDÁRIO DE ESTUDO (mensal) ===== */
+function isoLocal(d){
+  const p = n=>(n<10?'0':'')+n;
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
 function estCalWeekStart(ref){
   const d = new Date(ref.getTime());
   const dow = (d.getDay()+6)%7;
@@ -799,29 +848,282 @@ function estCalWeekStart(ref){
 function estCalSlotId(weekStartISO, dateISO, slotIdx){
   return weekStartISO+'|'+dateISO+'|'+slotIdx;
 }
-function estCalCell(slotId){
-  const e = estudo().calendario.find(x=>x.id===slotId);
-  if(e) return e;
-  const c = { id: slotId, materiaId: '', ok: false };
-  estudo().calendario.push(c);
-  return c;
+function estCalDateOf(id){
+  const p = String(id).split('|');
+  return p.length>=3 ? p[1] : p[0];
+}
+function estCalFind(dateISO, slotIdx){
+  const casa = x=>{
+    const p = String(x.id).split('|');
+    return estCalDateOf(x.id)===dateISO && String(p[p.length-1])===String(slotIdx);
+  };
+  return estudo().calendario.find(x=>casa(x) && x.materiaId) || estudo().calendario.find(casa) || null;
 }
 function estCalSet(slotId, field, val){
-  const c = estCalCell(slotId);
+  let c = estudo().calendario.find(x=>x.id===slotId);
+  if(!c){ c = { id: slotId, materiaId:'', ok:false }; estudo().calendario.push(c); }
   if(field==='materiaId') c.materiaId = val;
   else if(field==='ok') c.ok = !!val;
+  if(!c.materiaId && !c.ok) estudo().calendario = estudo().calendario.filter(x=>x.id!==slotId);
   save();
   renderEstudos();
 }
-function estCalReset(){
-  estudo().calendario = [];
+function estPlanoMesAtual(){
+  const ref = estCalNavRef();
+  return ref.getFullYear()+'-'+String(ref.getMonth()+1).padStart(2,'0');
+}
+function estCalReset(mesPrefixo){
+  const mes = mesPrefixo || estPlanoMesAtual();
+  const nome = EST_MESES[Number(mes.slice(5,7))-1] || 'do mês';
+  if(!confirm('Remover todo o planejamento de '+nome+'? Os outros meses não serão afetados.')) return;
+  estudo().calendario = estudo().calendario.filter(c=>estCalDateOf(c.id).slice(0,7)!==mes);
   save(); renderEstudos();
 }
-function estCalTotals(){
-  const tot = estudo().calendario.length;
-  const feito = estudo().calendario.filter(c=>c.ok).length;
+function estCalTotals(mesPrefixo){
+  let cells = estudo().calendario.filter(c=>c.materiaId);
+  if(mesPrefixo) cells = cells.filter(c=>estCalDateOf(c.id).slice(0,7)===mesPrefixo);
+  const tot = cells.length;
+  const feito = cells.filter(c=>c.ok).length;
   const pend = tot - feito;
   return { tot, feito, pend, pct: tot? feito/tot*100 : 0 };
+}
+
+/* ===== GERADOR AUTOMÁTICO DE PLANO DE ESTUDO (config por mês) ===== */
+function estPlanoConfig(mesPrefixo){
+  const e = estudo();
+  if(!e.plano || typeof e.plano!=='object') e.plano = {};
+  const p = e.plano;
+  if(!p.porMes || typeof p.porMes!=='object') p.porMes = {};
+  const mes = mesPrefixo || estPlanoMesAtual();
+  if(!p.porMes[mes] && (p.dias || p.prioridades || p.blocosPorDia!=null)){
+    p.porMes[mes] = { dias:p.dias, prioridades:p.prioridades, blocosPorDia:p.blocosPorDia, duracaoMin:p.duracaoMin, considerarPendentes:p.considerarPendentes, ignorarPassados:p.ignorarPassados, limpar:p.limpar };
+    delete p.dias; delete p.prioridades; delete p.blocosPorDia; delete p.duracaoMin;
+    delete p.considerarPendentes; delete p.ignorarPassados; delete p.limpar;
+  }
+  if(!p.porMes[mes] || typeof p.porMes[mes]!=='object') p.porMes[mes] = {};
+  const c = p.porMes[mes];
+  if(!c.dias || typeof c.dias!=='object') c.dias = { DOM:false, SEG:true, TER:true, QUA:true, QUI:true, SEX:true, SAB:true };
+  if(!c.prioridades || typeof c.prioridades!=='object') c.prioridades = {};
+  if(c.blocosPorDia==null) c.blocosPorDia = 2;
+  if(c.duracaoMin==null) c.duracaoMin = 60;
+  if(c.considerarPendentes==null) c.considerarPendentes = true;
+  if(c.ignorarPassados==null) c.ignorarPassados = true;
+  if(c.limpar==null) c.limpar = true;
+  return c;
+}
+function estSlotsPorDia(mesPrefixo){
+  const n = Math.round(Number(estPlanoConfig(mesPrefixo).blocosPorDia)||2);
+  return Math.min(4, Math.max(1, n));
+}
+function estPlanoPrioSalva(m, mesPrefixo){
+  const v = Number(estPlanoConfig(mesPrefixo).prioridades[m.id]);
+  return (v>=0 && v<=4) ? v : 2;
+}
+function estPlanoPrioInput(m, mesPrefixo){
+  const el = document.getElementById('plano-prio-'+m.id);
+  return el ? (Number(el.value)||0) : estPlanoPrioSalva(m, mesPrefixo);
+}
+function estPlanoDiasSelecionados(){
+  return EST_DIAS.filter(d=>{ const el=document.getElementById('plano-dia-'+d); return el && el.checked; });
+}
+function estPlanoRange(){
+  const ref = estCalNavRef();
+  const ano = ref.getFullYear(), mes = ref.getMonth();
+  const fim = new Date(ano, mes+1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const ignorarEl = document.getElementById('plano-passados');
+  let ini = new Date(ano, mes, 1);
+  if(ignorarEl && ignorarEl.checked && hoje > ini && hoje <= fim) ini = hoje;
+  const sel = {};
+  estPlanoDiasSelecionados().forEach(d=>sel[d]=true);
+  const datas = [];
+  for(let d=new Date(ini.getTime()); d<=fim; d.setDate(d.getDate()+1)){
+    if(sel[EST_DIAS[d.getDay()]]) datas.push(new Date(d.getTime()));
+  }
+  return { ano, mes, ini, fim, datas };
+}
+function estPlanoResumo(){
+  const el = document.getElementById('plano-resumo');
+  if(!el) return;
+  const r = estPlanoRange();
+  const mesP = estPlanoMesAtual();
+  const blocosEl = document.getElementById('plano-blocos');
+  const durEl = document.getElementById('plano-duracao');
+  const blocos = blocosEl ? (Number(blocosEl.value)||2) : estSlotsPorDia(mesP);
+  const dur = durEl ? (Number(durEl.value)||60) : (Number(estPlanoConfig(mesP).duracaoMin)||60);
+  const diasSemana = estPlanoDiasSelecionados().length;
+  const total = r.datas.length * blocos;
+  const horasSemana = diasSemana * blocos * dur / 60;
+  const ativas = estMaterias().filter(m=>estPlanoPrioInput(m, mesP)>0).length;
+  el.innerHTML = '<b>'+r.datas.length+'</b> dias de estudo em <b>'+EST_MESES[r.mes]+'</b> · <b>'+total+'</b> blocos no período · ~<b>'+fmt(horasSemana,1)+'h</b> de estudo/semana · <b>'+ativas+'</b> matéria(s) incluída(s) · config exclusiva de <b>'+EST_MESES[r.mes]+'</b>';
+}
+function estAbrirPlanoModal(){
+  const ref = estCalNavRef();
+  const mesP = ref.getFullYear()+'-'+String(ref.getMonth()+1).padStart(2,'0');
+  const p = estPlanoConfig(mesP);
+  const prios = [[0,'Ignorar'],[1,'Baixa'],[2,'Média'],[3,'Alta'],[4,'Máxima']];
+  const linhas = estMaterias().map(m=>{
+    const tot = m.topicos.length;
+    const pend = tot - m.topicos.filter(t=>t.assistido).length;
+    const sel = estPlanoPrioSalva(m, mesP);
+    return '<div class="plano-prio">'+
+      '<div class="plano-prio-info"><b>'+esc(m.name)+'</b><span class="muted">'+(tot? pend+' de '+tot+' sub-tópicos pendentes' : 'sem sub-tópicos cadastrados')+'</span></div>'+
+      '<select id="plano-prio-'+m.id+'" onchange="estPlanoResumo()">'+prios.map(o=>'<option value="'+o[0]+'"'+(o[0]===sel?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>'+
+    '</div>';
+  }).join('') || '<p class="hint" style="padding:8px 0">Nenhuma matéria cadastrada. Cadastre na aba <b>Matérias</b>.</p>';
+  const diasHtml = EST_DIAS.map(d=>{
+    const on = !!p.dias[d];
+    return '<label class="plano-dia'+(on?' on':'')+'"><input type="checkbox" id="plano-dia-'+d+'" '+(on?'checked':'')+' onchange="estPlanoDiaToggle(this)">'+EST_DIAS_LONG[EST_DIAS.indexOf(d)].slice(0,3)+'</label>';
+  }).join('');
+  document.getElementById('est-plano-body').innerHTML = `
+    <p class="hint">Estas configurações valem <b>somente para ${EST_MESES[ref.getMonth()]} ${ref.getFullYear()}</b> — os outros meses continuam com o plano deles. O sistema distribui as matérias conforme a prioridade de cada uma, sem repetir a mesma matéria no mesmo dia. Depois é só editar os cards normalmente.</p>
+    <div class="plano-sec">
+      <h3>1. Dias e blocos</h3>
+      <div class="plano-dias">${diasHtml}</div>
+      <div class="plano-grid">
+        <div><label>Blocos de estudo por dia</label>
+          <select id="plano-blocos" onchange="estPlanoResumo()">${[1,2,3,4].map(n=>'<option value="'+n+'"'+(n===estSlotsPorDia(mesP)?' selected':'')+'>'+n+' bloco'+(n>1?'s':'')+'</option>').join('')}</select></div>
+        <div><label>Duração de cada bloco</label>
+          <select id="plano-duracao" onchange="estPlanoResumo()">${[30,45,60,90].map(n=>'<option value="'+n+'"'+(n===(Number(p.duracaoMin)||60)?' selected':'')+'>'+n+' min</option>').join('')}</select></div>
+      </div>
+    </div>
+    <div class="plano-sec">
+      <h3>2. Prioridade das matérias</h3>
+      <div class="plano-btns">
+        <button class="btn ghost sm" onclick="estPlanoPrioTodos(1)">Todas baixa</button>
+        <button class="btn ghost sm" onclick="estPlanoPrioTodos(2)">Todas média</button>
+        <button class="btn ghost sm" onclick="estPlanoPrioTodos(3)">Todas alta</button>
+      </div>
+      <div class="plano-prio-list">${linhas}</div>
+      <label class="plano-check"><input type="checkbox" id="plano-pend" ${p.considerarPendentes?'checked':''} onchange="estPlanoResumo()"> Prioridade extra para matérias com mais sub-tópicos pendentes</label>
+    </div>
+    <div class="plano-sec">
+      <h3>3. Opções</h3>
+      <label class="plano-check"><input type="checkbox" id="plano-passados" ${p.ignorarPassados?'checked':''} onchange="estPlanoResumo()"> Ignorar dias que já passaram (começar de hoje)</label>
+      <label class="plano-check"><input type="checkbox" id="plano-limpar" ${p.limpar?'checked':''}> Limpar o planejamento atual do período antes de gerar</label>
+    </div>
+    <div class="plano-resumo" id="plano-resumo"></div>
+    <div class="plano-actions">
+      <button class="btn ghost" onclick="estFecharPlanoModal()">Cancelar</button>
+      <button class="btn" onclick="estGerarPlano()">⚡ Gerar plano</button>
+    </div>`;
+  document.getElementById('est-plano-modal').classList.remove('dn');
+  estPlanoResumo();
+}
+function estPlanoDiaToggle(cb){
+  cb.parentElement.classList.toggle('on', cb.checked);
+  estPlanoResumo();
+}
+function estPlanoPrioTodos(v){
+  estMaterias().forEach(m=>{ const el=document.getElementById('plano-prio-'+m.id); if(el) el.value=String(v); });
+  estPlanoResumo();
+}
+function estFecharPlanoModal(){
+  const el = document.getElementById('est-plano-modal');
+  if(el) el.classList.add('dn');
+}
+function estPlanoModalClick(ev){
+  if(ev.target && ev.target.id==='est-plano-modal') estFecharPlanoModal();
+}
+function estGerarPlano(){
+  const r = estPlanoRange();
+  const mesP = r.ano+'-'+String(r.mes+1).padStart(2,'0');
+  const blocos = Math.min(4, Math.max(1, Number((document.getElementById('plano-blocos')||{}).value)||2));
+  const dur = Number((document.getElementById('plano-duracao')||{}).value)||60;
+  const usarPend = !!(document.getElementById('plano-pend')||{}).checked;
+  const limpar = !!(document.getElementById('plano-limpar')||{}).checked;
+  const diasSel = estPlanoDiasSelecionados();
+  if(!diasSel.length){ alert('Selecione pelo menos um dia da semana para estudar.'); return; }
+  if(!r.datas.length){ alert('Nenhum dia de estudo encontrado no período. Verifique os dias marcados.'); return; }
+  const mats = estMaterias().map(m=>({ m, peso: estPlanoPrioInput(m, mesP) })).filter(x=>x.peso>0);
+  if(!mats.length){ alert('Escolha a prioridade de pelo menos uma matéria (opções Baixa a Máxima).'); return; }
+  const total = r.datas.length * blocos;
+  const qtdPend = x=>{
+    const t = x.m.topicos.length;
+    return t ? t - x.m.topicos.filter(k=>k.assistido).length : 0;
+  };
+  const maxPend = Math.max(1, ...mats.map(qtdPend));
+  mats.forEach(x=>{ x.pesoFinal = x.peso * (usarPend ? 1 + qtdPend(x)/maxPend : 1); });
+  const aloc = {};
+  mats.forEach(x=>aloc[x.m.id]=0);
+  let restante = total;
+  if(total >= mats.length){
+    mats.forEach(x=>{ aloc[x.m.id]=1; });
+    restante = total - mats.length;
+  }
+  const soma = mats.reduce((a,x)=>a+x.pesoFinal,0);
+  if(restante>0 && soma>0){
+    let usado = 0;
+    mats.forEach(x=>{
+      const exato = restante*x.pesoFinal/soma;
+      const base = Math.floor(exato);
+      aloc[x.m.id] += base;
+      x.frac = exato - base;
+      usado += base;
+    });
+    mats.slice().sort((a,b)=>b.frac-a.frac).forEach(x=>{
+      if(usado < restante){ aloc[x.m.id]++; usado++; }
+    });
+  }
+  const estado = {};
+  mats.forEach(x=>{ estado[x.m.id] = { alvo: aloc[x.m.id], cur: 0 }; });
+  const seq = [];
+  for(let i=0;i<total;i++){
+    const dia = Math.floor(i/blocos);
+    const usadosDia = {};
+    for(let k=dia*blocos; k<i; k++) if(seq[k]) usadosDia[seq[k]]=true;
+    mats.forEach(x=>{ const e = estado[x.m.id]; if(e.alvo>0) e.cur += e.alvo; });
+    let escolhida = null, best = -Infinity;
+    mats.forEach(x=>{
+      const e = estado[x.m.id];
+      if(e.alvo<=0 || usadosDia[x.m.id]) return;
+      if(e.cur>best){ best = e.cur; escolhida = x; }
+    });
+    if(!escolhida){
+      mats.forEach(x=>{
+        const e = estado[x.m.id];
+        if(e.alvo>0 && e.cur>best){ best = e.cur; escolhida = x; }
+      });
+    }
+    if(!escolhida) break;
+    estado[escolhida.m.id].cur -= total;
+    seq.push(escolhida.m.id);
+  }
+  if(limpar){
+    const iniISO = isoLocal(r.ini), fimISO = isoLocal(r.fim);
+    estudo().calendario = estudo().calendario.filter(c=>{
+      const d = estCalDateOf(c.id);
+      return d < iniISO || d > fimISO;
+    });
+  }
+  r.datas.forEach((dt, di)=>{
+    const iso = isoLocal(dt);
+    for(let s=0; s<blocos; s++){
+      const mid = seq[di*blocos+s];
+      if(!mid) continue;
+      const existente = estCalFind(iso, s);
+      if(existente){
+        if(existente.materiaId!==mid) existente.ok = false;
+        existente.materiaId = mid;
+      } else {
+        estudo().calendario.push({ id: estCalSlotId(isoLocal(estCalWeekStart(dt)), iso, s), materiaId: mid, ok:false });
+      }
+    }
+  });
+  const p = estPlanoConfig(mesP);
+  p.dias = {};
+  EST_DIAS.forEach(d=>p.dias[d] = diasSel.indexOf(d)>=0);
+  p.blocosPorDia = blocos;
+  p.duracaoMin = dur;
+  p.considerarPendentes = usarPend;
+  p.ignorarPassados = !!(document.getElementById('plano-passados')||{}).checked;
+  p.limpar = limpar;
+  mats.forEach(x=>p.prioridades[x.m.id] = x.peso);
+  save();
+  renderEstudos();
+  estFecharPlanoModal();
+  const resumo = mats.map(x=>'• '+x.m.name+': '+aloc[x.m.id]+' bloco(s)').join('\n');
+  alert('Plano gerado para '+EST_MESES[r.mes]+'/'+r.ano+'!\n'+r.datas.length+' dias de estudo · '+total+' blocos\n\n'+resumo);
 }
 
 /* ===== RENDERIZAÇÃO ===== */
@@ -904,7 +1206,7 @@ function estRenderPainel(t, c){
     <div class="grid g-2">
       <div class="card">
         <h2>🗓️ Calendário de Estudo</h2>
-        <div class="row"><span class="muted">Dias planejados</span><b>${c.tot}</b></div>
+        <div class="row"><span class="muted">Blocos planejados</span><b>${c.tot}</b></div>
         <div class="row"><span class="muted" style="color:var(--green)">Realizado</span><b>${c.feito}</b></div>
         <div class="row"><span class="muted" style="color:var(--amber)">Não realizado</span><b>${c.pend}</b></div>
         <div class="row"><span class="muted">Realizado %</span><b>${c.tot?fmtPct(c.pct):'—'}</b></div>
@@ -1033,9 +1335,7 @@ function estRenderMateriaDetail(m){
 }
 
 function estRenderCronograma(){
-  const hoje = new Date();
-  const hojeISO = hoje.toISOString().slice(0,10);
-  const hojeDia = EST_DIAS[hoje.getDay()];
+  const hojeDia = EST_DIAS[new Date().getDay()];
   const horas = estAgendaHoras();
   const diasHtml = EST_DIAS.map(d=>'<div class="ag-cell ag-head '+(d===hojeDia?'ag-hoje':'')+'">'+EST_DIAS_LONG[EST_DIAS.indexOf(d)]+'</div>').join('');
   const body = horas.map(h=>{
@@ -1046,37 +1346,37 @@ function estRenderCronograma(){
     return '<div class="ag-time">'+h+'</div>'+tds;
   }).join('');
 
-  const weekStart = estCalWeekStart(hoje);
-  const calTot = estCalTotals();
-  let cal = '';
-  for(let w=0; w<2; w++){
-    const ws = new Date(weekStart.getTime() + w*7*86400000);
-    const wsISO = ws.toISOString().slice(0,10);
-    const heads = EST_DIAS.map((d,di)=>{
-      const date = new Date(ws.getTime() + di*86400000);
-      const iso = date.toISOString().slice(0,10);
-      return '<div class="cal-head">'+EST_DIAS_LONG[di].slice(0,3)+'<br><span style="font-size:10px;color:var(--muted)">'+fmtDate(iso)+'</span></div>';
-    }).join('');
-    const cells = EST_DIAS.map((d,di)=>{
-      const date = new Date(ws.getTime() + di*86400000);
-      const iso = date.toISOString().slice(0,10);
-      const hojeBase = new Date(); hojeBase.setHours(0,0,0,0);
-      const passado = date < hojeBase;
-      const opts = '<option value="">—</option>'+estMaterias().map(m=>'<option value="'+m.id+'" '+(false?'selected':'')+'>'+esc(m.name)+'</option>').join('');
-      let slots = '';
-      for(let s=0; s<2; s++){
-        const id = estCalSlotId(wsISO, iso, s);
-        const cell = estCalCell(id);
-        const optHtml = opts.replace('<option value="'+cell.materiaId+'"', '<option value="'+cell.materiaId+'" selected');
-        slots += '<div class="cal-slot">'+
-          '<select onchange="estCalSet(\''+id+'\',\'materiaId\',this.value)">'+optHtml+'</select>'+
-          '<button class="'+(cell.ok?'ok':'')+'" onclick="estCalSet(\''+id+'\',\'ok\',!('+(cell.ok?'true':'false')+'))" title="Marcar realizado">'+(cell.ok?'✓':'')+'</button>'+
-          '</div>';
-      }
-      return '<div class="cal-cell '+(passado?'passado':'')+'"><div class="cal-date">'+EST_DIAS_LONG[di]+'</div>'+slots+'</div>';
-    }).join('');
-    cal += '<div style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px">Semana de '+fmtDate(wsISO)+'</div><div class="cal-grid">'+heads+cells+'</div>';
+  const ref = estCalNavRef();
+  const ano = ref.getFullYear(), mes = ref.getMonth();
+  const mesPrefixo = ano+'-'+String(mes+1).padStart(2,'0');
+  const hojeISO = todayISO();
+  const offset = new Date(ano, mes, 1).getDay();
+  const daysInMonth = new Date(ano, mes+1, 0).getDate();
+  const calTot = estCalTotals(mesPrefixo);
+  let calCells = '';
+  for(let i=0;i<offset;i++) calCells += '<div class="cal-cell cal-out"></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const date = new Date(ano, mes, d);
+    const iso = mesPrefixo+'-'+String(d).padStart(2,'0');
+    const passado = iso < hojeISO;
+    let slots = '';
+    for(let s=0; s<estSlotsPorDia(mesPrefixo); s++){
+      const existente = estCalFind(iso, s);
+      const id = existente ? existente.id : estCalSlotId(isoLocal(estCalWeekStart(date)), iso, s);
+      const cell = existente || { id, materiaId:'', ok:false };
+      const opts = '<option value="">—</option>'+estMaterias().map(m=>'<option value="'+m.id+'" '+(m.id===cell.materiaId?'selected':'')+'>'+esc(m.name)+'</option>').join('');
+      slots += '<div class="cal-slot">'+
+        '<select onchange="estCalSet(\''+id+'\',\'materiaId\',this.value)">'+opts+'</select>'+
+        '<button class="'+(cell.ok?'ok':'')+'" onclick="estCalSet(\''+id+'\',\'ok\',!('+(cell.ok?'true':'false')+'))" title="Marcar realizado">'+(cell.ok?'✓':'')+'</button>'+
+        '</div>';
+    }
+    calCells += '<div class="cal-cell '+(passado?'passado':'')+(iso===hojeISO?' cal-hoje':'')+'">'+
+      '<div class="cal-date">'+EST_DIAS[date.getDay()]+' · '+fmtDate(iso)+(iso===hojeISO?' <span style="color:var(--accent2)">• hoje</span>':'')+'</div>'+slots+'</div>';
   }
+  const trailing = (7 - (offset+daysInMonth)%7)%7;
+  for(let i=0;i<trailing;i++) calCells += '<div class="cal-cell cal-out"></div>';
+  const cal = '<div style="overflow-x:auto"><div class="cal-grid">'+
+    EST_DIAS.map(d=>'<div class="cal-head">'+d+'</div>').join('')+calCells+'</div></div>';
 
   return `
     ${estRenderCalendarioDinamico()}
@@ -1097,13 +1397,18 @@ function estRenderCronograma(){
       </div>
     </details>
     <div class="card">
-      <h2>🗓️ Cronograma de Estudo <small>— planeje os estudos da semana e marque o realizado</small></h2>
-      <div class="cal-actions">
-        <span class="badge b-blue">${calTot.tot} dias planejados</span>
-        <span class="badge b-green">${calTot.feito} realizado</span>
-        <span class="badge b-amber">${calTot.pend} não realizado</span>
-        <span class="badge ${calTot.pct>=70?'b-green':(calTot.pct>=40?'b-amber':'b-red')}">${calTot.tot?fmtPct(calTot.pct):'—'} realizado %</span>
-        <button class="btn danger sm" style="margin-left:auto" onclick="estCalReset()">🗑️ Limpar calendário</button>
+      <h2>🗓️ Cronograma de Estudo <small>— planeje os estudos do mês e marque o realizado</small></h2>
+      <div class="cald-nav">
+        <button class="btn ghost" onclick="estCalNav(-1)" title="Mês anterior">‹</button>
+        <button class="btn ghost" onclick="estCalNav(1)" title="Próximo mês">›</button>
+        <button class="btn ghost sm" onclick="estCalNav(0)">Hoje</button>
+        <div class="cald-title">${EST_MESES[mes]} ${ano}</div>
+        <span class="badge b-blue">${calTot.tot} planejados</span>
+        <span class="badge b-green">${calTot.feito} realizados</span>
+        <span class="badge b-amber">${calTot.pend} pendentes</span>
+        <span class="badge ${calTot.pct>=70?'b-green':(calTot.pct>=40?'b-amber':'b-red')}">${calTot.tot?fmtPct(calTot.pct):'—'} realizado</span>
+        <button class="btn sm" onclick="estAbrirPlanoModal()">🧠 Gerar plano</button>
+        <button class="btn danger sm" onclick="estCalReset('${mesPrefixo}')">🗑️ Limpar mês</button>
       </div>
       ${cal}
     </div>`;
@@ -1112,12 +1417,10 @@ function estRenderCronograma(){
 function estRenderCalendarioDinamico(){
   const ref = estCalNavRef();
   const ano = ref.getFullYear(), mes = ref.getMonth();
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const hojeISO = hoje.toISOString().slice(0,10);
+  const hojeISO = todayISO();
   const first = new Date(ano, mes, 1);
   const offset = first.getDay();
   const daysInMonth = new Date(ano, mes+1, 0).getDate();
-  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const prefix = ano+'-'+String(mes+1).padStart(2,'0')+'-';
   const heads = EST_DIAS.map(d=>'<div class="cald-head">'+d+'</div>').join('');
   let cells = '';
@@ -1156,7 +1459,7 @@ function estRenderCalendarioDinamico(){
         <button class="btn ghost" onclick="estCalNav(-1)" title="Mês anterior">‹</button>
         <button class="btn ghost" onclick="estCalNav(1)" title="Próximo mês">›</button>
         <button class="btn ghost sm" onclick="estCalNav(0)">Hoje</button>
-        <div class="cald-title">${meses[mes]} ${ano}</div>
+        <div class="cald-title">${EST_MESES[mes]} ${ano}</div>
         <span class="badge b-blue">${tarefasMes.length} tarefas</span>
         <span class="badge b-green">${feitas} concluídas</span>
         <span class="badge ${pctFeito>=70?'b-green':(pctFeito>=40?'b-amber':'b-red')}">${tarefasMes.length?fmtPct(pctFeito):'—'} concluído</span>
