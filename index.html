@@ -316,6 +316,36 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 .rev-dates{display:flex;gap:8px;flex-wrap:wrap}
 .rev-dates label{display:flex;gap:6px;align-items:center;margin:0;font-size:12px;color:var(--muted);font-weight:600}
 .rev-dates input{width:auto;background:var(--card2)}
+/* Árvore de conteúdo programático: Tópico > Subtópico > Conteúdo */
+.tp-block{border-left:3px solid var(--accent)}
+.tp-head-row td{background:rgba(139,92,246,.08)}
+.tp-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tp-badge{font-size:10px;font-weight:800;letter-spacing:.5px;color:#c4b5fd;background:rgba(139,92,246,.18);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.tp-title{flex:1;min-width:180px;font-weight:800;border:1px dashed var(--border);background:transparent}
+.tp-head .hint{white-space:nowrap}
+.tp-sub .tp-indent{color:var(--accent2);font-weight:800;margin-right:2px}
+.tp-name-flex{display:flex;align-items:center;gap:6px;min-width:180px}
+.tp-add-row td{background:rgba(255,255,255,.015)}
+.tp-add-sub,.cont-add{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tp-add-sub input{flex:1;min-width:200px;font-size:12px}
+.tp-cont-row td{padding:6px 10px!important}
+.cont-wrap{display:flex;flex-direction:column;gap:6px;padding:2px 0 4px 16px;margin-left:10px;border-left:2px dashed var(--border)}
+.cont-list{display:flex;flex-direction:column;gap:4px}
+.cont-chip{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:3px 6px;font-size:12px}
+.cont-chip.done{opacity:.55}
+.cont-chip.done .cont-nome{text-decoration:line-through}
+.cont-chip input[type=checkbox]{width:auto;accent-color:var(--green);flex:none}
+.cont-chip .cont-nome{flex:1;background:transparent;border:none;color:var(--text);font-size:12px;padding:1px;min-width:120px}
+.cont-chip .cont-nome:focus{border:1px solid var(--accent);border-radius:5px}
+.cont-chip select{width:auto;font-size:11px;padding:2px 4px;background:var(--card);flex:none}
+.cont-chip .cont-del{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0 3px;flex:none}
+.cont-chip .cont-del:hover{color:var(--red)}
+.cont-add input[type=text]{flex:1;min-width:180px;font-size:12px}
+.cont-add select{width:auto}
+.import-box{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px}
+.import-box input[type=file]{flex:1;min-width:220px;font-size:12px;color:var(--muted)}
+.import-box select{width:auto}
+.import-hint pre{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.7;overflow-x:auto;margin:8px 0 0;color:var(--muted)}
 /* Calendário dinâmico de tarefas */
 .cald-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .cald-nav .cald-title{font-size:16px;font-weight:800;flex:1;min-width:140px}
@@ -509,7 +539,7 @@ function defaultEstudo(){
   return {
     materias: ESTUDO_SEED.map(m=>({
       id: uid(), name: m.n,
-      topicos: m.tp.map(t=>({id: uid(), name: t.n, pdf: t.p, va: t.v, assistido: !!t.a, qResolvidas: t.q, qCorretas: t.c})),
+      topicos: m.tp.map(t=>({id: uid(), name: t.n, pdf: t.p, va: t.v, assistido: !!t.a, qResolvidas: t.q, qCorretas: t.c, subtopicos: []})),
       revisoes: m.rev.slice(), obs: m.o, tempo: m.tm
     })),
     cronometro: null,
@@ -530,18 +560,56 @@ let estTarefaForm = { data:'', hora:'', materiaId:'' };
 function estudo(){ return cur().estudo || (cur().estudo = defaultEstudo()); }
 function estMaterias(){ return estudo().materias; }
 function estMateria(id){ return estMaterias().find(m=>m.id===id) || null; }
+function estTopico(mid, tid){
+  const m = estMateria(mid);
+  return m ? (m.topicos||[]).find(t=>t.id===tid) || null : null;
+}
+function estSubtopico(mid, tid, sid){
+  const t = estTopico(mid, tid);
+  return t ? (t.subtopicos||[]).find(s=>s.id===sid) || null : null;
+}
+function estSubtopicos(m){ return (m.topicos||[]).reduce((a,t)=>a.concat(t.subtopicos||[]), []); }
+function estLeaves(m){
+  return (m.topicos||[]).reduce((a,t)=>a.concat((t.subtopicos&&t.subtopicos.length)? t.subtopicos : [t]), []);
+}
+function estConteudos(m){
+  return estSubtopicos(m).reduce((a,s)=>a.concat(s.conteudos||[]), []);
+}
+function estNormalizarEstrutura(c){
+  if(!c || !c.estudo || !Array.isArray(c.estudo.materias)) return false;
+  let mudou = false;
+  c.estudo.materias.forEach(m=>{
+    if(!Array.isArray(m.topicos)){ m.topicos = []; mudou = true; }
+    m.topicos.forEach(t=>{
+      if(!Array.isArray(t.subtopicos)){ t.subtopicos = []; mudou = true; }
+      t.subtopicos.forEach(s=>{
+        if(!Array.isArray(s.conteudos)){ s.conteudos = []; mudou = true; }
+        (s.conteudos||[]).forEach(x=>{ if(!x.id) x.id = uid(); });
+        if(s.qResolvidas==null) s.qResolvidas = 0;
+        if(s.qCorretas==null) s.qCorretas = 0;
+      });
+      if(t.qResolvidas==null) t.qResolvidas = 0;
+      if(t.qCorretas==null) t.qCorretas = 0;
+    });
+  });
+  return mudou;
+}
 function estTotals(){
   const mats = estMaterias();
-  let tot=0, ok=0, qr=0, qc=0, tempo=0, matsAtivas=0;
+  let tot=0, ok=0, qr=0, qc=0, tempo=0, matsAtivas=0, top=0, sub=0, cont=0;
   mats.forEach(m=>{
-    tot += m.topicos.length;
-    ok += m.topicos.filter(t=>t.assistido).length;
-    qr += m.topicos.reduce((a,t)=>a+(Number(t.qResolvidas)||0),0);
-    qc += m.topicos.reduce((a,t)=>a+(Number(t.qCorretas)||0),0);
+    const lv = estLeaves(m);
+    tot += lv.length;
+    ok += lv.filter(t=>t.assistido).length;
+    qr += lv.reduce((a,t)=>a+(Number(t.qResolvidas)||0),0);
+    qc += lv.reduce((a,t)=>a+(Number(t.qCorretas)||0),0);
     tempo += Number(m.tempo)||0;
-    if(m.topicos.length) matsAtivas++;
+    top += (m.topicos||[]).length;
+    sub += estSubtopicos(m).length;
+    cont += estConteudos(m).length;
+    if(lv.length) matsAtivas++;
   });
-  return { tot, ok, rest: tot-ok, pct: tot? ok/tot*100 : 0, qr, qc, qe: qr-qc, acert: qr? qc/qr*100 : 0, tempo, matsAtivas };
+  return { tot, ok, rest: tot-ok, pct: tot? ok/tot*100 : 0, qr, qc, qe: qr-qc, acert: qr? qc/qr*100 : 0, tempo, matsAtivas, top, sub, cont };
 }
 function fmtTempo(sec){
   if(sec==null || isNaN(sec)) return '00:00:00';
@@ -671,24 +739,29 @@ function estRenameMateria(id, name){
 function estRemoveMateria(id){
   const m = estMateria(id);
   if(!m) return;
-  if(!confirm('Excluir a matéria "'+m.name+'" e todos os seus sub-tópicos?')) return;
+  if(!confirm('Excluir a matéria "'+m.name+'" com todos os tópicos, subtópicos e conteúdos?')) return;
   estudo().materias = estMaterias().filter(x=>x.id!==id);
   if(estudo().cronometro && estudo().cronometro.materiaId===id){ estudo().cronometro = null; clearInterval(estTimerId); estTimerId = null; }
   if(estMatSel===id) estMatSel = estMaterias()[0] ? estMaterias()[0].id : null;
   save(); renderEstudos();
 }
+function estNovoTopicoObj(name){
+  return { id: uid(), name, pdf: 0, va: 0, assistido: false, qResolvidas: 0, qCorretas: 0, subtopicos: [] };
+}
+function estNovoSubtopicoObj(name){
+  return { id: uid(), name, pdf: 0, va: 0, assistido: false, qResolvidas: 0, qCorretas: 0, conteudos: [] };
+}
 function estAddTopico(mid){
   const el = document.getElementById('est-novo-topico');
   const name = (el && el.value || '').trim();
-  if(!name){ alert('Digite o nome do sub-tópico.'); return; }
+  if(!name){ alert('Digite o nome do tópico.'); return; }
   const m = estMateria(mid);
-  if(m){ m.topicos.push({ id: uid(), name, pdf: 0, va: 0, assistido: false, qResolvidas: 0, qCorretas: 0 }); }
+  if(m){ m.topicos = m.topicos || []; m.topicos.push(estNovoTopicoObj(name)); }
   if(el) el.value = '';
   save(); renderEstudos();
 }
 function estSetTopico(mid, tid, field, value){
-  const m = estMateria(mid);
-  const t = m && m.topicos.find(x=>x.id===tid);
+  const t = estTopico(mid, tid);
   if(!t) return;
   if(field==='assistido') t.assistido = !!value;
   else if(field==='pdf') t.pdf = value?1:0;
@@ -702,15 +775,79 @@ function estSetTopico(mid, tid, field, value){
   renderEstudos();
 }
 function estRenameTopico(mid, tid, name){
-  const m = estMateria(mid);
-  const t = m && m.topicos.find(x=>x.id===tid);
+  const t = estTopico(mid, tid);
   if(t && name) t.name = name;
   save();
 }
 function estRemoveTopico(mid, tid){
   const m = estMateria(mid);
   if(!m) return;
-  m.topicos = m.topicos.filter(x=>x.id!==tid);
+  const t = (m.topicos||[]).find(x=>x.id===tid);
+  if(t && (t.subtopicos||[]).length && !confirm('Excluir o tópico "'+t.name+'" e seus '+t.subtopicos.length+' subtópico(s)?')) return;
+  m.topicos = (m.topicos||[]).filter(x=>x.id!==tid);
+  save(); renderEstudos();
+}
+function estAddSubtopico(mid, tid){
+  const el = document.getElementById('est-novo-sub-'+tid);
+  const name = (el && el.value || '').trim();
+  if(!name){ alert('Digite o nome do subtópico.'); return; }
+  const t = estTopico(mid, tid);
+  if(t){ t.subtopicos = t.subtopicos || []; t.subtopicos.push(estNovoSubtopicoObj(name)); }
+  if(el) el.value = '';
+  save(); renderEstudos();
+}
+function estSetSubtopico(mid, tid, sid, field, value){
+  const s = estSubtopico(mid, tid, sid);
+  if(!s) return;
+  if(field==='assistido') s.assistido = !!value;
+  else if(field==='pdf') s.pdf = value?1:0;
+  else if(field==='va') s.va = value?1:0;
+  else if(field==='qResolvidas' || field==='qCorretas'){
+    const n = Math.max(0, parseInt(value,10)||0);
+    s[field] = n;
+    if(field==='qCorretas' && s.qCorretas > s.qResolvidas) s.qResolvidas = s.qCorretas;
+  }
+  save();
+  renderEstudos();
+}
+function estRenameSubtopico(mid, tid, sid, name){
+  const s = estSubtopico(mid, tid, sid);
+  if(s && name) s.name = name;
+  save();
+}
+function estRemoveSubtopico(mid, tid, sid){
+  const t = estTopico(mid, tid);
+  if(!t) return;
+  t.subtopicos = (t.subtopicos||[]).filter(x=>x.id!==sid);
+  save(); renderEstudos();
+}
+const EST_CONT_TIPOS = ['Videoaula','PDF','Resumo','Questões','Leitura','Outro'];
+function estAddConteudo(mid, tid, sid){
+  const el = document.getElementById('est-novo-cont-'+sid);
+  const nome = (el && el.value || '').trim();
+  if(!nome){ alert('Digite o nome do conteúdo.'); return; }
+  const tipoEl = document.getElementById('est-novo-cont-tipo-'+sid);
+  const tipo = (tipoEl && tipoEl.value) || 'Outro';
+  const s = estSubtopico(mid, tid, sid);
+  if(s){ s.conteudos = s.conteudos || []; s.conteudos.push({ id: uid(), name: nome, tipo, feito: false }); }
+  if(el) el.value = '';
+  save(); renderEstudos();
+}
+function estSetConteudo(mid, tid, sid, cid, field, value){
+  const s = estSubtopico(mid, tid, sid);
+  if(!s) return;
+  const c = (s.conteudos||[]).find(x=>x.id===cid);
+  if(!c) return;
+  if(field==='feito') c.feito = !!value;
+  else if(field==='name' && value) c.name = value;
+  else if(field==='tipo') c.tipo = value;
+  save();
+  if(field==='feito' || field==='tipo') renderEstudos();
+}
+function estRemoveConteudo(mid, tid, sid, cid){
+  const s = estSubtopico(mid, tid, sid);
+  if(!s) return;
+  s.conteudos = (s.conteudos||[]).filter(x=>x.id!==cid);
   save(); renderEstudos();
 }
 function estSetRev(mid, idx, val){
@@ -963,11 +1100,12 @@ function estAbrirPlanoModal(){
   const p = estPlanoConfig(mesP);
   const prios = [[0,'Ignorar'],[1,'Baixa'],[2,'Média'],[3,'Alta'],[4,'Máxima']];
   const linhas = estMaterias().map(m=>{
-    const tot = m.topicos.length;
-    const pend = tot - m.topicos.filter(t=>t.assistido).length;
+    const lv = estLeaves(m);
+    const tot = lv.length;
+    const pend = tot - lv.filter(t=>t.assistido).length;
     const sel = estPlanoPrioSalva(m, mesP);
     return '<div class="plano-prio">'+
-      '<div class="plano-prio-info"><b>'+esc(m.name)+'</b><span class="muted">'+(tot? pend+' de '+tot+' sub-tópicos pendentes' : 'sem sub-tópicos cadastrados')+'</span></div>'+
+      '<div class="plano-prio-info"><b>'+esc(m.name)+'</b><span class="muted">'+(tot? pend+' de '+tot+' itens pendentes (tópicos/subtópicos)' : 'sem tópicos cadastrados')+'</span></div>'+
       '<select id="plano-prio-'+m.id+'" onchange="estPlanoResumo()">'+prios.map(o=>'<option value="'+o[0]+'"'+(o[0]===sel?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>'+
     '</div>';
   }).join('') || '<p class="hint" style="padding:8px 0">Nenhuma matéria cadastrada. Cadastre na aba <b>Matérias</b>.</p>';
@@ -1039,8 +1177,8 @@ function estGerarPlano(){
   if(!mats.length){ alert('Escolha a prioridade de pelo menos uma matéria (opções Baixa a Máxima).'); return; }
   const total = r.datas.length * blocos;
   const qtdPend = x=>{
-    const t = x.m.topicos.length;
-    return t ? t - x.m.topicos.filter(k=>k.assistido).length : 0;
+    const lv = estLeaves(x.m);
+    return lv.length ? lv.length - lv.filter(k=>k.assistido).length : 0;
   };
   const maxPend = Math.max(1, ...mats.map(qtdPend));
   mats.forEach(x=>{ x.pesoFinal = x.peso * (usarPend ? 1 + qtdPend(x)/maxPend : 1); });
@@ -1153,16 +1291,17 @@ function estKpi(label, value, sub, cls){
 function estRenderPainel(t, c){
   const mats = estMaterias();
   const rows = mats.map(m=>{
-    const tot = m.topicos.length;
-    const ok = m.topicos.filter(x=>x.assistido).length;
-    const qr = m.topicos.reduce((a,x)=>a+(Number(x.qResolvidas)||0),0);
-    const qc = m.topicos.reduce((a,x)=>a+(Number(x.qCorretas)||0),0);
+    const lv = estLeaves(m);
+    const tot = lv.length;
+    const ok = lv.filter(x=>x.assistido).length;
+    const qr = lv.reduce((a,x)=>a+(Number(x.qResolvidas)||0),0);
+    const qc = lv.reduce((a,x)=>a+(Number(x.qCorretas)||0),0);
     const pct = tot? ok/tot*100 : 0;
     const acert = qr? qc/qr*100 : null;
     const next = estNextRev(m);
     const rev = estRevStatus(m);
     return '<tr>'+
-      '<td><b>'+esc(m.name)+'</b></td>'+
+      '<td><b>'+esc(m.name)+'</b><div class="muted" style="font-size:10px;white-space:nowrap">'+(m.topicos||[]).length+' tóp · '+estSubtopicos(m).length+' sub · '+estConteudos(m).length+' cont</div></td>'+
       '<td class="right">'+tot+'</td>'+
       '<td class="right">'+ok+'</td>'+
       '<td class="right">'+(tot-ok)+'</td>'+
@@ -1181,7 +1320,9 @@ function estRenderPainel(t, c){
   return `
     ${countdownBanner()}
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${estKpi('Sub Tópicos', t.tot, 'conteúdo programático', 'k-blue')}
+      ${estKpi('Tópicos', t.top, 'divisões das matérias', 'k-blue')}
+      ${estKpi('Subtópicos', t.sub, t.cont+' conteúdos', 'k-blue')}
+      ${estKpi('Itens Estudáveis', t.tot, 'tópicos sem subtópico contam 1', 'k-blue')}
       ${estKpi('Concluídos', t.ok, 'assistidos (√)', 'k-green')}
       ${estKpi('Restantes', t.rest, 'a estudar', 'k-amber')}
       ${estKpi('Conclusão', fmtPct(t.pct), 'do edital', '')}
@@ -1195,7 +1336,7 @@ function estRenderPainel(t, c){
       <div style="overflow-x:auto">
       <table class="tbl">
         <thead><tr>
-          <th>Matéria</th><th class="right">Sub<br>Tópicos</th><th class="right">OK</th><th class="right">Rest.</th>
+          <th>Matéria</th><th class="right">Itens<br>Estudáveis</th><th class="right">OK</th><th class="right">Rest.</th>
           <th>Conclusão</th><th class="right">Tempo</th><th class="right">Q Real.</th><th class="right">Q Corr.</th>
           <th class="right">Acertos %</th><th>Próx. Revisão</th><th>Obs.</th>
         </tr></thead>
@@ -1225,12 +1366,13 @@ function estRenderPainel(t, c){
 function estRenderMaterias(){
   const mats = estMaterias();
   const list = mats.map(m=>{
-    const tot = m.topicos.length;
-    const ok = m.topicos.filter(x=>x.assistido).length;
+    const lv = estLeaves(m);
+    const tot = lv.length;
+    const ok = lv.filter(x=>x.assistido).length;
     const pct = tot? ok/tot*100 : 0;
     return '<div class="est-mat-row" style="'+(m.id===estMatSel?'border-color:var(--accent);box-shadow:0 0 8px rgba(29,78,216,.2)':'')+'">'+
       '<button class="btn '+(m.id===estMatSel?'':'ghost')+' sm" onclick="estSelMat(\''+m.id+'\')">'+(m.id===estMatSel?'✓ ':'')+esc(m.name)+'</button>'+
-      '<span class="hint" style="white-space:nowrap">'+tot+' tópicos · '+ok+' OK · '+fmtPct(pct)+'</span>'+
+      '<span class="hint" style="white-space:nowrap">'+(m.topicos||[]).length+' tópicos · '+estSubtopicos(m).length+' sub · '+estConteudos(m).length+' conteúdos · '+ok+'/'+tot+' OK · '+fmtPct(pct)+'</span>'+
       '<button class="btn danger sm" onclick="estRemoveMateria(\''+m.id+'\')" title="Excluir matéria">✕</button>'+
       '</div>';
   }).join('');
@@ -1245,33 +1387,347 @@ function estRenderMaterias(){
       </div>
       <div style="display:flex;flex-direction:column;gap:0">${list||'<p class="hint">Nenhuma matéria ainda.</p>'}</div>
     </div>
+    ${estRenderImportBox()}
     ${detail}`;
 }
 
+function estRenderImportBox(){
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <h2>⬆️ Importar conteúdo programático <small>— JSON ou TXT, sem cadastrar à mão</small></h2>
+      <p class="hint" style="margin-bottom:10px">Monte o arquivo no formato abaixo (ou baixe um modelo) e importe. A importação entende <b>Matéria → Tópico → Subtópico → Conteúdo</b>.</p>
+      <div class="import-box">
+        <input type="file" id="est-import-file" accept=".json,.txt,application/json,text/plain">
+        <select id="est-import-mode" title="O que fazer com os dados atuais">
+          <option value="add">Adicionar (ignora o que já existe)</option>
+          <option value="replace">Apagar tudo e importar do zero</option>
+        </select>
+        <button class="btn" onclick="estImportFile()">⬆️ Importar arquivo</button>
+        <button class="btn ghost sm" onclick="estBaixarModeloTXT()">⬇️ Modelo TXT</button>
+        <button class="btn ghost sm" onclick="estBaixarModeloJSON()">⬇️ Modelo JSON</button>
+        <button class="btn ghost sm" onclick="estExportarEstudosJSON()">⬇️ Exportar atual</button>
+      </div>
+      <div class="import-hint">
+        <details>
+          <summary class="hint" style="cursor:pointer">📄 Formato do TXT (indentação com Tab)</summary>
+          <pre>PORTUGUÊS
+\tCompreensão e interpretação de textos
+\t\tTipos e gêneros textuais
+\t\t\t[Videoaula] Aula 1 — interpretação
+\t\t\t[PDF] Resumo de tipologia textual
+\tOrtografia oficial
+\t\t[Resumo] Regras de acentuação
+
+DIREITO CONSTITUCIONAL
+\tDireitos e garantias fundamentais
+\t\tRemédios constitucionais
+\t\t\t[Questões] 30 questões FCC</pre>
+          <p class="hint" style="margin-top:8px">Sem indentação = <b>matéria</b> · 1 Tab = <b>tópico</b> · 2 Tabs = <b>subtópico</b> · 3+ Tabs = <b>conteúdo</b>. O prefixo <b>[Tipo]</b> é opcional (Videoaula, PDF, Resumo, Questões…). Linhas iniciadas por # são ignoradas.</p>
+        </details>
+        <details>
+          <summary class="hint" style="cursor:pointer">🧩 Formato do JSON</summary>
+          <pre>[{ "materia": "PORTUGUÊS",
+   "topicos": [{
+     "nome": "Compreensão e interpretação de textos",
+     "subtopicos": [{
+       "nome": "Tipos e gêneros textuais",
+       "conteudos": [
+         { "nome": "Aula 1 — interpretação", "tipo": "Videoaula" },
+         { "nome": "Resumo de tipologia textual", "tipo": "PDF" }
+       ]
+     }]
+   }]
+}]</pre>
+          <p class="hint" style="margin-top:8px">Também aceita o backup do sistema e nomes em inglês (<b>name/topics/subtopics/contents</b>). Conteúdos podem ser apenas textos, ex.: <b>"conteudos": ["Resumo", "PDF"]</b>.</p>
+        </details>
+      </div>
+    </div>`;
+}
+
+function estTipoConteudo(t){
+  const n = normTxt(t).trim();
+  const achou = EST_CONT_TIPOS.find(x=>normTxt(x).trim()===n);
+  return achou || (String(t||'').trim() || 'Outro');
+}
+
+function estImportFile(){
+  const input = document.getElementById('est-import-file');
+  const file = input && input.files && input.files[0];
+  if(!file){ alert('Escolha um arquivo .json ou .txt primeiro.'); return; }
+  const mode = (document.getElementById('est-import-mode')||{}).value || 'add';
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const text = String(reader.result||'');
+      const isJson = /\.json$/i.test(file.name) || /^\s*[\[{]/.test(text.replace(/^\uFEFF/,''));
+      const parsed = (isJson ? estParseImportJSON(text) : estParseImportTXT(text)).filter(m=>m && m.name);
+      if(!parsed.length) throw new Error('nenhuma matéria encontrada no arquivo');
+      const nTop = parsed.reduce((a,m)=>a+m.topicos.length,0);
+      const nSub = parsed.reduce((a,m)=>a+m.topicos.reduce((b,t)=>b+t.subtopicos.length,0),0);
+      const nCont = parsed.reduce((a,m)=>a+m.topicos.reduce((b,t)=>b+t.subtopicos.reduce((d,s)=>d+s.conteudos.length,0),0),0);
+      const cab = mode==='replace'
+        ? '⚠️ APAGAR TODAS as matérias atuais e importar do zero?'
+        : 'Adicionar ao que já existe (sem verificar duplicados)?';
+      if(!confirm(cab+'\n\n'+parsed.length+' matéria(s) · '+nTop+' tópico(s) · '+nSub+' subtópico(s) · '+nCont+' conteúdo(s)')) return;
+      estImportApply(parsed, mode);
+      if(input) input.value = '';
+      alert('Importação concluída!\n'+parsed.length+' matéria(s) · '+nTop+' tópico(s) · '+nSub+' subtópico(s) · '+nCont+' conteúdo(s)');
+    }catch(err){
+      alert('Não foi possível importar: '+err.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function estObjImportMateria(raw){
+  if(!raw || typeof raw!=='object') return null;
+  const name = String(raw.materia||raw.name||raw.nome||raw.titulo||raw.title||'').trim();
+  if(!name) return null;
+  const tops = raw.topicos||raw.topics||[];
+  return { name, topicos: (Array.isArray(tops)?tops:[]).map(estObjImportTopico).filter(Boolean) };
+}
+function estObjImportTopico(raw){
+  if(typeof raw==='string' || typeof raw==='number'){ const n=String(raw).trim(); return n? {name:n, subtopicos:[]} : null; }
+  if(!raw || typeof raw!=='object') return null;
+  const name = String(raw.nome||raw.name||raw.titulo||raw.title||'').trim();
+  if(!name) return null;
+  const subs = raw.subtopicos||raw.subtopics||raw.sub_topicos||[];
+  return { name, subtopicos: (Array.isArray(subs)?subs:[]).map(estObjImportSubtopico).filter(Boolean) };
+}
+function estObjImportSubtopico(raw){
+  if(typeof raw==='string' || typeof raw==='number'){ const n=String(raw).trim(); return n? {name:n, conteudos:[]} : null; }
+  if(!raw || typeof raw!=='object') return null;
+  const name = String(raw.nome||raw.name||raw.titulo||raw.title||'').trim();
+  if(!name) return null;
+  const conts = raw.conteudos||raw.conteúdos||raw.contents||raw.itens||[];
+  return { name, conteudos: (Array.isArray(conts)?conts:[]).map(estObjImportConteudo).filter(Boolean) };
+}
+function estObjImportConteudo(raw){
+  if(typeof raw==='string' || typeof raw==='number'){ const n=String(raw).trim(); return n? {name:n, tipo:'', feito:false} : null; }
+  if(!raw || typeof raw!=='object') return null;
+  const name = String(raw.nome||raw.name||raw.titulo||raw.title||raw.conteudo||raw.content||'').trim();
+  if(!name) return null;
+  return { name, tipo: String(raw.tipo||raw.type||'').trim(), feito: !!raw.feito };
+}
+function estParseImportJSON(text){
+  const limpo = String(text||'').replace(/^\uFEFF/,'').trim();
+  let obj;
+  try{ obj = JSON.parse(limpo); }catch(e){ throw new Error('JSON inválido ('+e.message+')'); }
+  let arr = null;
+  if(Array.isArray(obj)) arr = obj;
+  else if(obj && Array.isArray(obj.materias)) arr = obj.materias;
+  else if(obj && obj.estudo && Array.isArray(obj.estudo.materias)) arr = obj.estudo.materias;
+  else if(obj && Array.isArray(obj.concursos)){
+    const comEstudo = obj.concursos.find(c=>c && c.estudo && Array.isArray(c.estudo.materias));
+    if(comEstudo) arr = comEstudo.estudo.materias;
+  }
+  if(!arr) throw new Error('formato não reconhecido — use uma lista de matérias ou o export do sistema');
+  return arr.map(estObjImportMateria).filter(Boolean);
+}
+function estIndentDepth(prefixo){
+  if(prefixo.indexOf('\t')>=0) return (prefixo.match(/\t/g)||[]).length;
+  return Math.floor(prefixo.length/2);
+}
+function estParseImportTXT(text){
+  const linhas = String(text||'').replace(/^\uFEFF/,'').replace(/\r/g,'').split('\n');
+  const mats = [];
+  let mat=null, top=null, sub=null;
+  linhas.forEach(linha=>{
+    if(!linha.trim()) return;
+    const pref = (linha.match(/^[ \t]*/)||[''])[0];
+    let conteudo = linha.slice(pref.length).replace(/^[-•*]\s+/,'').trim();
+    if(!conteudo) return;
+    if(conteudo.charAt(0)==='#' || conteudo.indexOf('//')===0) return;
+    let tipo = '';
+    const mt = conteudo.match(/^\[([^\]]{1,30})\]\s*(.+)$/);
+    if(mt){ tipo = estTipoConteudo(mt[1]); conteudo = mt[2].trim(); }
+    const depth = estIndentDepth(pref);
+    if(depth<=0){
+      mat = { name: conteudo, topicos: [] };
+      mats.push(mat); top=null; sub=null;
+      return;
+    }
+    if(!mat){ mat = { name:'Importado', topicos: [] }; mats.push(mat); }
+    if(depth===1){
+      top = { name: conteudo, subtopicos: [] }; mat.topicos.push(top); sub=null;
+    } else if(depth===2){
+      if(!top){ top = { name:'Geral', subtopicos: [] }; mat.topicos.push(top); }
+      sub = { name: conteudo, conteudos: [] }; top.subtopicos.push(sub);
+    } else {
+      if(!top){ top = { name:'Geral', subtopicos: [] }; mat.topicos.push(top); }
+      if(!sub){ sub = { name:'Geral', conteudos: [] }; top.subtopicos.push(sub); }
+      sub.conteudos.push({ name: conteudo, tipo: tipo||'', feito:false });
+    }
+  });
+  return mats;
+}
+function estImportApply(parsed, mode){
+  const e = estudo();
+  const build = raw=>({
+    id: uid(), name: raw.name,
+    topicos: (raw.topicos||[]).map(t=>({
+      id: uid(), name: t.name, pdf:0, va:0, assistido:false, qResolvidas:0, qCorretas:0,
+      subtopicos: (t.subtopicos||[]).map(s=>({
+        id: uid(), name: s.name, pdf:0, va:0, assistido:false, qResolvidas:0, qCorretas:0,
+        conteudos: (s.conteudos||[]).map(c=>({ id: uid(), name: c.name, tipo: c.tipo||'', feito: !!c.feito }))
+      }))
+    })),
+    revisoes: [], obs: '', tempo: 0
+  });
+  if(mode==='replace'){
+    e.materias = parsed.map(build);
+    e.plano = null;
+    if(e.cronometro){ e.cronometro = null; clearInterval(estTimerId); estTimerId = null; }
+    const ids = new Set(e.materias.map(m=>m.id));
+    (e.tarefas||[]).forEach(t=>{ if(t.materiaId && !ids.has(t.materiaId)) t.materiaId = ''; });
+    e.calendario = (e.calendario||[]).filter(c=>!c.materiaId || ids.has(c.materiaId));
+    estMatSel = e.materias[0] ? e.materias[0].id : null;
+  } else {
+    parsed.forEach(raw=>{
+      const nova = build(raw);
+      const existente = e.materias.find(m=>normTxt(m.name).trim()===normTxt(raw.name).trim());
+      if(existente) existente.topicos = (existente.topicos||[]).concat(nova.topicos);
+      else e.materias.push(nova);
+    });
+    if(!estMatSel && e.materias[0]) estMatSel = e.materias[0].id;
+  }
+  estTab = 'materias';
+  save(); renderEstudos();
+}
+function estBaixarModeloTXT(){
+  const linhas = [
+    'PORTUGUÊS',
+    '\tCompreensão e interpretação de textos',
+    '\t\tTipos e gêneros textuais',
+    '\t\t\t[Videoaula] Aula 1 — interpretação',
+    '\t\t\t[PDF] Resumo de tipologia textual',
+    '\tOrtografia oficial',
+    '\t\t[Resumo] Regras de acentuação',
+    '',
+    'DIREITO CONSTITUCIONAL',
+    '\tDireitos e garantias fundamentais',
+    '\t\tRemédios constitucionais',
+    '\t\t\t[Videoaula] Habeas corpus e mandado de segurança',
+    '\t\t\t[Questões] 30 questões FCC'
+  ].join('\n');
+  downloadFile('modelo-estudos.txt', linhas, 'text/plain');
+}
+function estBaixarModeloJSON(){
+  const modelo = [
+    { materia:'PORTUGUÊS', topicos:[
+      { nome:'Compreensão e interpretação de textos', subtopicos:[
+        { nome:'Tipos e gêneros textuais', conteudos:[
+          { nome:'Aula 1 — interpretação', tipo:'Videoaula' },
+          { nome:'Resumo de tipologia textual', tipo:'PDF' }
+        ]}
+      ]}
+    ]}
+  ];
+  downloadFile('modelo-estudos.json', JSON.stringify(modelo, null, 2), 'application/json');
+}
+function estExportarEstudosJSON(){
+  const dados = estMaterias().map(m=>({
+    materia: m.name,
+    topicos: (m.topicos||[]).map(t=>({
+      nome: t.name,
+      subtopicos: (t.subtopicos||[]).map(s=>({
+        nome: s.name,
+        conteudos: (s.conteudos||[]).map(c=>({ nome: c.name, tipo: c.tipo||'', feito: !!c.feito }))
+      }))
+    }))
+  }));
+  downloadFile('estudos.json', JSON.stringify(dados, null, 2), 'application/json');
+}
+
+function estLeafRow(m, t, s){
+  const leaf = s || t;
+  const kind = s ? 'sub' : 'top';
+  const pctT = leaf.qResolvidas? (leaf.qCorretas/leaf.qResolvidas*100).toFixed(0)+'%' : '—';
+  const argPrefix = kind==='sub'
+    ? "'"+m.id+"','"+t.id+"','"+s.id+"'"
+    : "'"+m.id+"','"+t.id+"'";
+  const setFn = kind==='sub' ? 'estSetSubtopico' : 'estSetTopico';
+  const set = (field, expr)=> setFn+'('+argPrefix+",'"+field+"',"+expr+")";
+  const ren = kind==='sub'
+    ? "estRenameSubtopico('"+m.id+"','"+t.id+"','"+s.id+"',this.value)"
+    : "estRenameTopico('"+m.id+"','"+t.id+"',this.value)";
+  const del = kind==='sub'
+    ? "estRemoveSubtopico('"+m.id+"','"+t.id+"','"+s.id+"')"
+    : "estRemoveTopico('"+m.id+"','"+t.id+"')";
+  return '<tr class="'+(leaf.assistido?'tp-feito':'')+(kind==='sub'?' tp-sub':'')+'">'+
+    '<td><input type="checkbox" '+(leaf.assistido?'checked':'')+' onchange="'+set('assistido','this.checked')+'" title="Assistido/estudado"></td>'+
+    '<td class="tp-name"><div class="tp-name-flex">'+(kind==='sub'?'<span class="tp-indent">↳</span>':'<span class="tp-badge">TÓPICO</span>')+'<input type="text" value="'+esc(leaf.name)+'" onchange="'+ren+'" style="border:none;background:transparent;padding:2px;flex:1;min-width:0;font-size:13px"></div></td>'+
+    '<td class="t-ok"><input type="checkbox" '+(leaf.pdf?'checked':'')+' onchange="'+set('pdf','this.checked')+'" title="PDF"></td>'+
+    '<td class="t-ok"><input type="checkbox" '+(leaf.va?'checked':'')+' onchange="'+set('va','this.checked')+'" title="Vídeo aula"></td>'+
+    '<td><input type="number" min="0" value="'+(Number(leaf.qResolvidas)||0)+'" onchange="'+set('qResolvidas','this.value')+'"></td>'+
+    '<td><input type="number" min="0" value="'+(Number(leaf.qCorretas)||0)+'" onchange="'+set('qCorretas','this.value')+'"></td>'+
+    '<td class="right">'+pctT+'</td>'+
+    '<td><button class="btn danger sm" onclick="'+del+'" title="Excluir">✕</button></td>'+
+    '</tr>';
+}
+
+function estRenderConteudosRow(m, t, s){
+  const chips = (s.conteudos||[]).map(c=>{
+    const tipo = c.tipo || 'Outro';
+    const tipos = EST_CONT_TIPOS.indexOf(tipo)>=0 ? EST_CONT_TIPOS : [tipo].concat(EST_CONT_TIPOS);
+    const base = "'"+m.id+"','"+t.id+"','"+s.id+"','"+c.id+"'";
+    return '<span class="cont-chip '+(c.feito?'done':'')+'">'+
+      '<input type="checkbox" '+(c.feito?'checked':'')+' onchange="estSetConteudo('+base+',\'feito\',this.checked)" title="Conteúdo concluído">'+
+      '<input type="text" class="cont-nome" value="'+esc(c.name)+'" onchange="estSetConteudo('+base+',\'name\',this.value)" title="Nome do conteúdo">'+
+      '<select onchange="estSetConteudo('+base+',\'tipo\',this.value)" title="Tipo de conteúdo">'+tipos.map(x=>'<option value="'+esc(x)+'"'+(x===tipo?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>'+
+      '<button class="cont-del" onclick="estRemoveConteudo('+base+')" title="Excluir conteúdo">✕</button>'+
+    '</span>';
+  }).join('');
+  return '<tr class="tp-cont-row"><td colspan="8"><div class="cont-wrap">'+
+    '<div class="cont-list">'+(chips||'<span class="muted" style="font-size:11px">Nenhum conteúdo cadastrado — use o campo abaixo.</span>')+'</div>'+
+    '<div class="cont-add">'+
+      '<input type="text" id="est-novo-cont-'+s.id+'" placeholder="Novo conteúdo (ex.: Videoaula de sintaxe)" onkeydown="if(event.key===\'Enter\')estAddConteudo(\''+m.id+'\',\''+t.id+'\',\''+s.id+'\')">'+
+      '<select id="est-novo-cont-tipo-'+s.id+'">'+EST_CONT_TIPOS.map(x=>'<option>'+x+'</option>').join('')+'</select>'+
+      '<button class="btn ghost sm" onclick="estAddConteudo(\''+m.id+'\',\''+t.id+'\',\''+s.id+'\')">➕ Conteúdo</button>'+
+    '</div>'+
+  '</div></td></tr>';
+}
+
+function estRenderTopicoBlock(m, t){
+  const subs = t.subtopicos || [];
+  const subsOk = subs.filter(s=>s.assistido).length;
+  const conts = subs.reduce((a,s)=>a+(s.conteudos||[]).length,0);
+  let html = '<tbody class="tp-block">';
+  if(subs.length){
+    html += '<tr class="tp-head-row"><td colspan="8"><div class="tp-head">'+
+        '<span class="tp-badge">TÓPICO</span>'+
+        '<input type="text" class="tp-title" value="'+esc(t.name)+'" onchange="estRenameTopico(\''+m.id+'\',\''+t.id+'\',this.value)" title="Renomear tópico">'+
+        '<span class="hint">'+subs.length+' subtópico(s) · '+subsOk+' OK · '+conts+' conteúdo(s)</span>'+
+        '<button class="btn danger sm" onclick="estRemoveTopico(\''+m.id+'\',\''+t.id+'\')" title="Excluir tópico e seus subtópicos">🗑 Tópico</button>'+
+      '</div></td></tr>';
+    subs.forEach(s=>{ html += estLeafRow(m,t,s); html += estRenderConteudosRow(m,t,s); });
+  } else {
+    html += estLeafRow(m,t,null);
+  }
+  html += '<tr class="tp-add-row"><td colspan="8"><div class="tp-add-sub">'+
+      '<input type="text" id="est-novo-sub-'+t.id+'" placeholder="Novo subtópico (ex.: 1.1 Termos essenciais da oração)" onkeydown="if(event.key===\'Enter\')estAddSubtopico(\''+m.id+'\',\''+t.id+'\')">'+
+      '<button class="btn sm" onclick="estAddSubtopico(\''+m.id+'\',\''+t.id+'\')">➕ Subtópico</button>'+
+    '</div></td></tr>'+
+  '</tbody>';
+  return html;
+}
+
 function estRenderMateriaDetail(m){
-  const tot = m.topicos.length;
-  const ok = m.topicos.filter(x=>x.assistido).length;
-  const qr = m.topicos.reduce((a,x)=>a+(Number(x.qResolvidas)||0),0);
-  const qc = m.topicos.reduce((a,x)=>a+(Number(x.qCorretas)||0),0);
+  const lv = estLeaves(m);
+  const tot = lv.length;
+  const ok = lv.filter(x=>x.assistido).length;
+  const qr = lv.reduce((a,x)=>a+(Number(x.qResolvidas)||0),0);
+  const qc = lv.reduce((a,x)=>a+(Number(x.qCorretas)||0),0);
   const qe = qr-qc;
   const pct = tot? ok/tot*100 : 0;
   const acert = qr? qc/qr*100 : null;
+  const nTop = (m.topicos||[]).length;
+  const nSub = estSubtopicos(m).length;
+  const nCont = estConteudos(m).length;
   const cm = estudo().cronometro;
   const running = cm && cm.running && cm.materiaId===m.id;
   const sessaoSec = cm && cm.materiaId===m.id ? Math.floor((Date.now()-cm.inicio)/1000) + (cm.sessao||0) : 0;
-  const rows = m.topicos.map(t=>{
-    const pctT = t.qResolvidas? (t.qCorretas/t.qResolvidas*100).toFixed(0)+'%' : '—';
-    return '<tr class="'+(t.assistido?'tp-feito':'')+'">'+
-      '<td><input type="checkbox" '+(t.assistido?'checked':'')+' onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'assistido\',this.checked)" title="Assistido"></td>'+
-      '<td class="tp-name"><input type="text" value="'+esc(t.name)+'" onchange="estRenameTopico(\''+m.id+'\',\''+t.id+'\',this.value)" style="border:none;background:transparent;padding:2px;width:100%;font-size:13px"></td>'+
-      '<td class="t-ok"><input type="checkbox" '+(t.pdf?'checked':'')+' onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'pdf\',this.checked)" title="PDF"></td>'+
-      '<td class="t-ok"><input type="checkbox" '+(t.va?'checked':'')+' onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'va\',this.checked)" title="Vídeo aula"></td>'+
-      '<td><input type="number" min="0" value="'+t.qResolvidas+'" onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'qResolvidas\',this.value)"></td>'+
-      '<td><input type="number" min="0" value="'+t.qCorretas+'" onchange="estSetTopico(\''+m.id+'\',\''+t.id+'\',\'qCorretas\',this.value)"></td>'+
-      '<td class="right">'+pctT+'</td>'+
-      '<td><button class="btn danger sm" onclick="estRemoveTopico(\''+m.id+'\',\''+t.id+'\')">✕</button></td>'+
-      '</tr>';
-  }).join('');
+  const rows = (m.topicos||[]).map(t=>estRenderTopicoBlock(m,t)).join('');
   const revs = [0,1,2].map(i=>{
     const v = (m.revisoes||[])[i] || '';
     return '<label>Rev '+(i+1)+' <input type="date" value="'+v+'" onchange="estSetRev(\''+m.id+'\','+i+',this.value)"></label>';
@@ -1282,7 +1738,10 @@ function estRenderMateriaDetail(m){
         <input type="text" value="${esc(m.name)}" onchange="estRenameMateria('${m.id}',this.value)" style="width:auto;max-width:280px;font-weight:700;border:1px dashed var(--border)" title="Renomear matéria">
       </h2>
       <div class="kpi-grid" style="margin-bottom:14px">
-        ${estKpi('Sub Tópicos', tot, '', 'k-blue')}
+        ${estKpi('Tópicos', nTop, '', 'k-blue')}
+        ${estKpi('Subtópicos', nSub, '', 'k-blue')}
+        ${estKpi('Conteúdos', nCont, '', 'k-blue')}
+        ${estKpi('Itens Estudáveis', tot, 'tópicos sem subtópico contam 1', '')}
         ${estKpi('Concluídos', ok, 'assistidos', 'k-green')}
         ${estKpi('Restantes', tot-ok, '', 'k-amber')}
         ${estKpi('Conclusão', fmtPct(pct), '', '')}
@@ -1317,18 +1776,19 @@ function estRenderMateriaDetail(m){
       </div>
     </div>
     <div class="card">
-      <h2>📋 Sub Tópicos <small>— assinale o que foi assistido (√) e registre questões</small></h2>
+      <h2>📋 Conteúdo Programático <small>— organize em Tópicos → Subtópicos → Conteúdos</small></h2>
+      <p class="hint" style="margin-bottom:10px">Cada bloco é um <b>Tópico</b>. Dentro dele você adiciona <b>Subtópicos</b>, e em cada subtópico os <b>Conteúdos</b> (videoaula, PDF, resumo, questões…). Tópico sem subtópico é contado como item estudável direto.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <input id="est-novo-topico" type="text" placeholder="Novo sub-tópico (ex.: 9.1. Ética e cidadania)" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')estAddTopico('${m.id}')">
-        <button class="btn" onclick="estAddTopico('${m.id}')">➕ Sub-tópico</button>
+        <input id="est-novo-topico" type="text" placeholder="Novo tópico (ex.: 1. Sintaxe)" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')estAddTopico('${m.id}')">
+        <button class="btn" onclick="estAddTopico('${m.id}')">➕ Tópico</button>
       </div>
       <div style="overflow-x:auto">
       <table class="tbl est-topic-table">
         <thead><tr>
-          <th class="t-ok">√</th><th>SUB TÓPICOS</th><th class="t-ok">PDF</th><th class="t-ok">V.A</th>
+          <th class="t-ok">√</th><th>TÓPICO / SUBTÓPICO</th><th class="t-ok">PDF</th><th class="t-ok">V.A</th>
           <th>Q.Resolvidas</th><th>Q.Corretas</th><th class="right">%</th><th></th>
         </tr></thead>
-        <tbody>${rows||'<tr><td colspan="8" class="muted">Nenhum sub-tópico. Adicione acima.</td></tr>'}</tbody>
+        ${rows||'<tbody><tr><td colspan="8" class="muted">Nenhum tópico ainda. Adicione o primeiro acima.</td></tr></tbody>'}
       </table>
       </div>
     </div>`;
@@ -1890,8 +2350,13 @@ function normalizeState(p){
     if(c.dataProva==null) c.dataProva = '';
     if(!Array.isArray(c.estudo.tarefas)) c.estudo.tarefas = [];
     if(!Array.isArray(c.estudo.calendario)) c.estudo.calendario = [];
+    estNormalizarEstrutura(c);
     if(recuperarMateriaIds(c)) st._v = (st._v||0)+1;
   });
+  if(st._v !== 13){
+    (st.concursos||[]).forEach(c=>estNormalizarEstrutura(c));
+    st._v = 13;
+  }
   if(!st.tema) st.tema = 'escuro';
   return st;
 }
@@ -2907,6 +3372,7 @@ function importJSON(input){
       } else {
         throw new Error('formato');
       }
+      (state.concursos||[]).forEach(c=>{ if(!c.estudo) c.estudo = defaultEstudo(); estNormalizarEstrutura(c); });
       save(); renderAll();
       alert('Backup importado com sucesso!');
     }catch(err){

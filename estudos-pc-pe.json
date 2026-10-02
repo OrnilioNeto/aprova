@@ -1,0 +1,731 @@
+[
+  {
+    "materia": "LEGISLAÇÃO ESTADUAL",
+    "topicos": [
+      {
+        "nome": "1 Constituição do Estado de Pernambuco (artigos 101 a 105-B).",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Lei nº 6.425/1972 (Estatuto do Policial Civil).",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Lei nº 6.123/1968 (Estatuto do Servidor do Estado de Pernambuco).",
+        "subtopicos": []
+      },
+      {
+        "nome": "4 Lei Complementar nº 137/2008.",
+        "subtopicos": []
+      },
+      {
+        "nome": "5 Lei Complementar nº 317/2015.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "NOÇÕES DE DIREITO CONSTITUCIONAL",
+    "topicos": [
+      {
+        "nome": "1 Constituição da República Federativa do Brasil de 1988.",
+        "subtopicos": [
+          {
+            "nome": "1.1 Princípios fundamentais."
+          },
+          {
+            "nome": "1.2 Poderes constituintes originário, derivado e decorrente."
+          }
+        ]
+      },
+      {
+        "nome": "2 Aplicabilidade das normas constitucionais.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Direitos e garantias fundamentais.",
+        "subtopicos": []
+      },
+      {
+        "nome": "4 Organização político-administrativa do Estado.",
+        "subtopicos": [
+          {
+            "nome": "4.1 Estado federal brasileiro, União, estados, Distrito Federal, municípios e territórios."
+          }
+        ]
+      },
+      {
+        "nome": "5 Administração pública.",
+        "subtopicos": [
+          {
+            "nome": "5.1 Disposições gerais, servidores públicos."
+          }
+        ]
+      },
+      {
+        "nome": "6 Poder Executivo.",
+        "subtopicos": []
+      },
+      {
+        "nome": "7 Poder Legislativo.",
+        "subtopicos": []
+      },
+      {
+        "nome": "8 Poder Judiciário.",
+        "subtopicos": []
+      },
+      {
+        "nome": "9 Funções essenciais à justiça.",
+        "subtopicos": [
+          {
+            "nome": "9.1 Ministério Público."
+          },
+          {
+            "nome": "9.2 Advocacia pública."
+          },
+          {
+            "nome": "9.3 Defensoria Pública."
+          }
+        ]
+      },
+      {
+        "nome": "10 Defesa do Estado e das instituições democráticas.",
+        "subtopicos": []
+      },
+      {
+        "nome": "11 Segurança pública na Constituição do Estado de Pernambuco.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "NOÇÕES DE DIREITO ADMINISTRATIVO",
+    "topicos": [
+      {
+        "nome": "1 Estado, governo e administração pública.",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Direito administrativo.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Ato administrativo.",
+        "subtopicos": []
+      },
+      {
+        "nome": "4 Poderes da administração pública.",
+        "subtopicos": [
+          {
+            "nome": "4.1 Hierárquico, disciplinar, regulamentar e de polícia."
+          },
+          {
+            "nome": "4.2 Uso e abuso do poder."
+          }
+        ]
+      },
+      {
+        "nome": "5 Regime jurídico-administrativo.",
+        "subtopicos": [
+          {
+            "nome": "5.1 Conceito."
+          },
+          {
+            "nome": "5.2 Princípios expressos e implícitos da administração pública."
+          }
+        ]
+      },
+      {
+        "nome": "6 Responsabilidade civil do Estado.",
+        "subtopicos": []
+      },
+      {
+        "nome": "7 Serviços públicos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "8 Organização administrativa.",
+        "subtopicos": [
+          {
+            "nome": "8.1 Centralização, descentralização, concentração e desconcentração."
+          },
+          {
+            "nome": "8.2 Administração direta e indireta."
+          }
+        ]
+      },
+      {
+        "nome": "9 Controle da administração pública.",
+        "subtopicos": [
+          {
+            "nome": "9.1 Controle exercido pela administração pública."
+          },
+          {
+            "nome": "9.2 Controle judicial."
+          },
+          {
+            "nome": "9.3 Controle legislativo."
+          },
+          {
+            "nome": "9.4 Improbidade administrativa."
+          }
+        ]
+      },
+      {
+        "nome": "10 Processo administrativo.",
+        "subtopicos": []
+      },
+      {
+        "nome": "11 Licitações e contratos administrativos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "12 Agente público.",
+        "subtopicos": [
+          {
+            "nome": "12.1 Legislação pertinente."
+          },
+          {
+            "nome": "12.2 Disposições constitucionais aplicáveis."
+          }
+        ]
+      },
+      {
+        "nome": "13 Cargo, emprego e função pública.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "NOÇÕES DE DIREITO PENAL",
+    "topicos": [
+      {
+        "nome": "1 Princípios básicos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Crime e contravenção penal.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Aplicação da lei penal.",
+        "subtopicos": [
+          {
+            "nome": "3.1 Lei penal no tempo e no espaço."
+          },
+          {
+            "nome": "3.2 Tempo e lugar do crime."
+          },
+          {
+            "nome": "3.3 Lei penal excepcional, especial e temporária."
+          },
+          {
+            "nome": "3.4 Territorialidade e extraterritorialidade da lei penal."
+          },
+          {
+            "nome": "3.5 Contagem de prazo."
+          },
+          {
+            "nome": "3.6 Irretroatividade da lei penal."
+          }
+        ]
+      },
+      {
+        "nome": "4 Crimes contra a pessoa.",
+        "subtopicos": []
+      },
+      {
+        "nome": "5 Crimes contra o patrimônio.",
+        "subtopicos": []
+      },
+      {
+        "nome": "6 Crimes contra a dignidade sexual.",
+        "subtopicos": []
+      },
+      {
+        "nome": "7 Crimes contra a administração pública.",
+        "subtopicos": []
+      },
+      {
+        "nome": "8 Crimes hediondos (Lei nº 8.072/1990).",
+        "subtopicos": []
+      },
+      {
+        "nome": "9 Crimes resultantes de preconceito de raça ou de cor (Lei nº 7.716/1989).",
+        "subtopicos": []
+      },
+      {
+        "nome": "10 Crimes de abuso de autoridade (Lei nº 13.869/2019).",
+        "subtopicos": []
+      },
+      {
+        "nome": "11 Crimes de tortura (Lei nº 9.455/1997).",
+        "subtopicos": []
+      },
+      {
+        "nome": "12 Estatuto da Criança e do Adolescente (Lei nº 8.069/1990).",
+        "subtopicos": []
+      },
+      {
+        "nome": "13 Organizações criminosas (Lei nº 12.850/2013).",
+        "subtopicos": []
+      },
+      {
+        "nome": "14 Crimes de trânsito (Lei nº 9.503/1997).",
+        "subtopicos": []
+      },
+      {
+        "nome": "15 Violência doméstica e familiar contra a mulher (Lei nº 11.340/2006).",
+        "subtopicos": []
+      },
+      {
+        "nome": "16 Lei de drogas (Lei nº 11.343/2006).",
+        "subtopicos": []
+      },
+      {
+        "nome": "17 Violência doméstica e familiar contra a criança e o adolescente (Lei nº 14.344/2022).",
+        "subtopicos": []
+      },
+      {
+        "nome": "18 Crimes ambientais (Lei nº 9.605/1998).",
+        "subtopicos": []
+      },
+      {
+        "nome": "19 Estatuto do Desarmamento (Lei nº 10.826/2003).",
+        "subtopicos": []
+      },
+      {
+        "nome": "20 Disposições constitucionais aplicáveis ao direito penal.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "NOÇÕES DE DIREITO PROCESSUAL PENAL",
+    "topicos": [
+      {
+        "nome": "1 Aplicação da lei processual no tempo, no espaço e em relação às pessoas.",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Inquérito policial.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Prova: exame de corpo de delito e perícias em geral; interrogatório do acusado; confissão do ofendido; testemunhas; reconhecimento de pessoas e coisas; acareação; documentos; indícios; busca e apreensão.",
+        "subtopicos": []
+      },
+      {
+        "nome": "4 Prisão e liberdade provisória.",
+        "subtopicos": []
+      },
+      {
+        "nome": "5 Medidas cautelares diversas da prisão.",
+        "subtopicos": []
+      },
+      {
+        "nome": "6 Lei nº 7.960/1989 (prisão temporária).",
+        "subtopicos": []
+      },
+      {
+        "nome": "7 Juizados especiais criminais (Lei nº 9.099/1995).",
+        "subtopicos": []
+      },
+      {
+        "nome": "8 Investigação criminal (Lei nº 12.830/2013).",
+        "subtopicos": []
+      },
+      {
+        "nome": "9 Disposições constitucionais aplicáveis ao direito processual penal.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "LÍNGUA PORTUGUESA",
+    "topicos": [
+      {
+        "nome": "1 Compreensão e interpretação de textos de gêneros variados.",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Reconhecimento de tipos e gêneros textuais.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Domínio da ortografia oficial.",
+        "subtopicos": []
+      },
+      {
+        "nome": "4 Domínio dos mecanismos de coesão textual.",
+        "subtopicos": [
+          {
+            "nome": "4.1 Emprego de elementos de referenciação, substituição e repetição, de conectores e de outros elementos de sequenciação textual."
+          },
+          {
+            "nome": "4.2 Emprego de tempos e modos verbais."
+          }
+        ]
+      },
+      {
+        "nome": "5 Domínio da estrutura morfossintática do período.",
+        "subtopicos": [
+          {
+            "nome": "5.1 Emprego das classes de palavras."
+          },
+          {
+            "nome": "5.2 Relações de coordenação entre orações e entre termos da oração."
+          },
+          {
+            "nome": "5.3 Relações de subordinação entre orações e entre termos da oração."
+          },
+          {
+            "nome": "5.4 Emprego dos sinais de pontuação."
+          },
+          {
+            "nome": "5.5 Concordância verbal e nominal."
+          },
+          {
+            "nome": "5.6 Regência verbal e nominal."
+          },
+          {
+            "nome": "5.7 Emprego do sinal indicativo de crase."
+          },
+          {
+            "nome": "5.8 Colocação dos pronomes átonos."
+          }
+        ]
+      },
+      {
+        "nome": "6 Reescrita de frases e parágrafos do texto.",
+        "subtopicos": [
+          {
+            "nome": "6.1 Significação das palavras."
+          },
+          {
+            "nome": "6.2 Substituição de palavras ou de trechos de texto."
+          },
+          {
+            "nome": "6.3 Reorganização da estrutura de orações e de períodos do texto."
+          },
+          {
+            "nome": "6.4 Reescrita de textos de diferentes gêneros e níveis de formalidade."
+          }
+        ]
+      },
+      {
+        "nome": "7 Correspondência oficial (conforme Manual de Redação da Presidência da República).",
+        "subtopicos": [
+          {
+            "nome": "7.1 Aspectos gerais da redação oficial."
+          },
+          {
+            "nome": "7.2 Finalidade dos expedientes oficiais."
+          },
+          {
+            "nome": "7.3 Adequação da linguagem ao tipo de documento."
+          },
+          {
+            "nome": "7.4 Adequação do formato do texto ao gênero."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "materia": "INFORMÁTICA",
+    "topicos": [
+      {
+        "nome": "1 Sistema operacional Windows.",
+        "subtopicos": [
+          {
+            "nome": "1.1 Fundamentos do Windows: operações com janelas, menus, barra de tarefas, área de trabalho."
+          },
+          {
+            "nome": "1.2 Trabalho com pastas e arquivos: localização de arquivos e pastas; movimentação e cópia de arquivos e pastas; criação e exclusão de arquivos e pastas."
+          },
+          {
+            "nome": "1.3 Configurações básicas do Windows: resolução da tela, cores, fontes, impressoras, aparência, segundo plano, protetor de tela."
+          },
+          {
+            "nome": "1.4 Windows Explorer."
+          }
+        ]
+      },
+      {
+        "nome": "2 Microsoft 365.",
+        "subtopicos": [
+          {
+            "nome": "2.1 Processador de textos Word."
+          },
+          {
+            "nome": "2.1.1 Área de trabalho, barras de ferramentas, botões e menus do Word."
+          },
+          {
+            "nome": "2.1.2 Formatação de documentos: recursos de margens, tabulação, recuo e espaçamento horizontal, espaçamento vertical, fontes, destaque (negrito, sublinhado, itálico, subscrito, sobrescrito etc.)."
+          },
+          {
+            "nome": "2.1.3 Organização do texto em listas e colunas."
+          },
+          {
+            "nome": "2.1.4 Tabelas."
+          },
+          {
+            "nome": "2.1.5 Estilos e modelos."
+          },
+          {
+            "nome": "2.1.6 Cabeçalhos e rodapés."
+          },
+          {
+            "nome": "2.1.7 Configuração de página."
+          },
+          {
+            "nome": "2.2 Planilha eletrônica Excel."
+          },
+          {
+            "nome": "2.2.1 Área de trabalho, barras de ferramentas, botões e menus do Excel; deslocamento do cursor na planilha, seleção de células, linhas e colunas."
+          },
+          {
+            "nome": "2.2.2 Introdução de números, textos, fórmulas e datas na planilha, referência absoluta e relativa."
+          },
+          {
+            "nome": "2.2.3 Principais funções do Excel: matemáticas, estatísticas, data-hora, financeiras e de texto."
+          },
+          {
+            "nome": "2.2.4 Formatação de planilhas: número, alinhamento, borda, fonte, padrões."
+          },
+          {
+            "nome": "2.2.5 Edição de planilha: operações de copiar, colar, recortar, limpar, marcar etc."
+          },
+          {
+            "nome": "2.2.6 Classificação de dados nas planilhas."
+          },
+          {
+            "nome": "2.2.7 Gráficos."
+          },
+          {
+            "nome": "2.3 Software de apresentação do PowerPoint."
+          },
+          {
+            "nome": "2.3.1 Área de trabalho, barras de ferramentas, botões e menus do PowerPoint."
+          },
+          {
+            "nome": "2.3.2 Criação de apresentações e inserção de slides."
+          },
+          {
+            "nome": "2.3.3 Elementos da tela e modos de visualização."
+          },
+          {
+            "nome": "2.3.4 Objetos de texto: formatar, mover, copiar e excluir objetos."
+          },
+          {
+            "nome": "2.3.5 Listas numeradas, listas com marcadores e objetos de desenho."
+          },
+          {
+            "nome": "2.3.6 Uso de tabelas, gráficos, planilhas e organogramas."
+          },
+          {
+            "nome": "2.3.7 Leiaute, esquema de cores, segundo plano e slide mestre."
+          },
+          {
+            "nome": "2.3.8 Montagem de slides animados."
+          },
+          {
+            "nome": "2.3.9 Integração com Word e Excel."
+          }
+        ]
+      },
+      {
+        "nome": "3 Redes de computadores.",
+        "subtopicos": [
+          {
+            "nome": "3.1 Conceitos básicos, ferramentas, aplicativos e procedimentos de Internet e intranet, grupos de discussão, redes sociais, computação na nuvem, programas de navegação, deep web, dark web."
+          },
+          {
+            "nome": "3.2 Correio eletrônico: endereços, utilização de recursos típicos."
+          },
+          {
+            "nome": "3.3 Navegadores, sítios de busca e pesquisa na Internet."
+          },
+          {
+            "nome": "3.4 Conceitos de segurança: procedimentos e segurança de acessos, programas maliciosos, ferramentas antivírus e criptografia."
+          },
+          {
+            "nome": "3.5 Procedimentos de backup, armazenamento de dados na nuvem."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "materia": "RACIOCÍNIO LÓGICO",
+    "topicos": [
+      {
+        "nome": "1 Conjuntos numéricos: números inteiros, racionais e reais.",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Sistema legal de medidas.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Razões e proporções.",
+        "subtopicos": [
+          {
+            "nome": "3.1 Divisão proporcional."
+          },
+          {
+            "nome": "3.2 Regras de três simples e compostas."
+          },
+          {
+            "nome": "3.3 Porcentagens."
+          }
+        ]
+      },
+      {
+        "nome": "4 Equações e inequações de 1º e de 2º graus.",
+        "subtopicos": []
+      },
+      {
+        "nome": "5 Sistemas lineares.",
+        "subtopicos": []
+      },
+      {
+        "nome": "6 Funções e gráficos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "7 Princípios de contagem.",
+        "subtopicos": []
+      },
+      {
+        "nome": "8 Progressões aritméticas e geométricas.",
+        "subtopicos": []
+      },
+      {
+        "nome": "9 Compreensão de estruturas lógicas.",
+        "subtopicos": []
+      },
+      {
+        "nome": "10 Lógica de argumentação: analogias, inferências, deduções e conclusões.",
+        "subtopicos": []
+      },
+      {
+        "nome": "11 Lógica sentencial (ou proposicional).",
+        "subtopicos": [
+          {
+            "nome": "11.1 Proposições simples e compostas."
+          },
+          {
+            "nome": "11.2 Tabelas-verdade."
+          },
+          {
+            "nome": "11.3 Equivalências."
+          },
+          {
+            "nome": "11.4 Leis de De Morgan."
+          },
+          {
+            "nome": "11.5 Diagramas lógicos."
+          }
+        ]
+      },
+      {
+        "nome": "12 Lógica de primeira ordem.",
+        "subtopicos": []
+      },
+      {
+        "nome": "13 Princípios de contagem e probabilidade.",
+        "subtopicos": []
+      },
+      {
+        "nome": "14 Operações com conjuntos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "15 Raciocínio lógico envolvendo problemas aritméticos, geométricos e matriciais.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "CONTABILIDADE GERAL",
+    "topicos": [
+      {
+        "nome": "1 Conceitos, objetivos e finalidades da contabilidade.",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Patrimônio: componentes, equação fundamental do patrimônio, situação líquida, representação gráfica.",
+        "subtopicos": []
+      },
+      {
+        "nome": "3 Atos e fatos administrativos: conceitos, fatos permutativos, modificativos e mistos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "4 Contas: conceitos, contas de débitos, contas de créditos e saldos.",
+        "subtopicos": []
+      },
+      {
+        "nome": "5 Plano de contas: conceitos, elenco de contas, função e funcionamento das contas.",
+        "subtopicos": []
+      },
+      {
+        "nome": "6 Escrituração: conceitos, lançamentos contábeis, elementos essenciais, fórmulas de lançamentos, livros de escrituração, métodos e processos, regime de competência e regime de caixa.",
+        "subtopicos": []
+      },
+      {
+        "nome": "7 Contabilização de operações contábeis diversas: juros, descontos, tributos, aluguéis, variação monetária/cambial, folha de pagamento, compras, vendas e provisões, depreciações e baixa de bens.",
+        "subtopicos": []
+      },
+      {
+        "nome": "8 Balancete de verificação: conceitos, modelos e técnicas de elaboração.",
+        "subtopicos": []
+      },
+      {
+        "nome": "9 Balanço patrimonial: conceitos, objetivo, composição.",
+        "subtopicos": []
+      },
+      {
+        "nome": "10 Demonstração de resultado de exercício: conceito, objetivo, composição.",
+        "subtopicos": []
+      },
+      {
+        "nome": "11 Normas Brasileiras de Contabilidade.",
+        "subtopicos": []
+      }
+    ]
+  },
+  {
+    "materia": "ESTATÍSTICA",
+    "topicos": [
+      {
+        "nome": "1 Estatística descritiva e análise exploratória de dados: gráficos, diagramas, tabelas, medidas descritivas (posição, dispersão, assimetria e curtose).",
+        "subtopicos": []
+      },
+      {
+        "nome": "2 Probabilidade.",
+        "subtopicos": [
+          {
+            "nome": "2.1 Definições básicas e axiomas."
+          },
+          {
+            "nome": "2.2 Probabilidade condicional e independência."
+          }
+        ]
+      },
+      {
+        "nome": "3 Técnicas de amostragem.",
+        "subtopicos": [
+          {
+            "nome": "3.1 Amostragem aleatória simples, estratificada, sistemática e por conglomerados."
+          },
+          {
+            "nome": "3.2 Tamanho amostral."
+          }
+        ]
+      }
+    ]
+  }
+]
