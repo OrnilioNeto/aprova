@@ -1,0 +1,27 @@
+# Protege arquivos sensíveis se a pasta for acessada diretamente
+<Files "config.php">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</Files>
+
+<FilesMatch "\.(sql|md|example\.php|js)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# URLs amigáveis opcionais: /api/login -> /api/index.php?action=login
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^([a-z\-]+)/?$ index.php?action=$1 [QSA,L]
+</IfModule>

@@ -1,0 +1,263 @@
+<?php
+/* ============================================================
+   API APROVA — ValueHost (PHP + MySQL)
+   Endpoints: ?action=register|login|forgot|reset|confirm|
+              change-password|me|state
+   ============================================================ */
+
+header('X-Content-Type-Options: nosniff');
+
+require __DIR__ . '/lib/util.php';
+require __DIR__ . '/lib/db.php';
+require __DIR__ . '/lib/jwt.php';
+require __DIR__ . '/lib/smtp.php';
+
+/* -------- Configuração -------- */
+$configCandidates = array(
+    dirname(__DIR__, 2) . '/aprova-config.php', // acima do webroot (recomendado)
+    dirname(__DIR__) . '/aprova-config.php',    // acima da pasta da API
+    __DIR__ . '/config.php',                    // junto da API (protegido por .htaccess)
+);
+$config = null;
+foreach ($configCandidates as $path) {
+    if (is_file($path)) { $config = require $path; break; }
+}
+if (!is_array($config)) {
+    fail('Servidor sem configuração (config.php ausente).', 500);
+}
+
+apply_cors($config['allowed_origins']);
+
+/* -------- Helpers de domínio -------- */
+
+function find_user_by_email(PDO $pdo, $email) {
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute(array($email));
+    $row = $stmt->fetch();
+    return $row ? $row : null;
+}
+
+function find_user_by_id(PDO $pdo, $id) {
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed FROM users WHERE id = ? LIMIT 1');
+    $stmt->execute(array($id));
+    $row = $stmt->fetch();
+    return $row ? $row : null;
+}
+
+function require_auth(PDO $pdo, $config) {
+    $token = bearer_token();
+    if ($token === '') fail('Sessão expirada. Entre novamente.', 401);
+    $payload = jwt_decode($token, $config['jwt_secret']);
+    if (!$payload || empty($payload['sub'])) fail('Sessão expirada. Entre novamente.', 401);
+    $user = find_user_by_id($pdo, $payload['sub']);
+    if (!$user) fail('Sessão expirada. Entre novamente.', 401);
+    return $user;
+}
+
+function issue_session($user, $config) {
+    return array(
+        'token' => jwt_encode(array('sub' => $user['id'], 'email' => $user['email']), $config['jwt_secret'], $config['jwt_ttl']),
+        'user'  => array('id' => $user['id'], 'email' => $user['email']),
+    );
+}
+
+function send_mail($config, $to, $subject, $html) {
+    try {
+        $mailer = new SmtpMailer($config['mail']);
+        $mailer->send($to, $subject, $html);
+    } catch (Exception $e) {
+        error_log('[aprova-mail] ' . $e->getMessage());
+    }
+}
+
+function email_layout($title, $intro, $buttonText, $url) {
+    return '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1f2937">'
+        . '<h2 style="margin:0 0 8px">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h2>'
+        . '<p style="line-height:1.6">' . $intro . '</p>'
+        . '<p style="margin:28px 0"><a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" '
+        . 'style="background:#6366f1;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:bold">'
+        . htmlspecialchars($buttonText, ENT_QUOTES, 'UTF-8') . '</a></p>'
+        . '<p style="font-size:12px;color:#6b7280;line-height:1.6">Se você não solicitou este e-mail, ignore-o. '
+        . 'Se o botão não funcionar, copie e cole este link no navegador:<br>'
+        . '<span style="word-break:break-all">' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '</span></p>'
+        . '</div>';
+}
+
+/* -------- Roteamento -------- */
+
+$action = isset($_GET['action']) ? preg_replace('/[^a-z\-]/', '', strtolower($_GET['action'])) : '';
+$method = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+
+try {
+    $pdo = db($config['db']);
+
+    switch ($action) {
+
+        case 'register': {
+            if ($method !== 'POST') fail('Método inválido.', 405);
+            check_rate($pdo, 'register', 5, 3600);
+            $in = json_input();
+            $email = normalize_email(isset($in['email']) ? $in['email'] : '');
+            $password = isset($in['password']) ? (string)$in['password'] : '';
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) fail('Informe um e-mail válido.');
+            if (strlen($password) < 6) fail('A senha deve ter ao menos 6 caracteres.');
+            if (find_user_by_email($pdo, $email)) fail('Este e-mail já está cadastrado.', 409);
+
+            $confirm = !empty($config['auto_confirm_registration']);
+            $stmt = $pdo->prepare('INSERT INTO users (id, email, password_hash, email_confirmed, created_at) VALUES (?, ?, ?, ?, ?)');
+            $stmt->execute(array(
+                new_uuid(),
+                $email,
+                password_hash($password, PASSWORD_DEFAULT),
+                $confirm ? 1 : 0,
+                now_utc(),
+            ));
+            $user = find_user_by_email($pdo, $email);
+
+            if ($confirm) {
+                $session = issue_session($user, $config);
+                json_out(array('ok' => true, 'token' => $session['token'], 'user' => $session['user']));
+            }
+
+            $token = random_token(32);
+            $pdo->prepare('INSERT INTO auth_tokens (token_hash, user_id, purpose, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, ?)')
+                ->execute(array(hash('sha256', $token), $user['id'], 'confirm', future_utc(86400), now_utc()));
+            $link = $config['app_url'] . '#confirm=' . $token;
+            send_mail(
+                $config,
+                $email,
+                'Confirme seu e-mail — Desempenho Concurso',
+                email_layout('Confirme seu e-mail', 'Falta pouco! Clique no botão abaixo para ativar sua conta.', 'Confirmar e-mail', $link)
+            );
+            json_out(array('ok' => true, 'confirm_email' => true));
+        }
+
+        case 'login': {
+            if ($method !== 'POST') fail('Método inválido.', 405);
+            check_rate($pdo, 'login', 10, 900);
+            $in = json_input();
+            $email = normalize_email(isset($in['email']) ? $in['email'] : '');
+            $password = isset($in['password']) ? (string)$in['password'] : '';
+            if ($email === '' || $password === '') fail('Informe e-mail e senha.');
+            $user = find_user_by_email($pdo, $email);
+            if (!$user || $user['password_hash'] === '' || !password_verify($password, $user['password_hash'])) {
+                fail('E-mail ou senha inválidos.', 401);
+            }
+            if (!$user['email_confirmed']) {
+                fail('Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.', 403);
+            }
+            $session = issue_session($user, $config);
+            json_out(array('ok' => true, 'token' => $session['token'], 'user' => $session['user']));
+        }
+
+        case 'forgot': {
+            if ($method !== 'POST') fail('Método inválido.', 405);
+            check_rate($pdo, 'forgot', 5, 900);
+            $in = json_input();
+            $email = normalize_email(isset($in['email']) ? $in['email'] : '');
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) fail('Informe um e-mail válido.');
+            $user = find_user_by_email($pdo, $email);
+            if ($user) {
+                $pdo->prepare("UPDATE auth_tokens SET used = 1 WHERE user_id = ? AND purpose = 'reset' AND used = 0")
+                    ->execute(array($user['id']));
+                $token = random_token(32);
+                $pdo->prepare('INSERT INTO auth_tokens (token_hash, user_id, purpose, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, ?)')
+                    ->execute(array(hash('sha256', $token), $user['id'], 'reset', future_utc(3600), now_utc()));
+                $link = $config['app_url'] . '#reset=' . $token;
+                send_mail(
+                    $config,
+                    $email,
+                    'Redefinir sua senha — Desempenho Concurso',
+                    email_layout('Redefinir senha', 'Recebemos um pedido para redefinir sua senha. O link abaixo vale por 1 hora.', 'Definir nova senha', $link)
+                );
+            }
+            json_out(array('ok' => true));
+        }
+
+        case 'reset': {
+            if ($method !== 'POST') fail('Método inválido.', 405);
+            check_rate($pdo, 'reset', 10, 900);
+            $in = json_input();
+            $token = isset($in['token']) ? (string)$in['token'] : '';
+            $password = isset($in['password']) ? (string)$in['password'] : '';
+            if ($token === '' || strlen($password) < 6) fail('Dados inválidos. A senha deve ter ao menos 6 caracteres.');
+            $stmt = $pdo->prepare("SELECT user_id FROM auth_tokens WHERE token_hash = ? AND purpose = 'reset' AND used = 0 AND expires_at > ? LIMIT 1");
+            $stmt->execute(array(hash('sha256', $token), now_utc()));
+            $row = $stmt->fetch();
+            if (!$row) fail('Link inválido ou expirado. Solicite um novo.', 410);
+            $pdo->prepare('UPDATE users SET password_hash = ?, email_confirmed = 1 WHERE id = ?')
+                ->execute(array(password_hash($password, PASSWORD_DEFAULT), $row['user_id']));
+            $pdo->prepare('UPDATE auth_tokens SET used = 1 WHERE token_hash = ?')->execute(array(hash('sha256', $token)));
+            $user = find_user_by_id($pdo, $row['user_id']);
+            $session = issue_session($user, $config);
+            json_out(array('ok' => true, 'token' => $session['token'], 'user' => $session['user']));
+        }
+
+        case 'confirm': {
+            if ($method !== 'POST') fail('Método inválido.', 405);
+            check_rate($pdo, 'confirm', 10, 900);
+            $in = json_input();
+            $token = isset($in['token']) ? (string)$in['token'] : '';
+            if ($token === '') fail('Token ausente.');
+            $stmt = $pdo->prepare("SELECT user_id FROM auth_tokens WHERE token_hash = ? AND purpose = 'confirm' AND used = 0 AND expires_at > ? LIMIT 1");
+            $stmt->execute(array(hash('sha256', $token), now_utc()));
+            $row = $stmt->fetch();
+            if (!$row) fail('Link inválido ou expirado.', 410);
+            $pdo->prepare('UPDATE users SET email_confirmed = 1 WHERE id = ?')->execute(array($row['user_id']));
+            $pdo->prepare('UPDATE auth_tokens SET used = 1 WHERE token_hash = ?')->execute(array(hash('sha256', $token)));
+            json_out(array('ok' => true));
+        }
+
+        case 'change-password': {
+            if ($method !== 'POST') fail('Método inválido.', 405);
+            check_rate($pdo, 'change-password', 10, 900);
+            $user = require_auth($pdo, $config);
+            $in = json_input();
+            $password = isset($in['password']) ? (string)$in['password'] : '';
+            if (strlen($password) < 6) fail('A senha deve ter ao menos 6 caracteres.');
+            $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+                ->execute(array(password_hash($password, PASSWORD_DEFAULT), $user['id']));
+            json_out(array('ok' => true));
+        }
+
+        case 'me': {
+            if ($method !== 'GET') fail('Método inválido.', 405);
+            $user = require_auth($pdo, $config);
+            json_out(array('ok' => true, 'user' => array('id' => $user['id'], 'email' => $user['email'])));
+        }
+
+        case 'state': {
+            $user = require_auth($pdo, $config);
+            if ($method === 'GET') {
+                $stmt = $pdo->prepare('SELECT data, updated_at FROM states WHERE user_id = ? LIMIT 1');
+                $stmt->execute(array($user['id']));
+                $row = $stmt->fetch();
+                if (!$row) json_out(array('ok' => true, 'data' => null));
+                $decoded = json_decode($row['data'], true);
+                json_out(array('ok' => true, 'data' => $decoded, 'updated_at' => $row['updated_at']));
+            }
+            if ($method === 'PUT') {
+                $in = json_input();
+                if (!isset($in['data']) || !is_array($in['data'])) fail('Dados inválidos.');
+                $json = json_encode($in['data'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                if ($json === false) fail('Dados inválidos (JSON).');
+                $now = now_utc();
+                $pdo->prepare(
+                    'INSERT INTO states (user_id, data, updated_at) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)'
+                )->execute(array($user['id'], $json, $now));
+                json_out(array('ok' => true, 'updated_at' => $now));
+            }
+            fail('Método inválido.', 405);
+        }
+
+        default:
+            fail('Ação desconhecida.', 404);
+    }
+} catch (PDOException $e) {
+    error_log('[aprova-db] ' . $e->getMessage());
+    fail('Erro interno do servidor. Tente novamente.', 500);
+} catch (Exception $e) {
+    error_log('[aprova] ' . $e->getMessage());
+    fail('Erro interno do servidor. Tente novamente.', 500);
+}

@@ -30,6 +30,18 @@ config*.js
 .env.local
 *.local.js
 
+# Backend ValueHost: config real contém a senha do banco
+valuehost-api/config.php
+valuehost-api/aprova-config.php
+
+# Dados de migração (contêm e-mails, hashes de senha e dados pessoais)
+valuehost-api/*.csv
+valuehost-api/import.sql
+
+# Pacotes locais da API (contêm config.php com a senha do banco)
+*.zip
+*.rar
+
 # Sistema/editor
 Thumbs.db
 Desktop.ini
