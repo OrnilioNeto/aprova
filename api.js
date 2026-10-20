@@ -40,7 +40,8 @@ async function apiCall(action, opts){
     res = await fetch(apiUrl(action), {
       method: opts.method || 'POST',
       headers: headers,
-      body: opts.body != null ? JSON.stringify(opts.body) : undefined
+      body: opts.body != null ? JSON.stringify(opts.body) : undefined,
+      keepalive: !!opts.keepalive
     });
   }catch(e){
     console.error('API fetch falhou:', action, apiUrl(action), e);
@@ -124,6 +125,8 @@ function showReset(){
 function setSyncStatus(txt){
   const el = document.getElementById('sync-status');
   if(el) el.textContent = txt || '';
+  const el2 = document.getElementById('sync-status2');
+  if(el2) el2.textContent = txt || '—';
 }
 
 function renderAuthHeader(){
@@ -282,7 +285,7 @@ async function fetchServerState(){
 async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
   try{
-    await apiCall('state', { method:'PUT', body:{ data: state } });
+    await apiCall('state', { method:'PUT', body:{ data: state }, keepalive: true });
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
@@ -309,31 +312,128 @@ function queueSync(){
 async function loadCloudState(){
   if(!currentUser) return;
   const ck = cacheKey();
-  let serverData = null;
-  try{ serverData = await fetchServerState(); }
-  catch(e){
+  let serverData = null, serverUpdated = null;
+  try{
+    const r = await apiCall('state', { method:'GET' });
+    serverData = r && r.data ? r.data : null;
+    serverUpdated = r && r.updated_at ? r.updated_at : null;
+  }catch(e){
     console.error('fetch server:', e.message);
     if(e.status === 401){ handleExpiredSession(); return; }
   }
-  if(serverData){
-    state = normalizeState(serverData);
-    try{ localStorage.setItem(ck, JSON.stringify(state)); }catch(e){}
-    save();
-    return;
-  }
-  let cached = null;
+  // cache local (formato novo: {data, updated_at}; compatível com formato antigo)
+  let cached = null, cachedUpdated = 0;
   try{
     const raw = localStorage.getItem(ck);
-    if(raw) cached = JSON.parse(raw);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && parsed.data && parsed.data.concursos){ cached = parsed.data; cachedUpdated = Number(parsed.updated_at) || 0; }
+      else if(parsed && parsed.concursos){ cached = parsed; cachedUpdated = 0; }
+    }
   }catch(e){}
+  const serverTs = serverUpdated ? new Date(serverUpdated).getTime() : 0;
+
+  if(serverData && serverData.concursos){
+    if(cached && cachedUpdated > serverTs + 1000){
+      // cache local mais recente: prevalece e reenvia ao servidor
+      state = normalizeState(cached);
+      try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: cachedUpdated })); }catch(e){}
+      pushState();
+      return;
+    }
+    state = normalizeState(serverData);
+    try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: serverTs || Date.now() })); }catch(e){}
+    return;
+  }
   if(cached && cached.concursos){
     state = normalizeState(cached);
-    save();
+    try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: cachedUpdated || Date.now() })); }catch(e){}
+    pushState();
     return;
   }
   state = defaultState();
   await pushState();
-  try{ localStorage.setItem(ck, JSON.stringify(state)); }catch(e){}
+  try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
+}
+
+async function syncNow(){
+  if(!currentUser){ alert('Faça login para sincronizar.'); return; }
+  setSyncStatus('sincronizando…');
+  const ok = await pushState();
+  if(ok){ setSyncStatus('✓ sincronizado'); alert('Sincronização concluída.'); }
+  else { setSyncStatus('⚠ falhou'); alert('Falha ao sincronizar. Verifique a conexão.'); }
+}
+
+function showLocalCaches(){
+  const prefix = LS_KEY + ':';
+  const items = [];
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(!k || !k.startsWith(prefix)) continue;
+    try{
+      const raw = localStorage.getItem(k);
+      const parsed = JSON.parse(raw);
+      const d = (parsed && parsed.data && parsed.data.concursos) ? parsed.data
+             : (parsed && parsed.concursos) ? parsed : null;
+      const sims = d ? d.concursos.reduce((a,c)=>a+(c.simulados||[]).length,0) : 0;
+      const updated = (parsed && parsed.updated_at) ? new Date(Number(parsed.updated_at)).toLocaleString() : '—';
+      items.push({ key: k, sims: sims, updated: updated });
+    }catch(e){ items.push({ key: k, sims: '?', updated: '—' }); }
+  }
+  if(!items.length){ alert('Nenhum cache local encontrado.'); return; }
+  const msg = items.map((it,i)=> (i+1)+') '+it.key+' — '+it.sims+' simulados — '+it.updated).join('\\n');
+  const choice = prompt('Caches encontrados:\\n'+msg+'\\n\\nDigite o número do cache para importar (ou cancelar):');
+  const idx = parseInt(choice,10)-1;
+  if(isNaN(idx) || idx < 0 || idx >= items.length) return;
+  try{
+    const raw = localStorage.getItem(items[idx].key);
+    const parsed = JSON.parse(raw);
+    const d = (parsed && parsed.data && parsed.data.concursos) ? parsed.data
+           : (parsed && parsed.concursos) ? parsed : null;
+    if(!d){ alert('Cache inválido.'); return; }
+    if(!confirm('Importar este cache? Isso substituirá os dados atuais.')) return;
+    state = normalizeState(d);
+    const ck = cacheKey();
+    try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
+    pushState();
+    renderAll();
+    alert('Importação concluída.');
+  }catch(e){ alert('Erro ao importar: '+e.message); }
+}
+
+async function migrateLocalCaches(){
+  if(!currentUser) return;
+  const ck = cacheKey();
+  const prefix = LS_KEY + ':';
+  let best = null;
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(!k || !k.startsWith(prefix) || k === ck) continue;
+    try{
+      const raw = localStorage.getItem(k);
+      if(!raw) continue;
+      const parsed = JSON.parse(raw);
+      const d = (parsed && parsed.data && parsed.data.concursos) ? parsed.data
+             : (parsed && parsed.concursos) ? parsed : null;
+      const ts = (parsed && parsed.updated_at) ? Number(parsed.updated_at) : 0;
+      if(d && d.concursos){
+        const sims = d.concursos.reduce((a,c)=>a+(c.simulados||[]).length,0);
+        if(!best || sims > best.sims || (sims === best.sims && ts > best.ts)){
+          best = { data: d, ts: ts, sims: sims, key: k };
+        }
+      }
+    }catch(e){}
+  }
+  if(!best) return;
+  const curSims = (state && state.concursos) ? state.concursos.reduce((a,c)=>a+(c.simulados||[]).length,0) : 0;
+  if(best.sims <= curSims) return;
+  if(!confirm('Encontramos dados salvos localmente de uma sessão anterior (' + best.sims + ' simulados). Deseja importá-los para sua conta atual?')){
+    return;
+  }
+  state = normalizeState(best.data);
+  try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
+  await pushState();
+  renderAll();
 }
 
 async function onSession(user){
@@ -341,6 +441,8 @@ async function onSession(user){
   setAuthLoading(true);
   try{ await loadCloudState(); }
   catch(e){ console.error('loadCloudState:', e.message); }
+  try{ await migrateLocalCaches(); }
+  catch(e){ console.error('migrateLocalCaches:', e.message); }
   setAuthLoading(false);
   document.getElementById('auth-screen').classList.add('dn');
   renderAuthHeader();
@@ -430,4 +532,8 @@ async function initAuth(){
   showLogin();
   setAuthMsg('Faça login para acessar seus dados de qualquer lugar.');
   renderAuthHeader();
+  if(!currentUser){
+    const as = document.getElementById('auth-screen');
+    if(as) as.classList.remove('dn');
+  }
 }

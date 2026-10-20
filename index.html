@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://previaseg.com https://*.onrender.com https://*.supabase.co; font-src 'self' data:;">
 <title>Meu Desempenho — Concurso</title>
 <style>
 :root{
@@ -1969,7 +1970,6 @@ ${mat?'<button class="btn ghost sm" style="padding:2px 6px;font-size:10px" oncli
 
 function estSelMat(id){ estMatSel = id; renderEstudos(); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
 /* ===== Integração leve com Trilium (link profundo) ===== */
 function triliumBaseUrl(){ return String(window.TRILIUM_URL || '').replace(/\/+$/,''); }
 function triliumNoteId(name){
@@ -2016,7 +2016,9 @@ async function triliumOpenNote(name){
   const id = triliumNoteId(n);
   window.open(base + '/#root/' + encodeURIComponent(id), '_blank');
 }
-window.addEventListener('beforeunload', ()=>{ estCronoSync(); save(); });
+window.addEventListener('beforeunload', ()=>{ estCronoSync(); save(); try{ if(typeof pushState==='function') pushState(); }catch(e){} });
+window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ estCronoSync(); save(); try{ if(typeof pushState==='function') pushState(); }catch(e){} } });
+window.addEventListener('pagehide', ()=>{ estCronoSync(); save(); try{ if(typeof pushState==='function') pushState(); }catch(e){} });
 
 /* ===== ATALHOS DE TECLADO (configuráveis na aba Ajustes) ===== */
 const DEFAULT_KEYMAP = { caneta:'c', riscar:'r', comentar:'m', destaque:'d', borracha:'b', selecionar:'s', anotacoes:'e' };
@@ -2436,7 +2438,7 @@ function save(){
   try{
     const json = JSON.stringify(state);
     const key = currentUser ? (LS_KEY+':'+currentUser.id) : (LS_KEY+':guest');
-    try{ localStorage.setItem(key, json); }catch(e){}
+    try{ localStorage.setItem(key, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
     if(currentUser) queueSync();
     console.log('SAVE OK ('+json.length+' bytes)');
   }catch(e){
@@ -3388,6 +3390,15 @@ function renderAjustes(){
     </div>
     ${renderKbCard()}
     <div class="grid g-4" style="margin-top:16px">
+      <div class="card">
+        <h2>☁️ Sincronização</h2>
+        <p class="hint" style="margin-bottom:12px">Status: <b id="sync-status2">—</b></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="syncNow()">🔄 Sincronizar agora</button>
+          <button class="btn ghost" onclick="showLocalCaches()">📦 Recuperar dados locais</button>
+        </div>
+        <p class="hint" style="margin-top:8px;font-size:11px">Se seus dados de ontem não aparecem, clique em "Recuperar dados locais" para importar caches antigos.</p>
+      </div>
       <div class="card">
         <h2>💾 Backup dos dados</h2>
         <p class="hint" style="margin-bottom:12px">Seus dados ficam salvos neste navegador. Exporte um arquivo de backup para não perder nada.</p>

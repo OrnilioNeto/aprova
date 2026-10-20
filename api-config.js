@@ -10,7 +10,7 @@
    ============================================================ */
 /* Modo local: sem servidor. Dados salvos apenas neste navegador.
    Para usar a sincronização na nuvem (ValueHost), preencha a URL da API abaixo. */
-window.API_BASE_URL = '';
+window.API_BASE_URL = 'https://previaseg.com/api_aprova/valuehost-api';
 
 /* URL pública do Trilium (online). Ajuste se mudar de túnel/domínio. */
 window.TRILIUM_URL = 'https://brass-helmet-collect-payday.trycloudflare.com';
