@@ -43,6 +43,7 @@ async function apiCall(action, opts){
       body: opts.body != null ? JSON.stringify(opts.body) : undefined
     });
   }catch(e){
+    console.error('API fetch falhou:', action, apiUrl(action), e);
     const err = new Error('Sem conexão com o servidor.');
     err.offline = true;
     throw err;
@@ -367,10 +368,23 @@ function isRecoveryLink(){
 async function initAuth(){
   const authScreen = document.getElementById('auth-screen');
   if(!apiReady()){
-    authScreen.classList.remove('dn');
-    showLogin();
-    setAuthMsg('⚠ Servidor não configurado. Preencha a URL da API em <b>api-config.js</b>.');
+    // Modo local: sem servidor, dados salvos apenas neste navegador.
+    currentUser = null;
+    const ck = cacheKey();
+    let cached = null;
+    try{
+      const raw = localStorage.getItem(ck);
+      if(raw) cached = JSON.parse(raw);
+    }catch(e){}
+    if(cached && cached.concursos){
+      state = normalizeState(cached);
+    } else {
+      state = defaultState();
+    }
+    try{ localStorage.setItem(ck, JSON.stringify(state)); }catch(e){}
+    if(authScreen) authScreen.classList.add('dn');
     renderAuthHeader();
+    renderAll();
     return;
   }
 

@@ -8,4 +8,12 @@
 
    Ajuste abaixo quando souber o endereço final do backend.
    ============================================================ */
-window.API_BASE_URL = 'https://previaseg.com/api_aprova/valuehost-api';
+/* Modo local: sem servidor. Dados salvos apenas neste navegador.
+   Para usar a sincronização na nuvem (ValueHost), preencha a URL da API abaixo. */
+window.API_BASE_URL = '';
+
+/* URL pública do Trilium (online). Ajuste se mudar de túnel/domínio. */
+window.TRILIUM_URL = 'https://gasoline-latin-artwork-joseph.trycloudflare.com';
+
+/* Token ETAPI do Trilium (para criar notas automaticamente). Mantenha em segredo. */
+window.TRILIUM_ETAPI_TOKEN = 'XQEKVsDFgNb1_DTQjYjhJVCA8jSdQi46dYDB96umfmlgR40b+bv/D4+c=';

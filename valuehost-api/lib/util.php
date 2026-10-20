@@ -25,7 +25,18 @@ function fail($msg, $code = 400) {
 
 function apply_cors($allowedOrigins) {
     $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+    // Permite origens explicitamente configuradas (produção) e também
+    // qualquer localhost/127.0.0.1 em porta arbitrária (desenvolvimento local).
+    $allowed = false;
     if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
+        $allowed = true;
+    } elseif ($origin !== '' && preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin)) {
+        $allowed = true;
+    } elseif ($origin === 'null') {
+        // Permite abrir o index.html diretamente do disco (file://) em desenvolvimento.
+        $allowed = true;
+    }
+    if ($allowed) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Vary: Origin');
     }

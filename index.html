@@ -448,6 +448,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
       <input type="date" id="inp-data-prova" onchange="setDataProva(this.value)" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;outline:none" title="Data da prova — informe para ver a contagem regressiva">
       <span id="countdown-prova"></span>
       <button class="btn ghost sm" id="btn-tema" onclick="toggleTema()" title="Alternar tema claro/escuro">🌙</button>
+      <button class="btn ghost sm" onclick="triliumOpenNote('')" title="Abrir o Trilium (anotações de estudo)">📝 Trilium</button>
       <div id="auth-user">
         <span id="auth-email-label"></span>
         <span id="sync-status"></span>
@@ -1317,7 +1318,7 @@ function estRenderPainel(t, c){
     const next = estNextRev(m);
     const rev = estRevStatus(m);
     return '<tr>'+
-      '<td><b>'+esc(m.name)+'</b><div class="muted" style="font-size:10px;white-space:nowrap">'+(m.topicos||[]).length+' tóp · '+estSubtopicos(m).length+' sub · '+estConteudos(m).length+' cont</div></td>'+
+      '<td><b>'+esc(m.name)+'</b><div class="muted" style="font-size:10px;white-space:nowrap">'+(m.topicos||[]).length+' tóp · '+estSubtopicos(m).length+' sub · '+estConteudos(m).length+' cont</div><div style="margin-top:4px"><button class="btn ghost sm" style="padding:2px 6px;font-size:10px" onclick="triliumOpenNote(\''+String(m.name).replace(/'/g,"\\'")+'\')" title="Abrir no Trilium">📝 Trilium</button></div></td>'+
       '<td class="right">'+tot+'</td>'+
       '<td class="right">'+ok+'</td>'+
       '<td class="right">'+(tot-ok)+'</td>'+
@@ -1389,6 +1390,7 @@ function estRenderMaterias(){
     return '<div class="est-mat-row" style="'+(m.id===estMatSel?'border-color:var(--accent);box-shadow:0 0 8px rgba(29,78,216,.2)':'')+'">'+
       '<button class="btn '+(m.id===estMatSel?'':'ghost')+' sm" onclick="estSelMat(\''+m.id+'\')">'+(m.id===estMatSel?'✓ ':'')+esc(m.name)+'</button>'+
       '<span class="hint" style="white-space:nowrap">'+(m.topicos||[]).length+' tópicos · '+estSubtopicos(m).length+' sub · '+estConteudos(m).length+' conteúdos · '+ok+'/'+tot+' OK · '+fmtPct(pct)+'</span>'+
+      '<button class="btn ghost sm" onclick="triliumOpenNote(\''+String(m.name).replace(/'/g,"\\'")+'\')" title="Abrir esta matéria no Trilium">📝 Trilium</button>'+
       '<button class="btn danger sm" onclick="estRemoveMateria(\''+m.id+'\')" title="Excluir matéria">✕</button>'+
       '</div>';
   }).join('');
@@ -1917,6 +1919,7 @@ function estRenderCalendarioDinamico(){
         <input type="time" value="${esc(t.hora||'')}" onchange="estSetTarefa('${t.id}','hora',this.value)">
         <input type="text" class="cald-tit" value="${esc(t.titulo||'')}" onchange="estSetTarefa('${t.id}','titulo',this.value)" placeholder="Tarefa">
         ${mat?'<span class="cald-mat" title="'+esc(mat.name)+'">'+esc(mat.name)+'</span>':''}
+${mat?'<button class="btn ghost sm" style="padding:2px 6px;font-size:10px" onclick="triliumOpenNote(\''+String(mat.name).replace(/'/g,"\\'")+'\')" title="Estudar esta matéria no Trilium">📝</button>':''}
         <button class="cald-del" onclick="estRemoveTarefa('${t.id}')" title="Excluir tarefa">✕</button>
       </div>`;
     }).join('');
@@ -1966,6 +1969,53 @@ function estRenderCalendarioDinamico(){
 
 function estSelMat(id){ estMatSel = id; renderEstudos(); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ===== Integração leve com Trilium (link profundo) ===== */
+function triliumBaseUrl(){ return String(window.TRILIUM_URL || '').replace(/\/+$/,''); }
+function triliumNoteId(name){
+  return String(name||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'materia';
+}
+async function triliumEnsureNote(name){
+  const base = triliumBaseUrl();
+  const token = (window.TRILIUM_ETAPI_TOKEN || '').trim();
+  if(!base || !token) return;
+  const id = triliumNoteId(name);
+  // 1) verifica se já existe
+  try {
+    const r = await fetch(base + '/etapi/notes/' + encodeURIComponent(id), {
+      headers: { 'Authorization': token }
+    });
+    if (r.ok) return;
+    if (r.status !== 404) return;
+  } catch(e){ return; }
+  // 2) cria se não existir
+  try {
+    await fetch(base + '/etapi/create-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': token },
+      body: JSON.stringify({
+        noteId: id,
+        parentNoteId: 'root',
+        title: name,
+        type: 'text',
+        mime: 'text/html',
+        content: '<h1>' + esc(name) + '</h1><p>Anotações de estudo.</p>'
+      })
+    });
+  } catch(e){ /* silencioso */ }
+}
+
+async function triliumOpenNote(name){
+  const base = triliumBaseUrl();
+  if(!base){ alert('URL do Trilium não configurada em api-config.js (window.TRILIUM_URL).'); return; }
+  const n = String(name||'').trim();
+  if(!n){ window.open(base + '/', '_blank'); return; }
+  await triliumEnsureNote(n);
+  const id = triliumNoteId(n);
+  window.open(base + '/#root/' + encodeURIComponent(id), '_blank');
+}
 window.addEventListener('beforeunload', ()=>{ estCronoSync(); save(); });
 
 /* ===== ATALHOS DE TECLADO (configuráveis na aba Ajustes) ===== */
@@ -2385,8 +2435,9 @@ function normalizeState(p){
 function save(){
   try{
     const json = JSON.stringify(state);
-    if(currentUser){ try{ localStorage.setItem(LS_KEY+':'+currentUser.id, json); }catch(e){} }
-    queueSync();
+    const key = currentUser ? (LS_KEY+':'+currentUser.id) : (LS_KEY+':guest');
+    try{ localStorage.setItem(key, json); }catch(e){}
+    if(currentUser) queueSync();
     console.log('SAVE OK ('+json.length+' bytes)');
   }catch(e){
     console.error('ERRO AO SALVAR:', e.message);
