@@ -289,9 +289,9 @@ async function pushState(){
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
+    console.error('API push:', e.message, e);
     if(e.status === 401){ handleExpiredSession(); return false; }
-    console.error('API push:', e.message);
-    setSyncStatus(e.offline ? '⚠ offline' : '⚠ não sincronizou');
+    setSyncStatus(e.offline ? '⚠ offline' : '⚠ não sincronizou: ' + (e.message||''));
     return false;
   }
 }
@@ -306,7 +306,7 @@ function queueSync(){
     if(!syncDirty) return;
     syncDirty = false;
     pushState();
-  }, 800);
+  }, 300);
 }
 
 async function loadCloudState(){
@@ -537,3 +537,9 @@ async function initAuth(){
     if(as) as.classList.remove('dn');
   }
 }
+
+// Auto-sync periódico: tenta enviar alterações pendentes a cada 30s
+try{
+  setInterval(()=>{ if(currentUser && syncDirty) { syncDirty = false; pushState(); } }, 30000);
+  window.addEventListener('focus', ()=>{ if(currentUser && !syncDirty){ loadCloudState(); } });
+}catch(e){}
