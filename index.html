@@ -3007,6 +3007,8 @@ function renderSimuladoView(){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <button class="btn" onclick="importMode=true;renderSimuladoView()">📄 Novo simulado (importar arquivos)</button>
       <button class="btn ghost" onclick="R.emAndamento=true;renderSimuladoView()">📝 Novo simulado (responder)</button>
+      <button class="btn ghost sm" onclick="simBaixarModeloTXT()">⬇️ Modelo TXT</button>
+      <button class="btn ghost sm" onclick="simBaixarModeloJSON()">⬇️ Modelo JSON</button>
       <span class="hint" style="align-self:center">Importar: prova + gabaritos prontos · Responder: você responde no sistema.</span>
     </div>
     <div class="grid" style="grid-template-columns:minmax(320px,440px) 1fr;align-items:start">
@@ -4693,6 +4695,219 @@ function downloadFile(name, content, mime){
   a.download = name;
   a.click();
 }
+function simBaixarModeloTXT(){
+  const linhas = [
+    'Língua Portuguesa',
+    '1-a',
+    '2-b',
+    '3-c',
+    '4-d',
+    '5-e',
+    '',
+    'História do RN e Aspectos Geoeconômicos do RN',
+    '16-a',
+    '17-b',
+    '18-c',
+    '19-d',
+    '20-e',
+    '',
+    'Ética no Serviço Público',
+    '21-a',
+    '22-b',
+    '23-c',
+    '24-d',
+    '25-e',
+    '',
+    'Direito Constitucional',
+    '26-a',
+    '27-b',
+    '28-c',
+    '29-d',
+    '30-e',
+    '31-a',
+    '32-b',
+    '33-c',
+    '34-d',
+    '35-e',
+    '',
+    'Direito Administrativo',
+    '36-a',
+    '37-b',
+    '38-c',
+    '39-d',
+    '40-e',
+    '41-a',
+    '42-b',
+    '43-c',
+    '44-d',
+    '45-e',
+    '',
+    'Direitos Humanos',
+    '46-a',
+    '47-b',
+    '48-c',
+    '49-d',
+    '50-e',
+    '51-a',
+    '52-b',
+    '53-c',
+    '54-d',
+    '55-e',
+    '',
+    'Execução Penal',
+    '56-a',
+    '57-b',
+    '58-c',
+    '59-d',
+    '60-e',
+    '61-a',
+    '62-b',
+    '63-c',
+    '64-d',
+    '65-e',
+    '66-a',
+    '67-b',
+    '68-c',
+    '69-d',
+    '70-e',
+    '',
+    'Legislação Específica',
+    '71-a',
+    '72-b',
+    '73-c',
+    '74-d',
+    '75-e',
+    '76-a',
+    '77-b',
+    '78-c',
+    '79-d',
+    '80-e',
+    '81-a',
+    '82-b',
+    '83-c',
+    '84-d',
+    '85-e',
+    '86-a',
+    '87-b',
+    '88-c',
+    '89-d',
+    '90-e',
+    '',
+    'Direito Penal e Processo Penal',
+    '91-a',
+    '92-b',
+    '93-c',
+    '94-d',
+    '95-e',
+    '96-a',
+    '97-b',
+    '98-c',
+    '99-d',
+    '100-e'
+  ];
+  downloadFile('modelo-simulado-gabarito.txt', linhas.join('\n'), 'text/plain');
+}
+function simBaixarModeloJSON(){
+  const modelo = {
+    titulo: 'NOME DO SIMULADO',
+    blocos: [
+      {
+        materia: 'Língua Portuguesa',
+        questoes: [
+          { n: 1, texto: 'Enunciado completo da questão 1 em uma linha.', alternativas: { A: 'Alternativa A', B: 'Alternativa B', C: 'Alternativa C', D: 'Alternativa D', E: 'Alternativa E' } },
+          { n: 2, texto: 'Enunciado completo da questão 2 em uma linha.', alternativas: { A: 'Alternativa A', B: 'Alternativa B', C: 'Alternativa C', D: 'Alternativa D', E: 'Alternativa E' } }
+        ]
+      },
+      {
+        materia: 'Execução Penal',
+        questoes: [
+          { n: 56, texto: 'Enunciado completo da questão 56 em uma linha.', alternativas: { A: 'Alternativa A', B: 'Alternativa B', C: 'Alternativa C', D: 'Alternativa D', E: 'Alternativa E' } }
+        ]
+      }
+    ]
+  };
+  downloadFile('modelo-simulado-prova.json', JSON.stringify(modelo, null, 2), 'application/json');
+}
+function wizImportAIJSON(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const parsed = parseAIResponse(e.target.result);
+      const blocks = parsed.blocks;
+      if(!blocks || !blocks.length){ alert('JSON sem blocos válidos.'); return; }
+      W.blocks = blocks.map(b=>({name:b.name, itens:b.itens}));
+      W.questoes = [];
+      blocks.forEach(b=>(b.itens||[]).forEach(it=>{ W.questoes.push({n:it.n, texto:it.texto, alts:it.alts||{}}); }));
+      const {autoMap, validation} = autoMapAndValidate(blocks);
+      W.map = autoMap;
+      W.grupos = {};
+      blocks.forEach(b=>{
+        const sid = autoMap[b.name];
+        const pat = (REGRAS.padroes[0].materias||[]).find(p=>p.id===sid);
+        if(pat && pat.grupo) W.grupos[b.name] = true;
+      });
+      let statusHtml = '✅ JSON importado: <b>'+blocks.length+' blocos · '+W.questoes.length+' questões</b><br>'+
+        blocks.map(b=>b.name+' ('+ (b.itens||[]).length+'q → '+(autoMap[b.name]||'?')+')').join(' · ');
+      if(!validation.ok){
+        statusHtml += '<br><span style="color:var(--amber)">⚠️ Padrão: '+validation.msgs.join(' · ')+'</span>';
+      } else {
+        statusHtml += '<br><span style="color:var(--green)">✅ Padrão validado</span>';
+      }
+      const vs = validateAgainstConcurso(blocks);
+      if(!vs.ok){
+        if(vs.extra.length) statusHtml += '<br><span style="color:var(--red)">❌ Matérias extras: '+vs.extra.join(', ')+'</span>';
+        if(vs.faltantes.length) statusHtml += '<br><span style="color:var(--amber)">⚠️ Faltantes: '+vs.faltantes.join(', ')+'</span>';
+      } else {
+        statusHtml += '<br><span style="color:var(--green)">✅ Prova bate com as matérias do concurso</span>';
+      }
+      wizSet(statusHtml, 'wg-prova-status');
+      renderWizMap();
+      renderWizRev();
+    }catch(err){
+      alert('Não foi possível importar o JSON: '+err.message);
+    }
+  };
+  r.readAsText(f, 'utf-8');
+  if(input) input.value = '';
+}
+function rpImportAIJSON(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const parsed = parseAIResponse(e.target.result);
+      const blocks = parsed.blocks;
+      if(!blocks || !blocks.length){ alert('JSON sem blocos válidos.'); return; }
+      W.blocks = blocks.map(b=>({name:b.name, itens:b.itens}));
+      const {autoMap, validation} = autoMapAndValidate(blocks);
+      W.map = autoMap;
+      W.grupos = {};
+      blocks.forEach(b=>{
+        const sid = autoMap[b.name];
+        const pat = (REGRAS.padroes[0].materias||[]).find(p=>p.id===sid);
+        if(pat && pat.grupo) W.grupos[b.name] = true;
+      });
+      let statusHtml = '✅ JSON importado: <b>'+blocks.length+' blocos · '+blocks.reduce((a,b)=>a+(b.itens||[]).length,0)+' questões</b><br>'+
+        blocks.map(b=>b.name+' ('+(b.itens||[]).length+'q → '+(autoMap[b.name]||'?')+')').join(' · ');
+      if(!validation.ok){
+        statusHtml += '<br><span style="color:var(--amber)">⚠️ Padrão: '+validation.msgs.join(' · ')+'</span>';
+      } else {
+        statusHtml += '<br><span style="color:var(--green)">✅ Padrão validado</span>';
+      }
+      const el = document.getElementById('rp-prova-status');
+      if(el) el.innerHTML = statusHtml;
+      renderWizMap();
+      rpRev();
+    }catch(err){
+      alert('Não foi possível importar o JSON: '+err.message);
+    }
+  };
+  r.readAsText(f, 'utf-8');
+  if(input) input.value = '';
+}
 
 function exportRelatorio(simId){
   const prova = cur().provas.find(p=>p.simuladoId===simId);
@@ -4735,9 +4950,42 @@ function renderWizard(){
       <h2>1️⃣ Suas respostas</h2>
       <p class="hint" style="margin-bottom:10px">Arquivo .txt no formato: cabeçalho da matéria + linhas <code>n-letra</code> (como o seu "simulado III.txt").</p>
       <input type="file" accept=".txt,text/plain" id="wg-gab-file" onchange="wizGabFile(this)" style="margin-bottom:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn ghost sm" onclick="simBaixarModeloTXT()">⬇️ Modelo TXT (gabarito)</button>
+        <button class="btn ghost sm" onclick="simBaixarModeloJSON()">⬇️ Modelo JSON (prova/IA)</button>
+      </div>
       <details><summary class="hint">ou colar o texto</summary>
         <textarea id="wg-gab-paste" rows="6" style="margin:6px 0" placeholder="port&#10;1-e&#10;2-c&#10;etica&#10;16-a&#10;..."></textarea>
         <button class="btn ghost sm" onclick="wizGabPaste()">Analisar texto</button>
+      </details>
+      <details style="margin-top:8px"><summary class="hint">📄 Formato que o sistema entende (TXT)</summary>
+        <pre>LÍNGUA PORTUGUESA
+1-a
+2-b
+3-c
+...
+HISTÓRIA DO RN E ASPECTOS GEOECONÔMICOS DO RN
+16-d
+17-a
+...
+ÉTICA NO SERVIÇO PÚBLICO
+21-c
+...</pre>
+        <p class="hint" style="margin-top:6px">Linha que não é <code>n-letra</code> vira cabeçalho de matéria. Use para rodar em uma IA e gerar o gabarito no formato exato.</p>
+      </details>
+      <details style="margin-top:8px"><summary class="hint">🧩 Formato JSON (IA)</summary>
+        <pre>{
+  "titulo": "NOME DO SIMULADO",
+  "blocos": [
+    {
+      "materia": "Língua Portuguesa",
+      "questoes": [
+        { "n": 1, "texto": "Enunciado completo...", "alternativas": { "A": "...", "B": "...", "C": "...", "D": "...", "E": "..." } }
+      ]
+    }
+  ]
+}</pre>
+        <p class="hint" style="margin-top:6px">Baixe o modelo JSON, rode em uma IA e importe o resultado com "Importar JSON (IA)" no passo 2.</p>
       </details>
       <div id="wg-gab-status" class="hint" style="margin-top:10px"></div>
     </div>`;
@@ -4751,6 +4999,10 @@ function renderWizard(){
         <button class="btn ghost sm" onclick="wizProvaPaste()">📋 Parse manual (sem IA)</button>
         <span id="wg-ai-status" class="hint" style="align-self:center"></span>
       </div>
+      <details style="margin-top:8px"><summary class="hint">ou importar JSON no formato da IA (rodado em outra IA)</summary>
+        <input type="file" accept=".json,application/json" id="wg-ai-json-file" onchange="wizImportAIJSON(this)" style="margin-top:8px">
+        <p class="hint" style="margin-top:6px">Use o modelo JSON baixado em "1️⃣ Suas respostas" → rode em uma IA (ex.: umamia) e importe o resultado aqui.</p>
+      </details>
       <span id="wg-prova-msg" class="hint"></span>
       <div id="wg-prova-status" class="hint" style="margin-top:10px"></div>
       <details style="margin-top:10px"><summary class="hint">Ou subir PDF (extração automática, pode sair embaralhado)</summary>
@@ -5180,9 +5432,11 @@ function renderRespWizard(){
   R.emAndamento = true;
   const el = document.getElementById('view-simulados');
   el.innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
       <button class="btn ghost sm" onclick="R.emAndamento=false;renderSimuladoView()">← Voltar</button>
       <h2 style="font-size:16px">📝 Novo simulado para responder</h2>
+      <button class="btn ghost sm" onclick="simBaixarModeloTXT()">⬇️ Modelo TXT</button>
+      <button class="btn ghost sm" onclick="simBaixarModeloJSON()">⬇️ Modelo JSON</button>
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
       <div class="card">
@@ -5198,6 +5452,10 @@ function renderRespWizard(){
         <div id="rp-prova-status" class="hint" style="margin-top:10px"></div>
         <details style="margin-top:10px"><summary class="hint">Ou subir PDF (extração automática, pode sair embaralhado)</summary>
           <input type="file" accept="application/pdf" id="rp-prova-file" onchange="rpProvaFile(this)" style="margin-top:8px">
+        </details>
+        <details style="margin-top:8px"><summary class="hint">ou importar JSON no formato da IA (rodado em outra IA)</summary>
+          <input type="file" accept=".json,application/json" id="rp-ai-json-file" onchange="rpImportAIJSON(this)" style="margin-top:8px">
+          <p class="hint" style="margin-top:6px">Use o modelo JSON baixado acima, rode em uma IA (ex.: umamia) e importe o resultado aqui.</p>
         </details>
       </div>
       <div class="card">
