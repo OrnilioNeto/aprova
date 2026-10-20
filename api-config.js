@@ -13,7 +13,7 @@
 window.API_BASE_URL = '';
 
 /* URL pública do Trilium (online). Ajuste se mudar de túnel/domínio. */
-window.TRILIUM_URL = 'https://gasoline-latin-artwork-joseph.trycloudflare.com';
+window.TRILIUM_URL = 'https://brass-helmet-collect-payday.trycloudflare.com';
 
 /* Token ETAPI do Trilium (para criar notas automaticamente). Mantenha em segredo. */
 window.TRILIUM_ETAPI_TOKEN = 'XQEKVsDFgNb1_DTQjYjhJVCA8jSdQi46dYDB96umfmlgR40b+bv/D4+c=';
