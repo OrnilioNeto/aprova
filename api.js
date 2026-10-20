@@ -361,7 +361,12 @@ async function syncNow(){
   setSyncStatus('sincronizando…');
   const ok = await pushState();
   if(ok){ setSyncStatus('✓ sincronizado'); alert('Sincronização concluída.'); }
-  else { setSyncStatus('⚠ falhou'); alert('Falha ao sincronizar. Verifique a conexão.'); }
+  else {
+    setSyncStatus('⚠ falhou');
+    let msg = 'Falha ao sincronizar.';
+    try{ msg += '\\nURL da API: ' + (apiBase()||'(vazia)'); }catch(e){}
+    alert(msg + '\\nAbra o console (F12) para ver o erro detalhado.');
+  }
 }
 
 function showLocalCaches(){
