@@ -289,14 +289,14 @@ async function pushState(){
   const atarefas = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.tarefas : null;
   if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
   console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| tarefas=', atarefas ? atarefas.length : 0);
-  // Enviar patch (apenas agenda + tarefas) em vez do state completo de 2MB
+  // Enviar patch (apenas agenda + tarefas) em campos separados
   const body = {
-    patch: {
-      concursoId: state.currentConcursoId,
-      agenda: ah || {},
-      tarefas: atarefas || []
-    }
+    data: state,
+    agenda_patch: ah || {},
+    tarefas_patch: atarefas || [],
+    concurso_id: state.currentConcursoId
   };
+  console.log('pushState: enviando agenda_patch horas=', ahoras);
   try{
     const r = await apiCall('state', { method:'PUT', body: body });
     console.log('pushState: resposta do servidor =', JSON.stringify(r));

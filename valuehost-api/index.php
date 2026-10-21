@@ -249,10 +249,10 @@ try {
                 error_log('[aprova-state] json_decode error=' . json_last_error() . ' (' . json_last_error_msg() . ')');
                 if (!is_array($in)) { error_log('[aprova-state] json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
 
-                // Modo patch: mesclar agenda/tarefas com state existente (evita enviar 2MB)
-                if (isset($in['patch']) && is_array($in['patch'])) {
-                    $patch = $in['patch'];
-                    $cid = isset($patch['concursoId']) ? $patch['concursoId'] : '';
+                // Modo patch: mesclar agenda/tarefas com state existente
+                $cid = isset($in['concurso_id']) ? $in['concurso_id'] : (isset($in['data']['currentConcursoId']) ? $in['data']['currentConcursoId'] : '');
+                $hasPatch = (isset($in['agenda_patch']) && is_array($in['agenda_patch'])) || (isset($in['tarefas_patch']) && is_array($in['tarefas_patch']));
+                if ($hasPatch) {
                     // Buscar state existente
                     $stmt = $pdo->prepare('SELECT data FROM states WHERE user_id = ? LIMIT 1');
                     $stmt->execute(array($user['id']));
@@ -262,7 +262,6 @@ try {
                         $existing = json_decode($row['data'], true);
                     }
                     if (!is_array($existing) || !isset($existing['concursos'])) {
-                        // State inicial minimo
                         $existing = array('concursos' => array(), 'currentConcursoId' => $cid);
                     }
                     // Mesclar
@@ -271,15 +270,14 @@ try {
                         foreach ($existing['concursos'] as &$c) {
                             if (isset($c['id']) && $c['id'] === $cid) {
                                 if (!isset($c['estudo']) || !is_array($c['estudo'])) $c['estudo'] = array();
-                                if (isset($patch['agenda']) && is_array($patch['agenda'])) $c['estudo']['agenda'] = $patch['agenda'];
-                                if (isset($patch['tarefas']) && is_array($patch['tarefas'])) $c['estudo']['tarefas'] = $patch['tarefas'];
+                                if (isset($in['agenda_patch']) && is_array($in['agenda_patch'])) $c['estudo']['agenda'] = $in['agenda_patch'];
+                                if (isset($in['tarefas_patch']) && is_array($in['tarefas_patch'])) $c['estudo']['tarefas'] = $in['tarefas_patch'];
                                 $found = true;
                             }
                         }
                         unset($c);
                     }
                     if (!$found && $cid !== '') {
-                        // Criar concurso minimo
                         $existing['concursos'][] = array(
                             'id' => $cid,
                             'name' => '',
@@ -292,8 +290,8 @@ try {
                             'estudo' => array(
                                 'materias' => array(),
                                 'cronometro' => null,
-                                'agenda' => isset($patch['agenda']) ? $patch['agenda'] : array(),
-                                'tarefas' => isset($patch['tarefas']) ? $patch['tarefas'] : array(),
+                                'agenda' => isset($in['agenda_patch']) ? $in['agenda_patch'] : array(),
+                                'tarefas' => isset($in['tarefas_patch']) ? $in['tarefas_patch'] : array(),
                                 'calendario' => array(),
                                 'plano' => null
                             )
@@ -301,7 +299,13 @@ try {
                         $existing['currentConcursoId'] = $cid;
                     }
                     $in['data'] = $existing;
-                    error_log('[aprova-state] PATCH aplicado: concurso=' . $cid . ' agenda_horas=' . (isset($patch['agenda']) && is_array($patch['agenda']) ? array_sum(array_map('count', $patch['agenda'])) : 0));
+                    $ah = isset($in['agenda_patch']) && is_array($in['agenda_patch']) ? array_sum(array_map('count', $in['agenda_patch'])) : 0;
+                    error_log('[aprova-state] PATCH aplicado: concurso=' . $cid . ' agenda_horas=' . $ah . ' tarefas=' . (isset($in['tarefas_patch']) ? count($in['tarefas_patch']) : 0));
+                } elseif (isset($in['data']) && is_array($in['data'])) {
+                    // Envio completo (fallback)
+                    error_log('[aprova-state] FULL state recebido: bytes=' . strlen($raw));
+                } else {
+                    fail('Dados inválidos.');
                 }
 
                 if (!isset($in['data']) || !is_array($in['data'])) fail('Dados inválidos.');
@@ -335,7 +339,15 @@ try {
                     'INSERT INTO states (user_id, data, updated_at) VALUES (?, ?, ?)
                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)'
                 )->execute(array($user['id'], $json, $now));
-                json_out(array('ok' => true, 'updated_at' => $now, 'agenda_horas_recebidas' => $agendaHoras));
+                $ah = 0;
+                if (isset($in['data']['concursos']) && is_array($in['data']['concursos'])) {
+                    foreach ($in['data']['concursos'] as $c) {
+                        if (isset($c['id']) && $c['id'] === $cid && isset($c['estudo']['agenda']) && is_array($c['estudo']['agenda'])) {
+                            foreach ($c['estudo']['agenda'] as $d => $hrs) { if (is_array($hrs)) $ah += count($hrs); }
+                        }
+                    }
+                }
+                json_out(array('ok' => true, 'updated_at' => $now, 'agenda_horas_recebidas' => $ah));
             }
             fail('Método inválido.', 405);
         }
