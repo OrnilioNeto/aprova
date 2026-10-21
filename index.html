@@ -557,6 +557,7 @@ function defaultEstudo(){
 }
 
 let estTab = 'painel';
+let estRotinaOpen = true;
 let estMatSel = null;
 let estTimerId = null;
 let estTickLast = 0;
@@ -1865,7 +1866,7 @@ function estRenderCronograma(){
 
   return `
     ${estRenderCalendarioDinamico()}
-    <details class="card" style="margin-bottom:16px" open>
+    <details class="card" style="margin-bottom:16px" ${estRotinaOpen?'open':''} onToggle="estRotinaOpen=this.open">
       <summary><h2 style="display:inline">⏰ Rotina Semanal (modelo) <small>— acordar, trabalho, estudo…</small></h2></summary>
       <div style="margin-top:12px">
         <p class="hint" style="margin-bottom:10px">Este é o <b>modelo</b> da sua semana. Para usar no calendário acima, clique no botão <b>↻</b> de um dia (aplica a rotina daquele dia da semana) ou aplique a semana inteira abaixo.</p>
