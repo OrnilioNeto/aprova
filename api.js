@@ -290,6 +290,13 @@ async function pushState(){
   try{
     const r = await apiCall('state', { method:'PUT', body:{ data: state } });
     console.log('pushState: resposta do servidor =', JSON.stringify(r));
+    // Verificar o que o servidor realmente salvou
+    try{
+      const check = await apiCall('state', { method:'GET' });
+      const srvAgenda = (check && check.data && check.data.concursos) ? (check.data.concursos.find(c=>c.id===check.data.currentConcursoId)||{}).estudo?.agenda : null;
+      const srvHoras = srvAgenda ? Object.values(srvAgenda).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
+      console.log('pushState: VERIFICACAO servidor agenda horas =', srvHoras, '| updated_at =', check && check.updated_at);
+    }catch(e){ console.error('pushState: erro na verificacao:', e); }
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
