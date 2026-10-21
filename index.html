@@ -1820,7 +1820,7 @@ function estRenderCronograma(){
   const body = horas.map(h=>{
     const tds = EST_DIAS.map(d=>{
       const v = (estudo().agenda[d]||{})[h] || '';
-      return '<div class="ag-cell '+(d===hojeDia?'ag-hoje':'')+'"><input type="text" value="'+esc(v)+'" placeholder="—" onchange="estAgendaSet(\''+d+'\',\''+h+'\',this.value)"></div>';
+      return '<div class="ag-cell '+(d===hojeDia?'ag-hoje':'')+'"><input type="text" value="'+esc(v)+'" placeholder="—" oninput="estAgendaSet(\''+d+'\',\''+h+'\',this.value)" onchange="estAgendaSet(\''+d+'\',\''+h+'\',this.value)"></div>';
     }).join('');
     return '<div class="ag-time">'+h+'</div>'+tds;
   }).join('');
