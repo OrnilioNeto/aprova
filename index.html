@@ -890,6 +890,31 @@ function estSetObs(mid, val){
 const EST_DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
 const EST_DIAS_LONG = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const EST_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function estAgendaColetarDoDOM(){
+  // Le todos os inputs da tabela de rotina e atualiza estudo().agenda
+  if(!estudo().agenda || typeof estudo().agenda !== 'object') estudo().agenda = { DOM:{}, SEG:{}, TER:{}, QUA:{}, QUI:{}, SEX:{}, SAB:{} };
+  // Limpa a agenda atual
+  EST_DIAS.forEach(d=>{ estudo().agenda[d] = {}; });
+  document.querySelectorAll('.agenda-grid .ag-cell input').forEach(inp=>{
+    const val = String(inp.value||'').trim();
+    if(!val) return;
+    // Encontrar o dia (coluna) e hora (linha)
+    const cell = inp.parentElement;
+    const row = cell.parentElement;
+    // A hora esta no .ag-time da linha
+    const timeEl = row.querySelector('.ag-time');
+    const hora = timeEl ? timeEl.textContent.trim() : '';
+    // O dia e determinado pela posicao da celula na linha
+    const cells = Array.from(row.querySelectorAll('.ag-cell'));
+    const idx = cells.indexOf(cell);
+    const dia = EST_DIAS[idx]; // idx 0 = DOM, 1 = SEG, etc. (mas a linha comeca com .ag-time, entao idx 0 = DOM)
+    if(!dia || !hora) return;
+    if(!estudo().agenda[dia]) estudo().agenda[dia] = {};
+    estudo().agenda[dia][hora] = val;
+  });
+  console.log('estAgendaColetarDoDOM: agenda horas=', Object.values(estudo().agenda).reduce((a,d)=>a+Object.keys(d||{}).length,0));
+}
+
 function estAgendaSet(dia, hora, val){
   try{
     if(!estudo().agenda || typeof estudo().agenda !== 'object') estudo().agenda = { DOM:{}, SEG:{}, TER:{}, QUA:{}, QUI:{}, SEX:{}, SAB:{} };
@@ -903,12 +928,7 @@ function estAgendaSet(dia, hora, val){
   }catch(e){ console.error('estAgendaSet erro:', e); }
 }
 function estAgendaSalvarTudo(){
-  // Forca save de todos os inputs da tabela de rotina
-  document.querySelectorAll('.ag-cell input').forEach(inp=>{
-    const cell = inp.parentElement;
-    // re-disparar onchange
-    if(inp.onchange) inp.onchange();
-  });
+  estAgendaColetarDoDOM();
   save();
   try{ if(typeof pushState==='function') pushState(); }catch(e){}
   alert('Rotina salva. Horas na agenda: ' + Object.values(estudo().agenda||{}).reduce((a,d)=>a+Object.keys(d||{}).length,0));
