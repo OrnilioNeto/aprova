@@ -285,7 +285,7 @@ async function fetchServerState(){
 async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
   try{
-    await apiCall('state', { method:'PUT', body:{ data: state }, keepalive: true });
+    await apiCall('state', { method:'PUT', body:{ data: state } });
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
@@ -354,6 +354,21 @@ async function loadCloudState(){
   state = defaultState();
   await pushState();
   try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
+}
+
+async function testConnection(){
+  const url = apiUrl('me');
+  let msg = 'URL: ' + url + '\\n';
+  try{
+    const r = await fetch(url, { method:'GET' });
+    msg += 'Status: ' + r.status + '\\n';
+    const txt = await r.text();
+    msg += 'Resposta: ' + txt.slice(0, 200);
+  }catch(e){
+    msg += 'ERRO: ' + (e && e.message ? e.message : e);
+  }
+  alert(msg);
+  console.log(msg);
 }
 
 async function syncNow(){
