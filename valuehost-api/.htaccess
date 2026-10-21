@@ -1,17 +1,3 @@
-# Aumenta limites para estados grandes
-<IfModule mod_php.c>
-  php_value memory_limit 256M
-  php_value post_max_size 10M
-  php_value max_execution_time 60
-  php_value max_input_time 60
-</IfModule>
-<IfModule mod_php7.c>
-  php_value memory_limit 256M
-  php_value post_max_size 10M
-  php_value max_execution_time 60
-  php_value max_input_time 60
-</IfModule>
-
 # Protege arquivos sensíveis se a pasta for acessada diretamente
 <Files "config.php">
   <IfModule mod_authz_core.c>
