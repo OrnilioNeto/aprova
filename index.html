@@ -591,6 +591,15 @@ function estConteudos(m){
 function estNormalizarEstrutura(c){
   if(!c || !c.estudo || !Array.isArray(c.estudo.materias)) return false;
   let mudou = false;
+  if(!c.estudo.agenda || typeof c.estudo.agenda !== 'object'){
+    c.estudo.agenda = { DOM:{}, SEG:{}, TER:{}, QUA:{}, QUI:{}, SEX:{}, SAB:{} };
+    mudou = true;
+  } else {
+    EST_DIAS.forEach(d=>{
+      if(!c.estudo.agenda[d] || typeof c.estudo.agenda[d] !== 'object'){ c.estudo.agenda[d] = {}; mudou = true; }
+    });
+  }
+  if(!Array.isArray(c.estudo.tarefas)){ c.estudo.tarefas = []; mudou = true; }
   c.estudo.materias.forEach(m=>{
     if(!Array.isArray(m.topicos)){ m.topicos = []; mudou = true; }
     m.topicos.forEach(t=>{
@@ -932,7 +941,7 @@ function estCalFormDia(dataISO){
   const el = document.getElementById('tf-titulo');
   if(el) el.focus();
 }
-function estAplicarRotina(dataISO, dia){
+async function estAplicarRotina(dataISO, dia){
   const tpl = estudo().agenda[dia] || {};
   const horas = Object.keys(tpl).sort();
   if(!horas.length){
@@ -946,8 +955,11 @@ function estAplicarRotina(dataISO, dia){
     const existe = estudo().tarefas.find(t=>t.data===dataISO && t.titulo===tit && t.hora===h);
     if(!existe){ estudo().tarefas.push({ id: uid(), data: dataISO, hora: h, titulo: tit, materiaId: '', feita: false }); added++; }
   });
-  save(); renderEstudos();
+  save();
+  try{ if(typeof pushState==='function') await pushState(); }catch(e){}
+  renderEstudos();
   if(added) alert(added+' tarefa(s) da rotina aplicada(s) em '+fmtDate(dataISO)+'.');
+  else alert('A rotina deste dia já estava aplicada.');
 }
 function estAplicarRotinaSemana(){
   const ws = estCalWeekStart(new Date());
