@@ -248,6 +248,19 @@ try {
                 $in = json_decode($raw, true);
                 error_log('[aprova-state] json_decode error=' . json_last_error() . ' (' . json_last_error_msg() . ')');
                 if (!is_array($in)) { error_log('[aprova-state] json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
+                // Descomprimir se enviado comprimido (gzip base64)
+                if (!empty($in['compressed']) && !empty($in['gz'])) {
+                    $gz = base64_decode($in['gz']);
+                    $decoded = function_exists('gzdecode') ? gzdecode($gz) : false;
+                    if ($decoded === false) { $decoded = @gzinflate(substr($gz, 10, -8)); }
+                    if ($decoded !== false && $decoded !== null) {
+                        $decompressed = json_decode($decoded, true);
+                        if (is_array($decompressed)) { $in['data'] = $decompressed; error_log('[aprova-state] descomprimido OK, bytes=' . strlen($decoded)); }
+                        else { error_log('[aprova-state] descomprimido mas json_decode falhou'); }
+                    } else {
+                        error_log('[aprova-state] gzdecode falhou');
+                    }
+                }
                 if (!isset($in['data']) || !is_array($in['data'])) fail('Dados inválidos.');
                 // Diagnostico: contar concursos e agenda
                 $nConc = isset($in['data']['concursos']) && is_array($in['data']['concursos']) ? count($in['data']['concursos']) : -1;

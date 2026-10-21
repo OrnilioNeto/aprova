@@ -287,9 +287,24 @@ async function pushState(){
   const ah = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.agenda : null;
   const ahoras = ah ? Object.values(ah).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
   if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
-  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| state bytes=', JSON.stringify(state).length);
+  const json = JSON.stringify(state);
+  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| state bytes=', json.length);
+  // Comprimir com gzip se disponivel
+  let body = { data: state };
   try{
-    const r = await apiCall('state', { method:'PUT', body:{ data: state } });
+    if(typeof CompressionStream !== 'undefined'){
+      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+      const compressed = await new Response(stream).arrayBuffer();
+      const bytes = new Uint8Array(compressed);
+      let binary = '';
+      for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+      body = { data: state, compressed: true, gz: base64 };
+      console.log('pushState: comprimido de', json.length, 'para', base64.length, 'chars base64');
+    }
+  }catch(e){ console.warn('pushState: compressao falhou, enviando normal:', e); }
+  try{
+    const r = await apiCall('state', { method:'PUT', body: body });
     console.log('pushState: resposta do servidor =', JSON.stringify(r), '| agenda_horas_recebidas =', r && r.agenda_horas_recebidas);
     // Verificar o que o servidor realmente salvou
     try{
