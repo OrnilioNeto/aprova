@@ -284,8 +284,12 @@ async function fetchServerState(){
 
 async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
+  const ah = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.agenda : null;
+  const ahoras = ah ? Object.values(ah).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
+  console.log('pushState: agenda horas antes do push =', ahoras, '| state bytes =', JSON.stringify(state).length);
   try{
-    await apiCall('state', { method:'PUT', body:{ data: state } });
+    const r = await apiCall('state', { method:'PUT', body:{ data: state } });
+    console.log('pushState: resposta do servidor =', JSON.stringify(r));
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
