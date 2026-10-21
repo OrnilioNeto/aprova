@@ -588,5 +588,5 @@ async function initAuth(){
 // Auto-sync periódico: tenta enviar alterações pendentes a cada 30s
 try{
   setInterval(()=>{ if(currentUser && syncDirty) { syncDirty = false; pushState(); } }, 30000);
-  window.addEventListener('focus', ()=>{ if(currentUser && !syncDirty){ loadCloudState(); } });
+  // Auto-reload on focus desativado para evitar sobrescrever alteracoes locais nao sincronizadas.
 }catch(e){}
