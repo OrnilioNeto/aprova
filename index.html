@@ -895,6 +895,7 @@ function estAgendaSet(dia, hora, val){
   if(val.trim()) a[hora] = val.trim();
   else delete a[hora];
   save();
+  try{ if(typeof pushState==='function') pushState(); }catch(e){}
 }
 function estAgendaHoras(){
   const set = new Set();
@@ -961,7 +962,7 @@ async function estAplicarRotina(dataISO, dia){
   if(added) alert(added+' tarefa(s) da rotina aplicada(s) em '+fmtDate(dataISO)+'.');
   else alert('A rotina deste dia já estava aplicada.');
 }
-function estAplicarRotinaSemana(){
+async function estAplicarRotinaSemana(){
   const ws = estCalWeekStart(new Date());
   let added = 0;
   for(let i=0;i<7;i++){
@@ -976,7 +977,9 @@ function estAplicarRotinaSemana(){
       if(!existe){ estudo().tarefas.push({ id: uid(), data: iso, hora: h, titulo: tit, materiaId: '', feita: false }); added++; }
     });
   }
-  save(); renderEstudos();
+  save();
+  try{ if(typeof pushState==='function') await pushState(); }catch(e){}
+  renderEstudos();
   if(added) alert(added+' tarefa(s) da rotina aplicada(s) à semana atual.');
   else alert('A semana atual já está com a rotina aplicada (ou o modelo está vazio).');
 }
