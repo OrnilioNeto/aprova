@@ -332,8 +332,11 @@ async function loadCloudState(){
     }
   }catch(e){}
   const serverTs = serverUpdated ? new Date(serverUpdated).getTime() : 0;
-
+  console.log('loadCloudState: serverTs=', serverTs, 'cachedUpdated=', cachedUpdated, 'serverConcursos=', serverData && serverData.concursos ? serverData.concursos.length : null, 'cachedConcursos=', cached ? cached.concursos.length : null);
   if(serverData && serverData.concursos){
+    const serverAgenda = (serverData.concursos.find(c=>c.id===serverData.currentConcursoId)||{}).estudo?.agenda;
+    const cachedAgenda = (cached && cached.concursos.find(c=>c.id===cached.currentConcursoId)||{}).estudo?.agenda;
+    console.log('loadCloudState: serverAgendaHoras=', serverAgenda ? Object.values(serverAgenda).reduce((a,d)=>a+Object.keys(d||{}).length,0) : null, 'cachedAgendaHoras=', cachedAgenda ? Object.values(cachedAgenda).reduce((a,d)=>a+Object.keys(d||{}).length,0) : null);
     if(cached && cachedUpdated > serverTs + 1000){
       // cache local mais recente: prevalece e reenvia ao servidor
       state = normalizeState(cached);
