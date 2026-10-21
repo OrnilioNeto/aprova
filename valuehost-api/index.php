@@ -243,11 +243,26 @@ try {
                 json_out(array('ok' => true, 'data' => $decoded, 'updated_at' => $row['updated_at']));
             }
             if ($method === 'PUT') {
-                $in = json_input();
+                $raw = file_get_contents('php://input');
+                error_log('[aprova-state] raw_bytes=' . strlen($raw));
+                $in = json_decode($raw, true);
+                error_log('[aprova-state] json_decode error=' . json_last_error() . ' (' . json_last_error_msg() . ')');
+                if (!is_array($in)) { error_log('[aprova-state] json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
                 if (!isset($in['data']) || !is_array($in['data'])) fail('Dados inválidos.');
+                // Diagnostico: contar concursos e agenda
+                $nConc = isset($in['data']['concursos']) && is_array($in['data']['concursos']) ? count($in['data']['concursos']) : -1;
+                error_log('[aprova-state] concursos=' . $nConc . ' currentConcursoId=' . (isset($in['data']['currentConcursoId']) ? $in['data']['currentConcursoId'] : 'null'));
+                if (isset($in['data']['concursos']) && is_array($in['data']['concursos'])) {
+                    foreach ($in['data']['concursos'] as $ci => $c) {
+                        $cid = isset($c['id']) ? $c['id'] : '?';
+                        $hasEstudo = isset($c['estudo']) ? 'sim' : 'nao';
+                        $hasAgenda = isset($c['estudo']['agenda']) ? 'sim' : 'nao';
+                        $agendaKeys = $hasAgenda === 'sim' ? implode(',', array_keys($c['estudo']['agenda'])) : '';
+                        error_log('[aprova-state] concurso[' . $ci . '] id=' . $cid . ' estudo=' . $hasEstudo . ' agenda=' . $hasAgenda . ' keys=' . $agendaKeys);
+                    }
+                }
                 $json = json_encode($in['data'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 if ($json === false) { error_log('[aprova-state] json_encode falhou: ' . json_last_error_msg()); fail('Dados inválidos (JSON).'); }
-                // Diagnostico: contar agenda horas recebidas
                 $agendaHoras = 0;
                 if (isset($in['data']['concursos']) && is_array($in['data']['concursos'])) {
                     foreach ($in['data']['concursos'] as $c) {
@@ -258,7 +273,7 @@ try {
                         }
                     }
                 }
-                error_log('[aprova-state] PUT user=' . $user['id'] . ' json_bytes=' . strlen($json) . ' agenda_horas=' . $agendaHoras);
+                error_log('[aprova-state] PUT user=' . $user['id'] . ' raw_bytes=' . strlen($raw) . ' json_bytes=' . strlen($json) . ' agenda_horas=' . $agendaHoras);
                 $now = now_utc();
                 $pdo->prepare(
                     'INSERT INTO states (user_id, data, updated_at) VALUES (?, ?, ?)
