@@ -360,7 +360,7 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 .cald-form input[type=text]{flex:1;min-width:180px}
 .cald-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .cald-head{background:var(--card);font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding:8px 4px;text-transform:uppercase;letter-spacing:.4px}
-.cald-cell{background:var(--card2);padding:6px;min-height:112px;display:flex;flex-direction:column;gap:4px}
+.cald-cell{background:var(--card2);padding:6px;min-height:140px;display:flex;flex-direction:column;gap:4px}
 .cald-cell.cald-out{background:rgba(15,22,38,.4);opacity:.5}
 .cald-cell.cald-hoje{outline:2px solid var(--accent);outline-offset:-2px;background:rgba(139,92,246,.06)}
 .cald-top{display:flex;align-items:center;gap:4px;margin-bottom:2px}
@@ -368,7 +368,7 @@ mark.hl.hl-pink{background:rgba(244,114,182,.3)}
 .cald-cell.cald-hoje .cald-num{color:var(--accent2)}
 .cald-top button{flex:none;width:20px;height:20px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
 .cald-top button:hover{border-color:var(--accent);color:var(--text)}
-.cald-tasks{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:190px}
+.cald-tasks{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:260px}
 .cald-task{display:flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:3px 5px;font-size:11px}
 .cald-task.feita{opacity:.5}
 .cald-task.feita .cald-tit{text-decoration:line-through}
@@ -1965,7 +1965,57 @@ ${mat?'<button class="btn ghost sm" style="padding:2px 6px;font-size:10px" oncli
         <span><span class="dot" style="background:var(--accent)"></span> hoje</span>
         <span><b>+</b> adicionar tarefa · <b>↻</b> aplicar rotina do dia · ✓ concluir · ✕ excluir</span>
       </div>
+      ${estRenderTarefasMesLista(prefix)}
     </div>`;
+}
+
+function estAgruparTarefasMes(prefix){
+  const tarefas = estudo().tarefas.filter(t=>t.data.startsWith(prefix))
+    .sort((a,b)=> String(a.data).localeCompare(String(b.data)) || String(a.hora||'99:99').localeCompare(String(b.hora||'99:99')));
+  const grupos = [];
+  tarefas.forEach(t=>{
+    const key = (t.titulo||'').trim().toLowerCase() + '|' + (t.hora||'') + '|' + (t.materiaId||'');
+    const last = grupos[grupos.length-1];
+    const prevDate = last ? last.datas[last.datas.length-1] : null;
+    const isConsec = prevDate && last.key === key && estDiaSeguinte(prevDate, t.data);
+    if(isConsec){
+      last.datas.push(t.data);
+      last.ids.push(t.id);
+      if(t.feita) last.feitas++;
+      else last.pendentes++;
+    } else {
+      grupos.push({ key, titulo: t.titulo, hora: t.hora, materiaId: t.materiaId, datas: [t.data], ids: [t.id], feitas: t.feita?1:0, pendentes: t.feita?0:1 });
+    }
+  });
+  return grupos;
+}
+function estDiaSeguinte(a, b){
+  try{
+    const da = new Date(a+'T00:00:00'), db = new Date(b+'T00:00:00');
+    const diff = (db - da) / 86400000;
+    return diff === 1;
+  }catch(e){ return false; }
+}
+function estRenderTarefasMesLista(prefix){
+  const grupos = estAgruparTarefasMes(prefix);
+  if(!grupos.length) return '';
+  const rows = grupos.map(g=>{
+    const mat = estMateria(g.materiaId);
+    const range = g.datas.length > 1
+      ? fmtDate(g.datas[0]) + ' → ' + fmtDate(g.datas[g.datas.length-1]) + ' (' + g.datas.length + ' dias)'
+      : fmtDate(g.datas[0]);
+    const status = g.pendentes === 0 ? '✓ todas concluídas' : (g.feitas + '/' + (g.feitas+g.pendentes) + ' concluídas');
+    const cls = g.pendentes === 0 ? 'b-green' : (g.feitas > 0 ? 'b-amber' : 'b-blue');
+    return '<div class="cald-task" style="margin-bottom:6px;padding:6px 8px">'+
+      (g.hora? '<input type="time" value="'+esc(g.hora)+'" disabled style="opacity:.7">' : '')+
+      '<span style="flex:1;font-weight:600">'+esc(g.titulo)+'</span>'+
+      (mat? '<span class="cald-mat" title="'+esc(mat.name)+'">'+esc(mat.name)+'</span>' : '')+
+      '<span class="badge '+cls+'" style="font-size:10px">'+status+'</span>'+
+      '<span class="muted" style="font-size:10px;white-space:nowrap">'+range+'</span>'+
+      '<button class="btn ghost sm" style="padding:2px 6px;font-size:10px" onclick="estCalFormDia(\''+g.datas[0]+'\')" title="Ver no calendário">📅</button>'+
+    '</div>';
+  }).join('');
+  return '<div class="card" style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:8px">📋 Tarefas do mês (agrupadas)</h3><div style="display:flex;flex-direction:column;gap:4px">'+rows+'</div></div>';
 }
 
 function estSelMat(id){ estMatSel = id; renderEstudos(); }
