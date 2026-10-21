@@ -370,6 +370,19 @@ async function loadCloudState(){
   try{ localStorage.setItem(ck, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
 }
 
+async function testPushMinimo(){
+  const miniState = { concursos: [{ id: state.currentConcursoId, name: 'teste', subjects: [], targets: {}, simulados: [], provas: [], corte: 0, dataProva: '', estudo: { materias: [], cronometro: null, agenda: { DOM:{}, SEG:{'08:00':'Teste'}, TER:{}, QUA:{}, QUI:{}, SEX:{}, SAB:{} }, tarefas: [], calendario: [], plano: null } }], currentConcursoId: state.currentConcursoId };
+  try{
+    const r = await apiCall('state', { method:'PUT', body:{ data: miniState } });
+    console.log('testPushMinimo: resposta =', JSON.stringify(r));
+    const check = await apiCall('state', { method:'GET' });
+    const srvAgenda = (check && check.data && check.data.concursos) ? (check.data.concursos.find(c=>c.id===check.data.currentConcursoId)||{}).estudo?.agenda : null;
+    const srvHoras = srvAgenda ? Object.values(srvAgenda).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
+    alert('Push mínimo: servidor agenda horas = ' + srvHoras);
+    console.log('testPushMinimo: servidor agenda horas =', srvHoras);
+  }catch(e){ console.error('testPushMinimo erro:', e); alert('Erro: ' + e.message); }
+}
+
 async function testConnection(){
   const url = apiUrl('me');
   let msg = 'URL: ' + url + '\\n';
