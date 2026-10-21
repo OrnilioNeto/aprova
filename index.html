@@ -1905,6 +1905,7 @@ function estRenderCronograma(){
         <button class="btn ghost sm" onclick="estCalNav(0)">Hoje</button>
         <div class="cald-title">${EST_MESES[mes]} ${ano}</div>
         <span class="badge b-blue">${calTot.tot} planejados</span>
+<span class="badge b-amber">${Object.values(estudo().agenda||{}).reduce((a,d)=>a+Object.keys(d||{}).length,0)} horas na rotina</span>
         <span class="badge b-green">${calTot.feito} realizados</span>
         <span class="badge b-amber">${calTot.pend} pendentes</span>
         <span class="badge ${calTot.pct>=70?'b-green':(calTot.pct>=40?'b-amber':'b-red')}">${calTot.tot?fmtPct(calTot.pct):'—'} realizado</span>
@@ -2456,7 +2457,7 @@ function save(){
     const key = currentUser ? (LS_KEY+':'+currentUser.id) : (LS_KEY+':guest');
     try{ localStorage.setItem(key, JSON.stringify({ data: state, updated_at: Date.now() })); }catch(e){}
     if(currentUser) queueSync();
-    console.log('SAVE OK ('+json.length+' bytes)');
+    console.log('SAVE OK ('+json.length+' bytes) | agenda horas:', Object.values((state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.agenda||{}).reduce((a,d)=>a+Object.keys(d||{}).length,0));
   }catch(e){
     console.error('ERRO AO SALVAR:', e.message);
     alert('Erro ao salvar dados: '+e.message+'. Pode ser espaço insuficiente no navegador.');
