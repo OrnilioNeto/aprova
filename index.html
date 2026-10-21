@@ -896,7 +896,8 @@ function estAgendaSet(dia, hora, val){
     const a = estudo().agenda[dia] || (estudo().agenda[dia] = {});
     if(String(val||'').trim()) a[hora] = String(val).trim();
     else delete a[hora];
-    console.log('estAgendaSet', dia, hora, JSON.stringify(val), '-> agenda horas:', Object.values(estudo().agenda).reduce((x,d)=>x+Object.keys(d||{}).length,0));
+    if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
+    console.log('estAgendaSet', dia, hora, JSON.stringify(val), '-> dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas:', Object.values(estudo().agenda).reduce((x,d)=>x+Object.keys(d||{}).length,0));
     save();
     try{ if(typeof pushState==='function') pushState(); }catch(e){}
   }catch(e){ console.error('estAgendaSet erro:', e); }
