@@ -251,7 +251,6 @@ try {
                 $agendaHoras = 0;
                 if (isset($in['data']['concursos']) && is_array($in['data']['concursos'])) {
                     foreach ($in['data']['concursos'] as $c) {
-                        if (isset($c['id']) && $c['id'] === $user['id'] === false) {}
                         if (isset($c['estudo']['agenda']) && is_array($c['estudo']['agenda'])) {
                             foreach ($c['estudo']['agenda'] as $d => $hrs) {
                                 if (is_array($hrs)) $agendaHoras += count($hrs);
