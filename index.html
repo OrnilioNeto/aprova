@@ -902,6 +902,17 @@ function estAgendaSet(dia, hora, val){
     try{ if(typeof pushState==='function') pushState(); }catch(e){}
   }catch(e){ console.error('estAgendaSet erro:', e); }
 }
+function estAgendaSalvarTudo(){
+  // Forca save de todos os inputs da tabela de rotina
+  document.querySelectorAll('.ag-cell input').forEach(inp=>{
+    const cell = inp.parentElement;
+    // re-disparar onchange
+    if(inp.onchange) inp.onchange();
+  });
+  save();
+  try{ if(typeof pushState==='function') pushState(); }catch(e){}
+  alert('Rotina salva. Horas na agenda: ' + Object.values(estudo().agenda||{}).reduce((a,d)=>a+Object.keys(d||{}).length,0));
+}
 function estAgendaHoras(){
   const set = new Set();
   Object.keys(estudo().agenda).forEach(d=>Object.keys(estudo().agenda[d]||{}).forEach(h=>set.add(h)));
@@ -1316,6 +1327,7 @@ function estGo(tab){ estTab = tab; renderEstudos(); }
 function renderEstudos(){
   const el = document.getElementById('view-estudos');
   if(!el) return;
+  console.log('renderEstudos: estTab=', estTab, '| agenda horas=', Object.values(estudo().agenda||{}).reduce((a,d)=>a+Object.keys(d||{}).length,0));
   const t = estTotals();
   const c = estCalTotals();
   let html = estSubnav();
@@ -1901,6 +1913,7 @@ function estRenderCronograma(){
           <span>Digite a atividade em cada horário × dia da semana.</span>
         </div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" onclick="estAgendaSalvarTudo()">💾 Salvar rotina</button>
           <button class="btn ghost sm" onclick="estAplicarRotinaSemana()">📋 Aplicar rotina na semana atual</button>
         </div>
       </div>
