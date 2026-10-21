@@ -286,32 +286,27 @@ async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
   const ah = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.agenda : null;
   const ahoras = ah ? Object.values(ah).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
+  const atarefas = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.tarefas : null;
   if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
-  const json = JSON.stringify(state);
-  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| state bytes=', json.length);
-  // Comprimir com gzip se disponivel
-  let body = { data: state };
-  try{
-    if(typeof CompressionStream !== 'undefined'){
-      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
-      const compressed = await new Response(stream).arrayBuffer();
-      const bytes = new Uint8Array(compressed);
-      let binary = '';
-      for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
-      body = { data: state, compressed: true, gz: base64 };
-      console.log('pushState: comprimido de', json.length, 'para', base64.length, 'chars base64');
+  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| tarefas=', atarefas ? atarefas.length : 0);
+  // Enviar patch (apenas agenda + tarefas) em vez do state completo de 2MB
+  const body = {
+    patch: {
+      concursoId: state.currentConcursoId,
+      agenda: ah || {},
+      tarefas: atarefas || []
     }
-  }catch(e){ console.warn('pushState: compressao falhou, enviando normal:', e); }
+  };
   try{
     const r = await apiCall('state', { method:'PUT', body: body });
-    console.log('pushState: resposta do servidor =', JSON.stringify(r), '| agenda_horas_recebidas =', r && r.agenda_horas_recebidas);
+    console.log('pushState: resposta do servidor =', JSON.stringify(r));
     // Verificar o que o servidor realmente salvou
     try{
       const check = await apiCall('state', { method:'GET' });
       const srvAgenda = (check && check.data && check.data.concursos) ? (check.data.concursos.find(c=>c.id===check.data.currentConcursoId)||{}).estudo?.agenda : null;
       const srvHoras = srvAgenda ? Object.values(srvAgenda).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
-      console.log('pushState: VERIFICACAO servidor agenda horas =', srvHoras, '| updated_at =', check && check.updated_at);
+      const srvTarefas = (check && check.data && check.data.concursos) ? (check.data.concursos.find(c=>c.id===check.data.currentConcursoId)||{}).estudo?.tarefas : null;
+      console.log('pushState: VERIFICACAO servidor agenda horas =', srvHoras, '| tarefas =', srvTarefas ? srvTarefas.length : 0, '| updated_at =', check && check.updated_at);
     }catch(e){ console.error('pushState: erro na verificacao:', e); }
     setSyncStatus('✓ salvo na nuvem');
     return true;

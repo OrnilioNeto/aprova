@@ -248,19 +248,62 @@ try {
                 $in = json_decode($raw, true);
                 error_log('[aprova-state] json_decode error=' . json_last_error() . ' (' . json_last_error_msg() . ')');
                 if (!is_array($in)) { error_log('[aprova-state] json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
-                // Descomprimir se enviado comprimido (gzip base64)
-                if (!empty($in['compressed']) && !empty($in['gz'])) {
-                    $gz = base64_decode($in['gz']);
-                    $decoded = function_exists('gzdecode') ? gzdecode($gz) : false;
-                    if ($decoded === false) { $decoded = @gzinflate(substr($gz, 10, -8)); }
-                    if ($decoded !== false && $decoded !== null) {
-                        $decompressed = json_decode($decoded, true);
-                        if (is_array($decompressed)) { $in['data'] = $decompressed; error_log('[aprova-state] descomprimido OK, bytes=' . strlen($decoded)); }
-                        else { error_log('[aprova-state] descomprimido mas json_decode falhou'); }
-                    } else {
-                        error_log('[aprova-state] gzdecode falhou');
+
+                // Modo patch: mesclar agenda/tarefas com state existente (evita enviar 2MB)
+                if (isset($in['patch']) && is_array($in['patch'])) {
+                    $patch = $in['patch'];
+                    $cid = isset($patch['concursoId']) ? $patch['concursoId'] : '';
+                    // Buscar state existente
+                    $stmt = $pdo->prepare('SELECT data FROM states WHERE user_id = ? LIMIT 1');
+                    $stmt->execute(array($user['id']));
+                    $row = $stmt->fetch();
+                    $existing = null;
+                    if ($row && isset($row['data'])) {
+                        $existing = json_decode($row['data'], true);
                     }
+                    if (!is_array($existing) || !isset($existing['concursos'])) {
+                        // State inicial minimo
+                        $existing = array('concursos' => array(), 'currentConcursoId' => $cid);
+                    }
+                    // Mesclar
+                    $found = false;
+                    if (isset($existing['concursos']) && is_array($existing['concursos'])) {
+                        foreach ($existing['concursos'] as &$c) {
+                            if (isset($c['id']) && $c['id'] === $cid) {
+                                if (!isset($c['estudo']) || !is_array($c['estudo'])) $c['estudo'] = array();
+                                if (isset($patch['agenda']) && is_array($patch['agenda'])) $c['estudo']['agenda'] = $patch['agenda'];
+                                if (isset($patch['tarefas']) && is_array($patch['tarefas'])) $c['estudo']['tarefas'] = $patch['tarefas'];
+                                $found = true;
+                            }
+                        }
+                        unset($c);
+                    }
+                    if (!$found && $cid !== '') {
+                        // Criar concurso minimo
+                        $existing['concursos'][] = array(
+                            'id' => $cid,
+                            'name' => '',
+                            'subjects' => array(),
+                            'targets' => array(),
+                            'simulados' => array(),
+                            'provas' => array(),
+                            'corte' => 0,
+                            'dataProva' => '',
+                            'estudo' => array(
+                                'materias' => array(),
+                                'cronometro' => null,
+                                'agenda' => isset($patch['agenda']) ? $patch['agenda'] : array(),
+                                'tarefas' => isset($patch['tarefas']) ? $patch['tarefas'] : array(),
+                                'calendario' => array(),
+                                'plano' => null
+                            )
+                        );
+                        $existing['currentConcursoId'] = $cid;
+                    }
+                    $in['data'] = $existing;
+                    error_log('[aprova-state] PATCH aplicado: concurso=' . $cid . ' agenda_horas=' . (isset($patch['agenda']) && is_array($patch['agenda']) ? array_sum(array_map('count', $patch['agenda'])) : 0));
                 }
+
                 if (!isset($in['data']) || !is_array($in['data'])) fail('Dados inválidos.');
                 // Diagnostico: contar concursos e agenda
                 $nConc = isset($in['data']['concursos']) && is_array($in['data']['concursos']) ? count($in['data']['concursos']) : -1;
