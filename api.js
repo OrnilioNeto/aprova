@@ -290,7 +290,7 @@ async function pushState(){
   console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| state bytes=', JSON.stringify(state).length);
   try{
     const r = await apiCall('state', { method:'PUT', body:{ data: state } });
-    console.log('pushState: resposta do servidor =', JSON.stringify(r));
+    console.log('pushState: resposta do servidor =', JSON.stringify(r), '| agenda_horas_recebidas =', r && r.agenda_horas_recebidas);
     // Verificar o que o servidor realmente salvou
     try{
       const check = await apiCall('state', { method:'GET' });

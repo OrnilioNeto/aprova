@@ -5,6 +5,12 @@
               change-password|me|state
    ============================================================ */
 
+// Aumenta limites para estados grandes (~2MB+)
+@ini_set('memory_limit', '256M');
+@ini_set('post_max_size', '10M');
+@ini_set('max_execution_time', '60');
+@ini_set('max_input_time', '60');
+
 header('X-Content-Type-Options: nosniff');
 
 require __DIR__ . '/lib/util.php';
@@ -240,13 +246,26 @@ try {
                 $in = json_input();
                 if (!isset($in['data']) || !is_array($in['data'])) fail('Dados inválidos.');
                 $json = json_encode($in['data'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                if ($json === false) fail('Dados inválidos (JSON).');
+                if ($json === false) { error_log('[aprova-state] json_encode falhou: ' . json_last_error_msg()); fail('Dados inválidos (JSON).'); }
+                // Diagnostico: contar agenda horas recebidas
+                $agendaHoras = 0;
+                if (isset($in['data']['concursos']) && is_array($in['data']['concursos'])) {
+                    foreach ($in['data']['concursos'] as $c) {
+                        if (isset($c['id']) && $c['id'] === $user['id'] === false) {}
+                        if (isset($c['estudo']['agenda']) && is_array($c['estudo']['agenda'])) {
+                            foreach ($c['estudo']['agenda'] as $d => $hrs) {
+                                if (is_array($hrs)) $agendaHoras += count($hrs);
+                            }
+                        }
+                    }
+                }
+                error_log('[aprova-state] PUT user=' . $user['id'] . ' json_bytes=' . strlen($json) . ' agenda_horas=' . $agendaHoras);
                 $now = now_utc();
                 $pdo->prepare(
                     'INSERT INTO states (user_id, data, updated_at) VALUES (?, ?, ?)
                      ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)'
                 )->execute(array($user['id'], $json, $now));
-                json_out(array('ok' => true, 'updated_at' => $now));
+                json_out(array('ok' => true, 'updated_at' => $now, 'agenda_horas_recebidas' => $agendaHoras));
             }
             fail('Método inválido.', 405);
         }
