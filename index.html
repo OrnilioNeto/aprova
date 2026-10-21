@@ -967,6 +967,7 @@ async function estAplicarRotina(dataISO, dia){
   else alert('A rotina deste dia já estava aplicada.');
 }
 async function estAplicarRotinaSemana(){
+  console.log('estAplicarRotinaSemana INICIO | currentConcurso:', state && state.currentConcursoId, '| agenda horas:', Object.values(estudo().agenda||{}).reduce((x,d)=>x+Object.keys(d||{}).length,0));
   const ws = estCalWeekStart(new Date());
   let added = 0;
   for(let i=0;i<7;i++){
@@ -981,8 +982,10 @@ async function estAplicarRotinaSemana(){
       if(!existe){ estudo().tarefas.push({ id: uid(), data: iso, hora: h, titulo: tit, materiaId: '', feita: false }); added++; }
     });
   }
+  console.log('estAplicarRotinaSemana PRE-SAVE | agenda horas:', Object.values(estudo().agenda||{}).reduce((x,d)=>x+Object.keys(d||{}).length,0), '| tarefas:', estudo().tarefas.length);
   save();
   try{ if(typeof pushState==='function') await pushState(); }catch(e){}
+  console.log('estAplicarRotinaSemana POS-SAVE | agenda horas:', Object.values(estudo().agenda||{}).reduce((x,d)=>x+Object.keys(d||{}).length,0));
   renderEstudos();
   if(added) alert(added+' tarefa(s) da rotina aplicada(s) à semana atual.');
   else alert('A semana atual já está com a rotina aplicada (ou o modelo está vazio).');
