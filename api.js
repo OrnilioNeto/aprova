@@ -284,11 +284,31 @@ async function fetchServerState(){
 
 async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
-  const ah = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.agenda : null;
+  const c = state && state.concursos ? state.concursos.find(x=>x.id===state.currentConcursoId) : null;
+  const ah = (c && c.estudo) ? c.estudo.agenda : null;
   const ahoras = ah ? Object.values(ah).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
-  const atarefas = state && state.concursos ? (state.concursos.find(c=>c.id===state.currentConcursoId)||{}).estudo?.tarefas : null;
+  const atarefas = (c && c.estudo) ? c.estudo.tarefas : null;
   if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
-  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| agenda horas=', ahoras, '| tarefas=', atarefas ? atarefas.length : 0);
+  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| concursos=', state.concursos ? state.concursos.length : 0, '| c found=', !!c, '| estudo exists=', !!(c && c.estudo), '| agenda horas=', ahoras, '| tarefas=', atarefas ? atarefas.length : 0);
+  // Se agenda for null, tentar recuperar do cache
+  if(!ah){
+    console.warn('pushState: agenda é null! Tentando recuperar do cache...');
+    try{
+      const ck = cacheKey();
+      const raw = localStorage.getItem(ck);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        const cached = (parsed && parsed.data) ? parsed.data : parsed;
+        const cc = cached && cached.concursos ? cached.concursos.find(x=>x.id===state.currentConcursoId) : null;
+        if(cc && cc.estudo && cc.estudo.agenda){
+          const cah = Object.values(cc.estudo.agenda).reduce((a,d)=>a+Object.keys(d||{}).length,0);
+          console.log('pushState: cache tem agenda horas=', cah);
+          // Copiar agenda do cache para state
+          if(c) { if(!c.estudo) c.estudo = {}; c.estudo.agenda = cc.estudo.agenda; }
+        }
+      }
+    }catch(e){ console.error('pushState: erro ao recuperar cache:', e); }
+  }
   // Enviar patch (apenas agenda + tarefas) em campos separados
   const body = {
     data: state,
