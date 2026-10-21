@@ -251,6 +251,7 @@ try {
 
                 // Modo patch: mesclar agenda/tarefas com state existente
                 $cid = isset($in['concurso_id']) ? $in['concurso_id'] : (isset($in['data']['currentConcursoId']) ? $in['data']['currentConcursoId'] : '');
+                error_log('[aprova-state] recebido: concurso_id=' . $cid . ' agenda_patch=' . (isset($in['agenda_patch']) ? (is_array($in['agenda_patch']) ? 'array(' . count($in['agenda_patch']) . ')' : gettype($in['agenda_patch'])) : 'nao-set') . ' tarefas_patch=' . (isset($in['tarefas_patch']) ? (is_array($in['tarefas_patch']) ? 'array(' . count($in['tarefas_patch']) . ')' : gettype($in['tarefas_patch'])) : 'nao-set'));
                 $hasPatch = (isset($in['agenda_patch']) && is_array($in['agenda_patch'])) || (isset($in['tarefas_patch']) && is_array($in['tarefas_patch']));
                 if ($hasPatch) {
                     // Buscar state existente
