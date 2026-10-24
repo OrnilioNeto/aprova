@@ -3509,12 +3509,14 @@ async function pprnLoadLinked(){
     pprnLinked = r.linked || null;
   }catch(e){ pprnLinked = null; }
 }
+let pprnTotalCandidates = 0;
 async function pprnLoadMeta(){
-  if(!isLoggedIn()) { pprnMeta = null; return; }
+  if(!isLoggedIn()) { pprnMeta = null; pprnTotalCandidates = 0; return; }
   try{
     const r = await apiCall('pprn-meta', { method:'GET', auth:true });
     pprnMeta = r.meta || null;
-  }catch(e){ pprnMeta = null; }
+    pprnTotalCandidates = r.total_candidates || 0;
+  }catch(e){ pprnMeta = null; pprnTotalCandidates = 0; }
 }
 let pprnUploads = [];
 let pprnUploadStatus = [];
@@ -3664,7 +3666,7 @@ function renderResultados(){
     html += `
       <div class="card">
         <h2>🛠️ Admin — subir lista das bancas</h2>
-        <p class="hint" style="margin-bottom:10px">Envie CSV ou Excel (vários arquivos de uma vez). ${pprnMeta? ('Último upload: '+esc(pprnMeta.filename)+' em '+esc(pprnMeta.uploaded_at)+' ('+pprnMeta.row_count+' linhas)') : 'Nenhum upload ainda.'}</p>
+        <p class="hint" style="margin-bottom:10px">Envie CSV ou Excel (vários arquivos de uma vez). ${pprnMeta? ('Último upload: '+esc(pprnMeta.filename)+' em '+esc(pprnMeta.uploaded_at)+' ('+pprnMeta.row_count+' linhas)') : 'Nenhum upload ainda.'} ${pprnTotalCandidates? '· Total no banco: '+pprnTotalCandidates+' candidatos.' : ''}</p>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input id="pprn-upload-file" type="file" accept=".csv,.xlsx" multiple>
           <button class="btn" onclick="pprnDoUpload()">Enviar</button>
@@ -3717,10 +3719,9 @@ async function pprnRunSim(){
 function pprnParseCsvText(text){
   // retorna {headers:[], rows:[[]]}
   const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-  const rows = [];
+  const allRows = [];
   for(const ln of lines){
     if(ln.trim()==='') continue;
-    // parse simples com suporte a aspas
     const cells = [];
     let cur = '', inq = false;
     for(let i=0;i<ln.length;i++){
@@ -3737,11 +3738,18 @@ function pprnParseCsvText(text){
       }
     }
     cells.push(cur);
-    rows.push(cells);
+    allRows.push(cells);
   }
-  if(!rows.length) return {headers:[], rows:[]};
-  const headers = rows[0].map(h=>h.trim());
-  return {headers, rows: rows.slice(1)};
+  if(!allRows.length) return {headers:[], rows:[]};
+  // detecta linha de cabeçalho
+  let hi = 0;
+  for(let i=0;i<Math.min(allRows.length,10);i++){
+    const cells = allRows[i].map(c=>String(c||'').toLowerCase());
+    if(cells.some(c=>/inscri|nome|candidato/.test(c))){ hi=i; break; }
+  }
+  const headers = allRows[hi].map(h=>String(h||'').trim());
+  const rows = allRows.slice(hi+1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+  return {headers, rows};
 }
 
 async function pprnParseFile(file){
@@ -3756,8 +3764,14 @@ async function pprnParseFile(file){
   const ws = wb.Sheets[wb.SheetNames[0]];
   const aoa = (window.XLSX || XLSX).utils.sheet_to_json(ws, {header:1, defval:''});
   if(!aoa || !aoa.length) return {headers:[], rows:[]};
-  const headers = aoa[0].map(h=>String(h==null?'':h).trim());
-  const rows = aoa.slice(1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+  // detecta a linha de cabeçalho (pula títulos)
+  let hi = 0;
+  for(let i=0;i<Math.min(aoa.length,10);i++){
+    const cells = aoa[i].map(c=>String(c==null?'':c).toLowerCase());
+    if(cells.some(c=>/inscri|nome|candidato/.test(c))){ hi=i; break; }
+  }
+  const headers = aoa[hi].map(h=>String(h==null?'':h).trim());
+  const rows = aoa.slice(hi+1).filter(r=>r.some(c=>String(c==null?'':c).trim()!==''));
   return {headers, rows};
 }
 

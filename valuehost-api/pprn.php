@@ -71,11 +71,12 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             require_auth($pdo, $config);
             $stmt = $pdo->query('SELECT id, filename, uploaded_at, row_count FROM pprn_uploads ORDER BY uploaded_at DESC LIMIT 1');
             $row = $stmt->fetch();
-            if (!$row) json_out(array('ok' => true, 'meta' => null));
+            $total = (int)$pdo->query('SELECT COUNT(*) c FROM pprn_candidates')->fetch()['c'];
+            if (!$row) json_out(array('ok' => true, 'meta' => null, 'total_candidates' => $total));
             json_out(array('ok' => true, 'meta' => array(
                 'id' => $row['id'], 'filename' => $row['filename'],
                 'uploaded_at' => $row['uploaded_at'], 'row_count' => (int)$row['row_count']
-            )));
+            ), 'total_candidates' => $total));
             return true;
         }
 
@@ -96,8 +97,8 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     'ú'=>'U','ù'=>'U','û'=>'U','ü'=>'U',
                     'ç'=>'C','ñ'=>'N'
                 )));
-                $stmt = $pdo->prepare('SELECT inscricao, nome, modalidade, nota_objetiva, posicao_geral, status_cota, vaga_imediata, previsao_taf FROM pprn_candidates WHERE nome_busca LIKE ? LIMIT 20');
-                $stmt->execute(array('%' . $nb . '%'));
+                $stmt = $pdo->prepare('SELECT inscricao, nome, modalidade, nota_objetiva, posicao_geral, status_cota, vaga_imediata, previsao_taf FROM pprn_candidates WHERE nome_busca LIKE ? OR nome LIKE ? LIMIT 20');
+                $stmt->execute(array('%' . $nb . '%', '%' . $q . '%'));
             }
             $rows = $stmt->fetchAll();
             $out = array();
