@@ -3533,7 +3533,7 @@ function pprnTabGo(t){ pprnResultadosTab = t; renderResultados(); }
 async function pprnSearch(q){
   if(!q || q.trim().length < 2) return {results:[], total:0, q_norm:q};
   try{
-    const r = await apiCall('pprn-search?q='+encodeURIComponent(q.trim())+'&_='+Date.now(), { method:'POST', auth:true });
+    const r = await apiCall('pprn-search', { method:'POST', auth:true, params:{ q: q.trim(), _: Date.now() } });
     return {results:r.results||[], total:r.total||0, q_norm:r.q_norm||q};
   }catch(e){ return {results:[], total:0, q_norm:q}; }
 }
@@ -3716,6 +3716,9 @@ async function pprnRunSim(){
   }catch(e){ alert('Erro: '+(e.message||e)); }
 }
 
+function pprnNormHeader(h){
+  return String(h==null?'':h).trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
 function pprnParseCsvText(text){
   // retorna {headers:[], rows:[[]]}
   const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
@@ -3747,7 +3750,7 @@ function pprnParseCsvText(text){
     const cells = allRows[i].map(c=>String(c||'').toLowerCase());
     if(cells.some(c=>/inscri|nome|candidato/.test(c))){ hi=i; break; }
   }
-  const headers = allRows[hi].map(h=>String(h||'').trim());
+  const headers = allRows[hi].map(h=>pprnNormHeader(h));
   const rows = allRows.slice(hi+1).filter(r=>r.some(c=>String(c||'').trim()!==''));
   return {headers, rows};
 }
@@ -3770,7 +3773,7 @@ async function pprnParseFile(file){
     const cells = aoa[i].map(c=>String(c==null?'':c).toLowerCase());
     if(cells.some(c=>/inscri|nome|candidato/.test(c))){ hi=i; break; }
   }
-  const headers = aoa[hi].map(h=>String(h==null?'':h).trim());
+  const headers = aoa[hi].map(h=>pprnNormHeader(h));
   const rows = aoa.slice(hi+1).filter(r=>r.some(c=>String(c==null?'':c).trim()!==''));
   return {headers, rows};
 }
@@ -3875,6 +3878,7 @@ async function pprnDoUpload(){
     for(const s of pprnUploadStatus){ if(s.ok) s.error = 'enviado'; }
     await pprnLoadMeta();
     await pprnLoadUploads();
+    await pprnLoadLinked();
   }catch(e){ pprnAdminMsg = 'Erro: '+(e.message||e); }
   renderResultados();
 }

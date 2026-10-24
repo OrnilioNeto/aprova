@@ -21,7 +21,15 @@ function isLoggedIn(){ return !!currentUser; }
 
 function apiBase(){ return String(window.API_BASE_URL || '').replace(/\/+$/, ''); }
 function apiReady(){ return !!apiBase(); }
-function apiUrl(action){ return apiBase() + '/index.php?action=' + encodeURIComponent(action); }
+function apiUrl(action, params){
+  let url = apiBase() + '/index.php?action=' + encodeURIComponent(action);
+  if(params && typeof params === 'object'){
+    Object.keys(params).forEach(k=>{
+      url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+    });
+  }
+  return url;
+}
 
 function getToken(){
   try{ return localStorage.getItem(TOKEN_KEY); }catch(e){ return null; }
@@ -37,7 +45,7 @@ async function apiCall(action, opts){
   if(token && opts.auth !== false) headers['Authorization'] = 'Bearer ' + token;
   let res;
   try{
-    res = await fetch(apiUrl(action), {
+    res = await fetch(apiUrl(action, opts.params), {
       method: opts.method || 'POST',
       headers: headers,
       body: opts.body != null ? JSON.stringify(opts.body) : undefined,
