@@ -258,6 +258,11 @@ try {
                     if (!is_array($in)) { error_log('[aprova-state] gz json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
                 }
                 if (!is_array($in)) { error_log('[aprova-state] json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
+                // Tolerância: se o payload for o próprio state (com concursos), embrulhar em 'data'
+                if (!isset($in['data']) && isset($in['concursos']) && is_array($in['concursos'])) {
+                    error_log('[aprova-state] payload recebido como state direto; embrulhando em data');
+                    $in = array('data' => $in);
+                }
 
                 // Modo patch: mesclar agenda/tarefas com state existente
                 $cid = isset($in['concurso_id']) ? $in['concurso_id'] : (isset($in['data']['currentConcursoId']) ? $in['data']['currentConcursoId'] : '');

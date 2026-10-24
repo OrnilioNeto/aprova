@@ -312,11 +312,25 @@ async function compressStateGz(stateObj){
 async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
   if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
-  try{
-    const gz = await compressStateGz({ data: state });
-    const body = gz ? { gz: gz } : { data: state };
+  // Tenta payload comprimido (backend novo). Se o backend antigo não entender, cai para envio completo.
+  const trySend = async (body) => {
     const r = await apiCall('state', { method:'PUT', body: body });
     console.log('pushState: resposta do servidor =', JSON.stringify(r));
+    return true;
+  };
+  try{
+    const gz = await compressStateGz({ data: state });
+    if(gz){
+      try{
+        await trySend({ gz: gz });
+        setSyncStatus('✓ salvo na nuvem');
+        return true;
+      }catch(e){
+        // Backend antigo ou erro de validação: tenta envio completo
+        console.warn('pushState: falha no envio comprimido, tentando completo:', e.message);
+      }
+    }
+    await trySend({ data: state });
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
