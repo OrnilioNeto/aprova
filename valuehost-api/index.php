@@ -17,6 +17,7 @@ require __DIR__ . '/lib/util.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/jwt.php';
 require __DIR__ . '/lib/smtp.php';
+if (is_file(__DIR__ . '/pprn.php')) require __DIR__ . '/pprn.php';
 
 /* -------- Configuração -------- */
 $configCandidates = array(
@@ -37,17 +38,28 @@ apply_cors($config['allowed_origins']);
 /* -------- Helpers de domínio -------- */
 
 function find_user_by_email(PDO $pdo, $email) {
-    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed FROM users WHERE email = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed, role FROM users WHERE email = ? LIMIT 1');
     $stmt->execute(array($email));
     $row = $stmt->fetch();
     return $row ? $row : null;
 }
 
 function find_user_by_id(PDO $pdo, $id) {
-    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed FROM users WHERE id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed, role FROM users WHERE id = ? LIMIT 1');
     $stmt->execute(array($id));
     $row = $stmt->fetch();
     return $row ? $row : null;
+}
+
+function effective_role($user, $config) {
+    $role = isset($user['role']) ? $user['role'] : 'user';
+    if (isset($config['admin_emails']) && is_array($config['admin_emails'])) {
+        foreach ($config['admin_emails'] as $ae) {
+            if (strcasecmp(trim($ae), $user['email']) === 0) { $role = 'admin'; break; }
+        }
+    }
+    if (isset($config['admin_emails']) && is_array($config['admin_emails']) && in_array($user['email'], $config['admin_emails'])) $role = 'admin';
+    return $role;
 }
 
 function require_auth(PDO $pdo, $config) {
@@ -57,13 +69,27 @@ function require_auth(PDO $pdo, $config) {
     if (!$payload || empty($payload['sub'])) fail('Sessão expirada. Entre novamente.', 401);
     $user = find_user_by_id($pdo, $payload['sub']);
     if (!$user) fail('Sessão expirada. Entre novamente.', 401);
+    $user['role'] = effective_role($user, $config);
+    return $user;
+}
+
+function require_admin(PDO $pdo, $config) {
+    $user = require_auth($pdo, $config);
+    if ($user['role'] !== 'admin') fail('Acesso restrito a administradores.', 403);
     return $user;
 }
 
 function issue_session($user, $config) {
+    $role = isset($user['role']) ? $user['role'] : 'user';
+    // Promove a admin se o e-mail estiver na lista de admins do config
+    if (isset($config['admin_emails']) && is_array($config['admin_emails'])) {
+        foreach ($config['admin_emails'] as $ae) {
+            if (strcasecmp(trim($ae), $user['email']) === 0) { $role = 'admin'; break; }
+        }
+    }
     return array(
-        'token' => jwt_encode(array('sub' => $user['id'], 'email' => $user['email']), $config['jwt_secret'], $config['jwt_ttl']),
-        'user'  => array('id' => $user['id'], 'email' => $user['email']),
+        'token' => jwt_encode(array('sub' => $user['id'], 'email' => $user['email'], 'role' => $role), $config['jwt_secret'], $config['jwt_ttl']),
+        'user'  => array('id' => $user['id'], 'email' => $user['email'], 'role' => $role),
     );
 }
 
@@ -229,7 +255,7 @@ try {
         case 'me': {
             if ($method !== 'GET') fail('Método inválido.', 405);
             $user = require_auth($pdo, $config);
-            json_out(array('ok' => true, 'user' => array('id' => $user['id'], 'email' => $user['email'])));
+            json_out(array('ok' => true, 'user' => array('id' => $user['id'], 'email' => $user['email'], 'role' => $user['role'])));
         }
 
         case 'state': {
@@ -369,7 +395,11 @@ try {
         }
 
         default:
-            fail('Ação desconhecida.', 404);
+            if (function_exists('handle_pprn') && handle_pprn($action, $method, $pdo, $config)) {
+                // handled
+            } else {
+                fail('Ação desconhecida.', 404);
+            }
     }
 } catch (PDOException $e) {
     error_log('[aprova-db] ' . $e->getMessage());

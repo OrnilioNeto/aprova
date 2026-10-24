@@ -35,6 +35,11 @@ return array(
     // false = envia e-mail de confirmação antes do primeiro login
     'auto_confirm_registration' => true,
 
+    // E-mails com papel de administrador (podem subir listas das bancas)
+    'admin_emails' => array(
+        'seu-email@exemplo.com',
+    ),
+
     // ---- E-mail (SMTP do ValueHost) ----
     // Crie a conta de e-mail no painel e preencha a senha abaixo.
     'mail' => array(

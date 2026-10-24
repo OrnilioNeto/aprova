@@ -463,6 +463,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
   <button data-view="dashboard" class="active">📈 Painel</button>
   <button data-view="simulados">📝 Simulados</button>
   <button data-view="estudos">📚 Estudos</button>
+  <button data-view="resultados">📊 Resultados</button>
   <button data-view="metas">🎯 Metas</button>
   <button data-view="ajustes">⚙️ Ajustes</button>
 </nav>
@@ -472,6 +473,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
   <section id="view-dashboard" class="view active"></section>
   <section id="view-simulados" class="view"></section>
   <section id="view-estudos" class="view"></section>
+  <section id="view-resultados" class="view"></section>
   <section id="view-metas" class="view"></section>
   <section id="view-ajustes" class="view"></section>
 
@@ -2638,7 +2640,7 @@ function renderAll(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===currentView));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+currentView));
   applyTema();
-  renderDashboard(); renderSimuladoView(); renderEstudos(); renderMetas(); renderAjustes();
+  renderDashboard(); renderSimuladoView(); renderEstudos(); renderResultados(); renderMetas(); renderAjustes();
 }
 
 function ringSVG(pct, label, sublabel){
@@ -2761,6 +2763,7 @@ function renderDashboard(){
 
   const cards = `
     ${countdownBanner()}
+    ${pprnDashboardCard()}
     ${filterBar}
     <div class="grid g-4" style="margin-bottom:16px">
       <div class="card" style="text-align:center">
@@ -3491,6 +3494,264 @@ function renderAjustes(){
       </div>
     </div>`;
 }
+/* ===== PPRN RESULTADOS ===== */
+let pprnResultadosTab = 'consulta';
+let pprnLinked = null;
+let pprnMeta = null;
+let pprnSimResult = null;
+let pprnAdminMsg = '';
+
+async function pprnLoadLinked(){
+  if(!isLoggedIn()) { pprnLinked = null; return; }
+  try{
+    const r = await apiCall('pprn-linked', { method:'GET', auth:true });
+    pprnLinked = r.linked || null;
+  }catch(e){ pprnLinked = null; }
+}
+async function pprnLoadMeta(){
+  if(!isLoggedIn()) { pprnMeta = null; return; }
+  try{
+    const r = await apiCall('pprn-meta', { method:'GET', auth:true });
+    pprnMeta = r.meta || null;
+  }catch(e){ pprnMeta = null; }
+}
+
+function pprnTabGo(t){ pprnResultadosTab = t; renderResultados(); }
+
+async function pprnSearch(q){
+  if(!q || q.trim().length < 2) return [];
+  try{
+    const r = await apiCall('pprn-search?q='+encodeURIComponent(q.trim()), { method:'GET', auth:true });
+    return r.results || [];
+  }catch(e){ return []; }
+}
+
+async function pprnLinkInscricao(insc){
+  try{
+    await apiCall('pprn-link', { method:'POST', auth:true, body:{ inscricao: insc } });
+    await pprnLoadLinked();
+    renderAll();
+    alert('Vinculado com sucesso!');
+  }catch(e){ alert('Erro: ' + (e.message||e)); }
+}
+async function pprnUnlink(){
+  if(!confirm('Desvincular candidato?')) return;
+  try{
+    await apiCall('pprn-link', { method:'DELETE', auth:true });
+    pprnLinked = null;
+    renderAll();
+  }catch(e){ alert('Erro: ' + (e.message||e)); }
+}
+
+function pprnCandidateCard(c, detailed){
+  if(!c) return '<div class="muted">Nenhum candidato vinculado.</div>';
+  const nota = c.nota != null ? c.nota : '—';
+  const pos = c.posicao_geral != null ? c.posicao_geral : '—';
+  const status = c.status_cota || '—';
+  const vaga = c.vaga_imediata || '—';
+  const taf = c.previsao_taf || '—';
+  let html = `
+    <div class="card" style="margin-bottom:12px">
+      <h2>👤 ${esc(c.nome||'')}</h2>
+      <div class="row"><span class="muted">Inscrição</span><b>${esc(c.inscricao)}</b></div>
+      <div class="row"><span class="muted">Modalidade</span><b>${esc(c.modalidade||'—')}</b></div>
+      <div class="row"><span class="muted">Nota objetiva</span><b>${nota}</b></div>
+      <div class="row"><span class="muted">Posição geral</span><b>${pos}</b></div>
+      <div class="row"><span class="muted">Status da cota</span><b>${esc(status)}</b></div>
+      <div class="row"><span class="muted">Previsão TAF</span><b>${esc(taf)}</b></div>
+      <div class="row"><span class="muted">Vaga imediata</span><b>${esc(vaga)}</b></div>
+  `;
+  if(c.ganho_etnico != null) html += `<div class="row"><span class="muted">Ganho posição (étnico)</span><b>+${c.ganho_etnico}</b></div>`;
+  if(c.ganho_pcd != null) html += `<div class="row"><span class="muted">Ganho posição (PCD)</span><b>+${c.ganho_pcd}</b></div>`;
+  if(c.convocado_taf != null) html += `<div class="row"><span class="muted">Convocado TAF</span><b>${c.convocado_taf?'Sim':'Não'}</b></div>`;
+  html += `</div>`;
+  if(detailed && c.extra){
+    const ex = c.extra;
+    const disc = ['Lingua Portuguesa','Historia do RN','Etica no Servico Publico','Direito Constitucional','Direito Administrativo','Direitos Humanos','Execucao Penal','Legislacao Especifica','Direito Penal e Processo Penal'];
+    const rows = disc.map(d=>{
+      const v = ex[d] != null ? ex[d] : (ex[d.replace(/ /g,'_')] != null ? ex[d.replace(/ /g,'_')] : '—');
+      return `<tr><td>${esc(d)}</td><td class="right">${v}</td></tr>`;
+    }).join('');
+    html += `<div class="card"><h2>📝 Notas por disciplina</h2><table class="tbl"><thead><tr><th>Disciplina</th><th class="right">Acertos</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  return html;
+}
+
+function renderResultados(){
+  const el = document.getElementById('view-resultados');
+  if(!el) return;
+  const tabs = [['consulta','🔍 Consulta'],['simulador','🔮 Simulador'],['regras','📋 Regras & Cronograma'],['admin','🛠️ Admin']];
+  // admin tab only if admin
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const visibleTabs = isAdmin ? tabs : tabs.filter(t=>t[0]!=='admin');
+  let html = '<div class="subnav">'+visibleTabs.map(t=>'<button class="'+(pprnResultadosTab===t[0]?'active':'')+'" onclick="pprnTabGo(\''+t[0]+'\')">'+t[1]+'</button>').join('')+'</div>';
+
+  if(pprnResultadosTab==='consulta'){
+    html += `
+      <div class="grid g-2">
+        <div class="card">
+          <h2>🔗 Seu candidato vinculado</h2>
+          ${pprnLinked ? (pprnCandidateCard(pprnLinked, true) + '<button class="btn ghost sm" onclick="pprnUnlink()">Desvincular</button>') : `
+            <p class="hint" style="margin-bottom:10px">Vincule sua inscrição para ver sua classificação no painel inicial.</p>
+            <div style="display:flex;gap:8px">
+              <input id="pprn-link-insc" type="text" placeholder="Número de inscrição" style="flex:1">
+              <button class="btn" onclick="pprnLinkInscricao(document.getElementById('pprn-link-insc').value)">Vincular</button>
+            </div>
+          `}
+        </div>
+        <div class="card">
+          <h2>🔍 Buscar candidato</h2>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input id="pprn-search-q" type="text" placeholder="Nome ou inscrição" style="flex:1" onkeydown="if(event.key==='Enter') pprnDoSearch()">
+            <button class="btn" onclick="pprnDoSearch()">Buscar</button>
+          </div>
+          <div id="pprn-search-results"></div>
+        </div>
+      </div>
+      <div id="pprn-detail"></div>
+    `;
+  } else if(pprnResultadosTab==='simulador'){
+    html += `
+      <div class="card">
+        <h2>🔮 Simulador de colocações pós-bancas</h2>
+        <p class="hint" style="margin-bottom:12px">Ajuste as taxas e recalcule os cortes.</p>
+        <div class="grid g-3" style="margin-bottom:12px">
+          <div><label>Taxa de reversão hetero (%)</label><input id="sim-hetero" type="number" value="30" min="0" max="100"></div>
+          <div><label>Taxa de reversão PCD (%)</label><input id="sim-pcd" type="number" value="20" min="0" max="100"></div>
+        </div>
+        <button class="btn" onclick="pprnRunSim()">Recalcular</button>
+        <div id="pprn-sim-out" style="margin-top:12px"></div>
+      </div>
+    `;
+    if(pprnSimResult){
+      const r = pprnSimResult;
+      html += `<div class="grid g-3" style="margin-top:12px">
+        <div class="card"><h2>Ampla</h2><div class="big">${r.corte_ampla}</div><div class="muted">corte · ${r.vagas_ampla} vagas · ${r.total_ampla} candidatos</div></div>
+        <div class="card"><h2>Cota Étnica</h2><div class="big">${r.corte_etnico}</div><div class="muted">corte · ${r.vagas_etnico} vagas · ${r.total_etnico} candidatos</div></div>
+        <div class="card"><h2>Cota PCD</h2><div class="big">${r.corte_pcd}</div><div class="muted">corte · ${r.vagas_pcd} vagas · ${r.total_pcd} candidatos</div></div>
+      </div>`;
+    }
+  } else if(pprnResultadosTab==='regras'){
+    html += `
+      <div class="card">
+        <h2>📋 Regras do TAF e linhas de corte</h2>
+        <p class="hint">Ampla Concorrência: 140 vagas · Cota Étnico-Racial: 40 vagas · Cota PCD: 20 vagas.</p>
+        <p class="hint">Linha de corte TAF preliminar — Ampla: 119 pts · Cota Étnica: 113 pts.</p>
+        <p class="hint">Candidatos indeferidos na heteroidentificação/PCD migram automaticamente para a Ampla Concorrência.</p>
+      </div>
+      <div class="card">
+        <h2>📅 Cronograma</h2>
+        <p class="hint">23/10 — Resultado preliminar das bancas · 26-27/10 — Recursos · 04/11 — Resultado definitivo com corte do TAF.</p>
+      </div>
+      <div class="card">
+        <h2>📥 Listas oficiais</h2>
+        <p class="hint">As relações oficiais são disponibilizadas pela banca (avalia.org.br). O admin pode subir a lista consolidada na aba Admin.</p>
+      </div>
+    `;
+  } else if(pprnResultadosTab==='admin'){
+    html += `
+      <div class="card">
+        <h2>🛠️ Admin — subir lista das bancas</h2>
+        <p class="hint" style="margin-bottom:10px">Envie o CSV exportado do Excel (UTF-8). ${pprnMeta? ('Último upload: '+esc(pprnMeta.filename)+' em '+esc(pprnMeta.uploaded_at)+' ('+pprnMeta.row_count+' linhas)') : 'Nenhum upload ainda.'}</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="pprn-upload-file" type="file" accept=".csv">
+          <button class="btn" onclick="pprnDoUpload()">Enviar</button>
+        </div>
+        <div id="pprn-admin-msg" class="hint" style="margin-top:8px">${esc(pprnAdminMsg)}</div>
+      </div>
+    `;
+  }
+
+  el.innerHTML = html;
+}
+
+async function pprnDoSearch(){
+  const q = document.getElementById('pprn-search-q').value;
+  const res = await pprnSearch(q);
+  const box = document.getElementById('pprn-search-results');
+  if(!box) return;
+  if(!res.length){ box.innerHTML = '<div class="muted">Nenhum resultado.</div>'; return; }
+  box.innerHTML = res.map(r=>`
+    <div style="padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pprnShowDetail('${r.inscricao}')">
+      <b>${esc(r.nome)}</b> <span class="muted" style="font-size:11px">(${r.inscricao})</span><br>
+      <span class="muted" style="font-size:11px">${esc(r.modalidade||'')} · Nota ${r.nota} · Pos ${r.posicao} · ${esc(r.status_cota||'')}</span>
+    </div>
+  `).join('');
+}
+
+async function pprnShowDetail(insc){
+  try{
+    const r = await apiCall('pprn-candidate?inscricao='+encodeURIComponent(insc), { method:'GET', auth:true });
+    const detail = document.getElementById('pprn-detail');
+    if(detail) detail.innerHTML = pprnCandidateCard(r.candidate, true);
+  }catch(e){ alert('Erro: '+(e.message||e)); }
+}
+
+async function pprnRunSim(){
+  const h = Number(document.getElementById('sim-hetero').value||30);
+  const p = Number(document.getElementById('sim-pcd').value||20);
+  try{
+    const r = await apiCall('pprn-simulate', { method:'POST', auth:true, body:{ taxa_hetero: h, taxa_pcd: p } });
+    pprnSimResult = r.result;
+    renderResultados();
+  }catch(e){ alert('Erro: '+(e.message||e)); }
+}
+
+async function pprnDoUpload(){
+  const fileInput = document.getElementById('pprn-upload-file');
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if(!file){ pprnAdminMsg='Selecione um arquivo.'; renderResultados(); return; }
+  pprnAdminMsg = 'Enviando...';
+  renderResultados();
+  const fd = new FormData();
+  fd.append('file', file);
+  try{
+    const token = getToken();
+    const res = await fetch(apiUrl('pprn-upload'), {
+      method:'POST',
+      headers: token ? { 'Authorization':'Bearer '+token } : {},
+      body: fd
+    });
+    const payload = await res.json();
+    if(!res.ok) throw new Error(payload.error||'Erro no upload');
+    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas.';
+    await pprnLoadMeta();
+  }catch(e){ pprnAdminMsg = 'Erro: '+(e.message||e); }
+  renderResultados();
+}
+
+// Dashboard card: resultado PPRN do usuário vinculado
+function pprnDashboardCard(){
+  if(!pprnLinked) return '';
+  const c = pprnLinked;
+  const msg = (c.vaga_imediata && c.vaga_imediata.includes('Vaga')) ? 'Vaga imediata prevista' :
+              (c.convocado_taf ? 'Avança para o TAF' : 'Acompanhe a classificação');
+  return `
+    <div class="card" style="margin-bottom:16px;border-left:4px solid var(--accent)">
+      <h2>📊 Seu resultado PPRN</h2>
+      <div class="row"><span class="muted">Candidato</span><b>${esc(c.nome||'')}</b></div>
+      <div class="row"><span class="muted">Nota objetiva</span><b>${c.nota!=null?c.nota:'—'}</b></div>
+      <div class="row"><span class="muted">Posição geral</span><b>${c.posicao_geral!=null?c.posicao_geral:'—'}</b></div>
+      <div class="row"><span class="muted">Status da cota</span><b>${esc(c.status_cota||'—')}</b></div>
+      <div class="row"><span class="muted">Previsão</span><b>${esc(msg)}</b></div>
+      <div style="margin-top:8px"><button class="btn ghost sm" onclick="go('resultados')">Ver análise completa</button> <button class="btn ghost sm" onclick="pprnUnlink()">Desvincular</button></div>
+    </div>
+  `;
+}
+
+// Hook: carregar linked/meta no login e render
+const _origRenderAll = renderAll;
+// wrap renderAll to inject dashboard card and load data
+async function pprnEnsureLoaded(){
+  if(isLoggedIn() && !pprnLinkedLoaded){
+    pprnLinkedLoaded = true;
+    await pprnLoadLinked();
+    await pprnLoadMeta();
+    renderAll();
+  }
+}
+let pprnLinkedLoaded = false;
+
 function exportJSON(){
   const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
   const a = document.createElement('a');

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL DEFAULT '',
   email_confirmed TINYINT(1) NOT NULL DEFAULT 0,
+  role ENUM('user','admin') NOT NULL DEFAULT 'user',
   created_at DATETIME NOT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_email (email)
