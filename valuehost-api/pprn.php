@@ -3,14 +3,42 @@
    PPRN — endpoints de bancas (incluído por index.php)
    ============================================================ */
 
-function pprn_norm($s) {
+define('PPRN_VERSION', '2026-10-24-v7');
+
+function pprn_ascii_map() {
+    static $map = null;
+    if ($map !== null) return $map;
+    $map = array(
+        "\u{00e1}"=>'a',"\u{00e0}"=>'a',"\u{00e2}"=>'a',"\u{00e3}"=>'a',"\u{00e4}"=>'a',"\u{00e5}"=>'a',
+        "\u{00e9}"=>'e',"\u{00e8}"=>'e',"\u{00ea}"=>'e',"\u{00eb}"=>'e',
+        "\u{00ed}"=>'i',"\u{00ec}"=>'i',"\u{00ee}"=>'i',"\u{00ef}"=>'i',
+        "\u{00f3}"=>'o',"\u{00f2}"=>'o',"\u{00f4}"=>'o',"\u{00f5}"=>'o',"\u{00f6}"=>'o',
+        "\u{00fa}"=>'u',"\u{00f9}"=>'u',"\u{00fb}"=>'u',"\u{00fc}"=>'u',
+        "\u{00e7}"=>'c',"\u{00f1}"=>'n',"\u{00fd}"=>'y',
+        "\u{00c1}"=>'a',"\u{00c0}"=>'a',"\u{00c2}"=>'a',"\u{00c3}"=>'a',"\u{00c4}"=>'a',"\u{00c5}"=>'a',
+        "\u{00c9}"=>'e',"\u{00c8}"=>'e',"\u{00ca}"=>'e',"\u{00cb}"=>'e',
+        "\u{00cd}"=>'i',"\u{00cc}"=>'i',"\u{00ce}"=>'i',"\u{00cf}"=>'i',
+        "\u{00d3}"=>'o',"\u{00d2}"=>'o',"\u{00d4}"=>'o',"\u{00d5}"=>'o',"\u{00d6}"=>'o',
+        "\u{00da}"=>'u',"\u{00d9}"=>'u',"\u{00db}"=>'u',"\u{00dc}"=>'u',
+        "\u{00c7}"=>'c',"\u{00d1}"=>'n',"\u{00dd}"=>'y'
+    );
+    return $map;
+}
+
+function pprn_ascii($s) {
     $s = (string)$s;
+    $map = pprn_ascii_map();
+    $s = strtr($s, $map);
+    // remove any remaining combining marks / non-ascii
     if (class_exists('Normalizer')) {
         $t = Normalizer::normalize($s, Normalizer::FORM_KD);
-        if ($t !== false) $s = $t;
+        if ($t !== false) $s = preg_replace('/\p{Mn}+/u', '', $t);
     }
-    $s = preg_replace('/\p{Mn}+/u', '', $s);
-    return strtoupper(trim($s));
+    return $s;
+}
+
+function pprn_norm($s) {
+    return strtoupper(trim(preg_replace('/[^a-z0-9]+/i', '_', pprn_ascii($s)), '_'));
 }
 
 function insert_pprn_batch(PDO $pdo, array $rows, $uploadId) {
@@ -58,6 +86,11 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
 
     switch ($action) {
 
+        case 'pprn-version': {
+            json_out(array('ok' => true, 'version' => defined('PPRN_VERSION') ? PPRN_VERSION : 'unknown'));
+            return true;
+        }
+
         case 'pprn-uploads': {
             if ($method !== 'GET') fail('Método inválido.', 405);
             require_auth($pdo, $config);
@@ -93,7 +126,9 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
         case 'pprn-search': {
             if ($method !== 'GET' && $method !== 'POST') fail('Método inválido.', 405);
             require_auth($pdo, $config);
-            $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
+            $q = '';
+            if (isset($_GET['q'])) $q = trim((string)$_GET['q']);
+            elseif (isset($_POST['q'])) $q = trim((string)$_POST['q']);
             if ($q === '') json_out(array('ok' => true, 'results' => array()));
             $nb = pprn_norm($q);
             if (preg_match('/^\d+$/', $q)) {
@@ -230,11 +265,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                 foreach ($header as $h) {
                     $h = trim((string)$h);
                     $h = str_replace("\xEF\xBB\xBF", '', $h);
-                    if (class_exists('Normalizer')) {
-                        $tmp = Normalizer::normalize($h, Normalizer::FORM_KD);
-                        if ($tmp !== false) $h = $tmp;
-                    }
-                    $h = preg_replace('/\p{Mn}+/u', '', $h);
+                    $h = pprn_ascii($h);
                     $h = strtolower($h);
                     $h = preg_replace('/[^a-z0-9]+/', '_', $h);
                     $h = trim($h, '_');
