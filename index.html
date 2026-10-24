@@ -3533,7 +3533,7 @@ function pprnTabGo(t){ pprnResultadosTab = t; renderResultados(); }
 async function pprnSearch(q){
   if(!q || q.trim().length < 2) return {results:[], total:0, q_norm:q};
   try{
-    const r = await apiCall('pprn-search?q='+encodeURIComponent(q.trim()), { method:'GET', auth:true });
+    const r = await apiCall('pprn-search?q='+encodeURIComponent(q.trim())+'&_='+Date.now(), { method:'GET', auth:true });
     return {results:r.results||[], total:r.total||0, q_norm:r.q_norm||q};
   }catch(e){ return {results:[], total:0, q_norm:q}; }
 }
