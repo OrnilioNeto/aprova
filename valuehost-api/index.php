@@ -247,6 +247,16 @@ try {
                 error_log('[aprova-state] raw_bytes=' . strlen($raw));
                 $in = json_decode($raw, true);
                 error_log('[aprova-state] json_decode error=' . json_last_error() . ' (' . json_last_error_msg() . ')');
+                // Suporte a payload comprimido em gzip+base64 (campo 'gz')
+                if (is_array($in) && isset($in['gz']) && is_string($in['gz'])) {
+                    $gzRaw = base64_decode($in['gz'], true);
+                    if ($gzRaw === false) { error_log('[aprova-state] base64_decode falhou'); fail('Dados inválidos (base64).'); }
+                    $jsonStr = @gzdecode($gzRaw);
+                    if ($jsonStr === false || $jsonStr === null) { error_log('[aprova-state] gzdecode falhou'); fail('Dados inválidos (gzip).'); }
+                    $in = json_decode($jsonStr, true);
+                    error_log('[aprova-state] gz json_decode error=' . json_last_error() . ' (' . json_last_error_msg() . ')');
+                    if (!is_array($in)) { error_log('[aprova-state] gz json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
+                }
                 if (!is_array($in)) { error_log('[aprova-state] json_decode retornou nao-array'); fail('Dados inválidos (JSON decode).'); }
 
                 // Modo patch: mesclar agenda/tarefas com state existente

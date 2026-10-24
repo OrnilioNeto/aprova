@@ -282,52 +282,41 @@ async function fetchServerState(){
   return r && r.data ? r.data : null;
 }
 
+async function compressStateGz(stateObj){
+  try{
+    if(typeof CompressionStream === 'undefined') return null;
+    const json = JSON.stringify(stateObj);
+    const cs = new CompressionStream('gzip');
+    const w = cs.writable.getWriter();
+    w.write(new TextEncoder().encode(json));
+    w.close();
+    const reader = cs.readable.getReader();
+    const chunks = [];
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+      chunks.push(value);
+    }
+    const buf = new Blob(chunks).arrayBuffer ? await new Blob(chunks).arrayBuffer() : null;
+    if(!buf) return null;
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const STEP = 0x8000;
+    for(let i=0;i<bytes.length;i+=STEP){
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i+STEP));
+    }
+    return btoa(binary);
+  }catch(e){ console.error('compressStateGz erro:', e); return null; }
+}
+
 async function pushState(){
   if(!apiReady() || !currentUser || !state) return false;
-  const c = state && state.concursos ? state.concursos.find(x=>x.id===state.currentConcursoId) : null;
-  const ah = (c && c.estudo) ? c.estudo.agenda : null;
-  const ahoras = ah ? Object.values(ah).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
-  const atarefas = (c && c.estudo) ? c.estudo.tarefas : null;
   if(!state._dbgId) state._dbgId = Math.random().toString(36).slice(2);
-  console.log('pushState: dbgId=', state._dbgId, '| currentConcurso=', state.currentConcursoId, '| concursos=', state.concursos ? state.concursos.length : 0, '| c found=', !!c, '| estudo exists=', !!(c && c.estudo), '| agenda horas=', ahoras, '| tarefas=', atarefas ? atarefas.length : 0);
-  // Se agenda for null, tentar recuperar do cache
-  if(!ah){
-    console.warn('pushState: agenda é null! Tentando recuperar do cache...');
-    try{
-      const ck = cacheKey();
-      const raw = localStorage.getItem(ck);
-      if(raw){
-        const parsed = JSON.parse(raw);
-        const cached = (parsed && parsed.data) ? parsed.data : parsed;
-        const cc = cached && cached.concursos ? cached.concursos.find(x=>x.id===state.currentConcursoId) : null;
-        if(cc && cc.estudo && cc.estudo.agenda){
-          const cah = Object.values(cc.estudo.agenda).reduce((a,d)=>a+Object.keys(d||{}).length,0);
-          console.log('pushState: cache tem agenda horas=', cah);
-          // Copiar agenda do cache para state
-          if(c) { if(!c.estudo) c.estudo = {}; c.estudo.agenda = cc.estudo.agenda; }
-        }
-      }
-    }catch(e){ console.error('pushState: erro ao recuperar cache:', e); }
-  }
-  // Enviar patch (apenas agenda + tarefas) em campos separados
-  const body = {
-    data: state,
-    agenda_patch: ah || {},
-    tarefas_patch: atarefas || [],
-    concurso_id: state.currentConcursoId
-  };
-  console.log('pushState: enviando agenda_patch horas=', ahoras);
   try{
+    const gz = await compressStateGz({ data: state });
+    const body = gz ? { gz: gz } : { data: state };
     const r = await apiCall('state', { method:'PUT', body: body });
     console.log('pushState: resposta do servidor =', JSON.stringify(r));
-    // Verificar o que o servidor realmente salvou
-    try{
-      const check = await apiCall('state', { method:'GET' });
-      const srvAgenda = (check && check.data && check.data.concursos) ? (check.data.concursos.find(c=>c.id===check.data.currentConcursoId)||{}).estudo?.agenda : null;
-      const srvHoras = srvAgenda ? Object.values(srvAgenda).reduce((a,d)=>a+Object.keys(d||{}).length,0) : -1;
-      const srvTarefas = (check && check.data && check.data.concursos) ? (check.data.concursos.find(c=>c.id===check.data.currentConcursoId)||{}).estudo?.tarefas : null;
-      console.log('pushState: VERIFICACAO servidor agenda horas =', srvHoras, '| tarefas =', srvTarefas ? srvTarefas.length : 0, '| updated_at =', check && check.updated_at);
-    }catch(e){ console.error('pushState: erro na verificacao:', e); }
     setSyncStatus('✓ salvo na nuvem');
     return true;
   }catch(e){
