@@ -91,7 +91,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
         }
 
         case 'pprn-search': {
-            if ($method !== 'GET') fail('Método inválido.', 405);
+            if ($method !== 'GET' && $method !== 'POST') fail('Método inválido.', 405);
             require_auth($pdo, $config);
             $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
             if ($q === '') json_out(array('ok' => true, 'results' => array()));
