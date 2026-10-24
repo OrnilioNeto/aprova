@@ -3615,7 +3615,7 @@ function pprnCandidateCard(c, detailed){
 function renderResultados(){
   const el = document.getElementById('view-resultados');
   if(!el) return;
-  const tabs = [['consulta','🔍 Consulta'],['simulador','🔮 Simulador'],['regras','📋 Regras & Cronograma'],['admin','🛠️ Admin']];
+  const tabs = [['consulta','🔍 Consulta'],['simulador','🔮 Cortes & Projeções'],['regras','📋 Regras & Cronograma'],['admin','🛠️ Admin']];
   // admin tab only if admin
   const isAdmin = currentUser && currentUser.role === 'admin';
   const visibleTabs = isAdmin ? tabs : tabs.filter(t=>t[0]!=='admin');
@@ -3647,25 +3647,113 @@ function renderResultados(){
     `;
   } else if(pprnResultadosTab==='simulador'){
     html += `
-      <div class="card">
-        <h2>🔮 Simulador de colocações pós-bancas</h2>
-        <p class="hint" style="margin-bottom:12px">Ajuste as taxas e recalcule os cortes.</p>
-        <div class="grid g-3" style="margin-bottom:12px">
-          <div><label>Taxa de reversão hetero (%)</label><input id="sim-hetero" type="number" value="30" min="0" max="100"></div>
-          <div><label>Taxa de reversão PCD (%)</label><input id="sim-pcd" type="number" value="20" min="0" max="100"></div>
+      <div class="card" style="margin-bottom:16px;border-left:4px solid var(--accent)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="margin:0 0 4px 0">🔮 Análise Oficial de Cortes & Dinâmica das Cotas (Pós-Bancas 23/10)</h2>
+            <p class="hint" style="margin:0">Panorama consolidado com base no Edital nº 002/2026, resultado preliminar da Heteroidentificação/PCD e dados dos 18.945 candidatos.</p>
+          </div>
+          <span style="background:rgba(139,92,246,0.15);color:var(--accent);border:1px solid var(--accent);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700">EDITAL AVALIA 002/2026</span>
         </div>
-        <button class="btn" onclick="pprnRunSim()">Recalcular</button>
-        <div id="pprn-sim-out" style="margin-top:12px"></div>
+      </div>
+
+      <h3 style="margin:18px 0 10px 0;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px">
+        <span>🏃</span> Convocação para o Teste de Aptidão Física (TAF — Tabela 13.1 do Edital)
+      </h3>
+      <div class="grid g-3" style="margin-bottom:18px">
+        <div class="card" style="border-top:3px solid var(--blue)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Ampla Concorrência</span>
+            <span style="background:rgba(96,165,250,0.15);color:var(--blue);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Até 960ª vaga</span>
+          </div>
+          <div class="big" style="color:var(--blue);font-size:32px;font-weight:800;line-height:1">119 pts</div>
+          <div class="muted" style="font-size:12px;margin-top:6px"><b>1.095</b> convocados (c/ empates)</div>
+          <p class="hint" style="font-size:11px;margin-top:4px">Inclui 216 cotistas étnicos e 21 PCDs que atingiram a nota da Ampla por mérito próprio.</p>
+        </div>
+
+        <div class="card" style="border-top:3px solid var(--amber)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Cota Étnico-Racial</span>
+            <span style="background:rgba(251,191,36,0.15);color:var(--amber);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">240 vagas reserva</span>
+          </div>
+          <div class="big" style="color:var(--amber);font-size:32px;font-weight:800;line-height:1">113 pts</div>
+          <div class="muted" style="font-size:12px;margin-top:6px"><b>307</b> convocados (c/ empates)</div>
+          <p class="hint" style="font-size:11px;margin-top:4px">Contados após os cotistas que já foram chamados dentro da Ampla Concorrência.</p>
+        </div>
+
+        <div class="card" style="border-top:3px solid var(--green)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Cota PCD</span>
+            <span style="background:rgba(52,211,153,0.15);color:var(--green);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Sem linha de corte</span>
+          </div>
+          <div class="big" style="color:var(--green);font-size:32px;font-weight:800;line-height:1">73 pts</div>
+          <div class="muted" style="font-size:12px;margin-top:6px"><b>473</b> deferidos aptos</div>
+          <p class="hint" style="font-size:11px;margin-top:4px">Item 13.1.2 do Edital: basta atingir o mínimo de 73 pts sem zerar disciplinas.</p>
+        </div>
+      </div>
+
+      <h3 style="margin:18px 0 10px 0;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px">
+        <span>🏆</span> Linha de Corte das Vagas Imediatas (Curso de Formação — 200 Vagas)
+      </h3>
+      <div class="grid g-3" style="margin-bottom:18px">
+        <div class="card">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Ampla Concorrência (140 vagas)</span>
+          <div class="big" style="font-size:28px;margin:4px 0">128 pts</div>
+          <div class="muted" style="font-size:12px">164 candidatos c/ empates na nota 128</div>
+          <p class="hint" style="font-size:11px;margin-top:4px">24 cotistas deferidos estão dentro das 140 primeiras vagas da Ampla.</p>
+        </div>
+        <div class="card">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Cota Étnico-Racial (40 vagas)</span>
+          <div class="big" style="font-size:28px;margin:4px 0">125 pts</div>
+          <div class="muted" style="font-size:12px">43 candidatos c/ empates na nota 125</div>
+          <p class="hint" style="font-size:11px;margin-top:4px">40 cotistas deferidos além dos 24 que entraram pela Ampla.</p>
+        </div>
+        <div class="card">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Cota PCD (20 vagas)</span>
+          <div class="big" style="font-size:28px;margin:4px 0">118 pts</div>
+          <div class="muted" style="font-size:12px">22 candidatos c/ empates na nota 118</div>
+          <p class="hint" style="font-size:11px;margin-top:4px">20 PCDs deferidos além dos que entraram na Ampla.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h2 style="display:flex;align-items:center;gap:8px"><span>❓</span> Dúvidas Frequentes sobre a Dinâmica das Cotas</h2>
+        
+        <div style="margin-top:14px;padding:12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+          <h3 style="font-size:14px;color:var(--accent);margin-bottom:6px">1. Os candidatos cotistas aprovados nas cotas saem da lista da Ampla?</h3>
+          <p style="font-size:13px;line-height:1.5;margin-bottom:6px"><b>NÃO.</b> Conforme o <b>Subitem 7.4 do Edital</b> e o <b>Tema 1054 do STF / ADC 41</b> (jurisprudência vinculante), os cotistas que obtêm nota suficiente para figurar na Ampla Concorrência <b>permanecem na Ampla Concorrência</b>.</p>
+          <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0">Eles <b>não consomem as vagas da cota</b>. Pelo contrário: ao garantirem sua vaga na Ampla por mérito da pontuação, eles <b>liberam a vaga da cota para o próximo candidato cotista da fila</b>.</p>
+        </div>
+
+        <div style="margin-top:12px;padding:12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+          <h3 style="font-size:14px;color:var(--accent);margin-bottom:6px">2. A nota de corte da Ampla Concorrência irá diminuir?</h3>
+          <p style="font-size:13px;line-height:1.5;margin-bottom:6px"><b>NÃO. A nota de corte da Ampla não diminui.</b> Isso ocorre por dois fatores práticos e jurídicos:</p>
+          <ul style="margin-left:18px;font-size:13px;line-height:1.5;color:var(--text)">
+            <li style="margin-bottom:4px"><b>Os cotistas de nota alta não saem da Ampla:</b> ocupam legitimamente as vagas da classificação geral.</li>
+            <li><b>O retorno dos 3.045 indeferidos na Heteroidentificação:</b> pelo <b>Subitem 7.12 do Edital</b>, os candidatos indeferidos na heteroidentificação ou perícia PCD <i>não são eliminados</i>; eles migram automaticamente para disputar a Ampla Concorrência. Entre esses indeferidos, <b>79 têm nota $\ge$ 119 pts</b> (dentro do TAF da ampla) e <b>14 têm nota $\ge$ 128 pts</b> (vaga imediata), gerando pressão de sustentação na nota da Ampla.</li>
+          </ul>
+        </div>
+
+        <div style="margin-top:12px;padding:12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+          <h3 style="font-size:14px;color:var(--accent);margin-bottom:6px">3. Onde a nota de corte REALMENTE despencou?</h3>
+          <p style="font-size:13px;line-height:1.5;margin:0"><b>Na própria lista de cotas para quem foi DEFERIDO.</b> Com 3.045 candidatos indeferidos na banca e os cotistas de pontuação alta ocupando a Ampla, a concorrência na cota étnica limpou substancialmente: o corte do TAF na cota étnica caiu para <b>113 pontos</b> (6 pontos a menos que a Ampla) e o das vagas imediatas para <b>125 pontos</b>.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📅 Cronograma Oficial das Bancas</h2>
+        <table class="tbl" style="margin-top:10px">
+          <thead>
+            <tr><th>Data</th><th>Etapa</th><th>Situação</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>23/10/2026</b></td><td>Divulgação do resultado preliminar da Heteroidentificação e Perícia PCD</td><td><span style="color:var(--green);font-weight:700">Publicado</span></td></tr>
+            <tr><td><b>26 e 27/10/2026</b></td><td>Prazo de recursos contra o resultado preliminar das bancas no site do Instituto Avalia</td><td><span style="color:var(--amber);font-weight:700">Em andamento</span></td></tr>
+            <tr><td><b>04/11/2026</b></td><td>Divulgação do resultado definitivo pós-recursos e convocação oficial para o TAF</td><td><span style="color:var(--blue);font-weight:700">Aguardando</span></td></tr>
+          </tbody>
+        </table>
       </div>
     `;
-    if(pprnSimResult){
-      const r = pprnSimResult;
-      html += `<div class="grid g-3" style="margin-top:12px">
-        <div class="card"><h2>Ampla</h2><div class="big">${r.corte_ampla}</div><div class="muted">corte · ${r.vagas_ampla} vagas · ${r.total_ampla} candidatos</div></div>
-        <div class="card"><h2>Cota Étnica</h2><div class="big">${r.corte_etnico}</div><div class="muted">corte · ${r.vagas_etnico} vagas · ${r.total_etnico} candidatos</div></div>
-        <div class="card"><h2>Cota PCD</h2><div class="big">${r.corte_pcd}</div><div class="muted">corte · ${r.vagas_pcd} vagas · ${r.total_pcd} candidatos</div></div>
-      </div>`;
-    }
   } else if(pprnResultadosTab==='regras'){
     html += `
       <div class="card">
