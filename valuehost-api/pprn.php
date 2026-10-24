@@ -8,7 +8,15 @@ function insert_pprn_batch(PDO $pdo, array $rows, $uploadId) {
         (upload_id, inscricao, nome, nome_busca, modalidade, nota_objetiva, posicao_geral,
          status_cota, vaga_imediata, previsao_taf, previsao_vagas, convocado_taf,
          cota_etnico_apt, cota_pcd_apt, pos_etnico, pos_pcd, ganho_etnico, ganho_pcd, data_json)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE
+         upload_id=VALUES(upload_id), nome=VALUES(nome), nome_busca=VALUES(nome_busca),
+         modalidade=VALUES(modalidade), nota_objetiva=VALUES(nota_objetiva), posicao_geral=VALUES(posicao_geral),
+         status_cota=VALUES(status_cota), vaga_imediata=VALUES(vaga_imediata), previsao_taf=VALUES(previsao_taf),
+         previsao_vagas=VALUES(previsao_vagas), convocado_taf=VALUES(convocado_taf),
+         cota_etnico_apt=VALUES(cota_etnico_apt), cota_pcd_apt=VALUES(cota_pcd_apt),
+         pos_etnico=VALUES(pos_etnico), pos_pcd=VALUES(pos_pcd), ganho_etnico=VALUES(ganho_etnico),
+         ganho_pcd=VALUES(ganho_pcd), data_json=VALUES(data_json)';
     $stmt = $pdo->prepare($sql);
     foreach ($rows as $r) {
         $stmt->execute(array(
@@ -39,6 +47,24 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
     if (strpos($action, 'pprn-') !== 0) return false;
 
     switch ($action) {
+
+        case 'pprn-uploads': {
+            if ($method !== 'GET') fail('Método inválido.', 405);
+            require_auth($pdo, $config);
+            $stmt = $pdo->query('SELECT id, filename, uploaded_at, row_count FROM pprn_uploads ORDER BY uploaded_at DESC LIMIT 20');
+            $rows = $stmt->fetchAll();
+            $out = array();
+            foreach ($rows as $r) {
+                $out[] = array(
+                    'id' => $r['id'],
+                    'filename' => $r['filename'],
+                    'uploaded_at' => $r['uploaded_at'],
+                    'row_count' => (int)$r['row_count']
+                );
+            }
+            json_out(array('ok' => true, 'uploads' => $out));
+            return true;
+        }
 
         case 'pprn-meta': {
             if ($method !== 'GET') fail('Método inválido.', 405);
@@ -149,6 +175,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
         case 'pprn-upload': {
             if ($method !== 'POST') fail('Método inválido.', 405);
             $admin = require_admin($pdo, $config);
+            try {
             if (!isset($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
                 fail('Arquivo não enviado.');
             }
@@ -167,7 +194,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             foreach ($header as $h) {
                 $h = trim($h);
                 $h = str_replace("\xEF\xBB\xBF", '', $h);
-                $h = mb_strtolower($h, 'UTF-8');
+                $h = strtolower($h);
                 $h = strtr($h, array(
                     'á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a',
                     'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
@@ -239,7 +266,8 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                 foreach ($norm as $i => $h) {
                     $jsonArr[$h] = isset($row[$i]) ? $row[$i] : null;
                 }
-                $json = json_encode($jsonArr, JSON_UNESCAPED_UNICODE);
+                $json = json_encode($jsonArr, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+                if ($json === false) $json = null;
 
                 $rows[] = array(
                     'inscricao' => $insc,
@@ -287,6 +315,10 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
 
             json_out(array('ok' => true, 'upload_id' => $uploadId, 'row_count' => $rc));
             return true;
+        } catch (Exception $e) {
+            fail('Erro no upload: ' . $e->getMessage(), 500);
+            return true;
+        }
         }
 
         case 'pprn-simulate': {

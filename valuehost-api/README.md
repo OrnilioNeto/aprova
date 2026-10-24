@@ -74,6 +74,7 @@ real da API.
 | `?action=state` | GET | — | Bearer |
 | `?action=state` | PUT | `{data}` | Bearer |
 | `?action=pprn-meta` | GET | — | Bearer |
+| `?action=pprn-uploads` | GET | — | Bearer |
 | `?action=pprn-search` | GET | `?q=` | Bearer |
 | `?action=pprn-candidate` | GET | `?inscricao=` | Bearer |
 | `?action=pprn-linked` | GET | — | Bearer |

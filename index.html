@@ -3516,6 +3516,15 @@ async function pprnLoadMeta(){
     pprnMeta = r.meta || null;
   }catch(e){ pprnMeta = null; }
 }
+let pprnUploads = [];
+let pprnUploadStatus = [];
+async function pprnLoadUploads(){
+  if(!isLoggedIn()) { pprnUploads = []; return; }
+  try{
+    const r = await apiCall('pprn-uploads', { method:'GET', auth:true });
+    pprnUploads = r.uploads || [];
+  }catch(e){ pprnUploads = []; }
+}
 
 function pprnTabGo(t){ pprnResultadosTab = t; renderResultados(); }
 
@@ -3650,15 +3659,22 @@ function renderResultados(){
       </div>
     `;
   } else if(pprnResultadosTab==='admin'){
+    const statusHtml = pprnUploadStatus.length ? '<ul style="margin:8px 0 0 18px;font-size:12px">'+pprnUploadStatus.map(s=>'<li>'+esc(s.name)+': '+(s.ok?'<span style="color:var(--green)">OK ('+s.rows+' linhas)</span>':'<span style="color:var(--red)">ERRO - '+esc(s.error||'')+'</span>')+'</li>').join('')+'</ul>' : '';
+    const histHtml = pprnUploads.length ? '<table class="tbl" style="margin-top:10px"><thead><tr><th>Arquivo</th><th>Data</th><th class="right">Linhas</th></tr></thead><tbody>'+pprnUploads.map(u=>'<tr><td>'+esc(u.filename)+'</td><td>'+esc(u.uploaded_at)+'</td><td class="right">'+u.row_count+'</td></tr>').join('')+'</tbody></table>' : '<div class="muted" style="margin-top:8px">Nenhum upload anterior.</div>';
     html += `
       <div class="card">
         <h2>🛠️ Admin — subir lista das bancas</h2>
-        <p class="hint" style="margin-bottom:10px">Envie o CSV exportado do Excel (UTF-8). ${pprnMeta? ('Último upload: '+esc(pprnMeta.filename)+' em '+esc(pprnMeta.uploaded_at)+' ('+pprnMeta.row_count+' linhas)') : 'Nenhum upload ainda.'}</p>
+        <p class="hint" style="margin-bottom:10px">Envie CSV ou Excel (vários arquivos de uma vez). ${pprnMeta? ('Último upload: '+esc(pprnMeta.filename)+' em '+esc(pprnMeta.uploaded_at)+' ('+pprnMeta.row_count+' linhas)') : 'Nenhum upload ainda.'}</p>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input id="pprn-upload-file" type="file" accept=".csv,.xlsx" multiple>
           <button class="btn" onclick="pprnDoUpload()">Enviar</button>
         </div>
         <div id="pprn-admin-msg" class="hint" style="margin-top:8px">${esc(pprnAdminMsg)}</div>
+        ${statusHtml}
+      </div>
+      <div class="card">
+        <h2>📜 Histórico de uploads</h2>
+        ${histHtml}
       </div>
     `;
   }
@@ -3754,7 +3770,11 @@ function pprnMergeParsed(parsedList){
       if(!(h in idx)){ idx[h]=headerSet.length; headerSet.push(h); }
     }
   }
-  const allRows = [];
+  // encontra coluna de inscricao
+  const inscIdx = headerSet.findIndex(h=>/inscricao/i.test(h));
+  const mergedMap = new Map();
+  const mergedOrder = [];
+  const noInscRows = [];
   for(const p of parsedList){
     const map = p.headers.map(h=>idx[h]);
     for(const r of p.rows){
@@ -3763,9 +3783,25 @@ function pprnMergeParsed(parsedList){
         const v = r[i];
         row[map[i]] = (v==null?'':String(v));
       }
-      allRows.push(row);
+      if(inscIdx >= 0 && row[inscIdx].trim()!==''){
+        const key = row[inscIdx].trim();
+        if(mergedMap.has(key)){
+          const existing = mergedMap.get(key);
+          for(let c=0;c<headerSet.length;c++){
+            if((existing[c]||'').trim()==='' && (row[c]||'').trim()!=='') existing[c]=row[c];
+          }
+        } else {
+          mergedMap.set(key, row);
+          mergedOrder.push(key);
+        }
+      } else {
+        noInscRows.push(row);
+      }
     }
   }
+  const allRows = [];
+  for(const key of mergedOrder) allRows.push(mergedMap.get(key));
+  for(const r of noInscRows) allRows.push(r);
   return {headers: headerSet, rows: allRows};
 }
 
@@ -3786,15 +3822,26 @@ async function pprnDoUpload(){
   const fileInput = document.getElementById('pprn-upload-file');
   const files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
   if(!files.length){ pprnAdminMsg='Selecione ao menos um arquivo.'; renderResultados(); return; }
+  pprnUploadStatus = files.map(f=>({name:f.name, ok:false, rows:0, error:'processando...'}));
   pprnAdminMsg = 'Processando arquivos...';
   renderResultados();
   try{
     const parsed = [];
-    for(const f of files){
-      parsed.push(await pprnParseFile(f));
+    for(let i=0;i<files.length;i++){
+      try{
+        const p = await pprnParseFile(files[i]);
+        if(!p.rows.length) throw new Error('sem linhas');
+        pprnUploadStatus[i] = {name:files[i].name, ok:true, rows:p.rows.length, error:''};
+        parsed.push(p);
+      }catch(e){
+        pprnUploadStatus[i] = {name:files[i].name, ok:false, rows:0, error:e.message||'falha ao ler'};
+      }
+      renderResultados();
     }
-    const merged = pprnMergeParsed(parsed);
-    if(!merged.rows.length){ pprnAdminMsg='Nenhuma linha encontrada nos arquivos.'; renderResultados(); return; }
+    const okParsed = parsed;
+    if(!okParsed.length){ pprnAdminMsg='Nenhum arquivo válido.'; renderResultados(); return; }
+    const merged = pprnMergeParsed(okParsed);
+    if(!merged.rows.length){ pprnAdminMsg='Nenhuma linha encontrada.'; renderResultados(); return; }
     const csv = pprnToCsv(merged.headers, merged.rows);
     const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
     const fd = new FormData();
@@ -3809,8 +3856,11 @@ async function pprnDoUpload(){
     });
     const payload = await res.json();
     if(!res.ok) throw new Error(payload.error||'Erro no upload');
-    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas ('+files.length+' arquivo(s)).';
+    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas ('+okParsed.length+' arquivo(s) válidos).';
+    // marca todos os válidos como enviados
+    for(const s of pprnUploadStatus){ if(s.ok) s.error = 'enviado'; }
     await pprnLoadMeta();
+    await pprnLoadUploads();
   }catch(e){ pprnAdminMsg = 'Erro: '+(e.message||e); }
   renderResultados();
 }

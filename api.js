@@ -527,7 +527,7 @@ async function onSession(user){
   setAuthLoading(false);
   document.getElementById('auth-screen').classList.add('dn');
   renderAuthHeader();
-  try{ await pprnLoadLinked(); await pprnLoadMeta(); }catch(e){}
+  try{ await pprnLoadLinked(); await pprnLoadMeta(); await pprnLoadUploads(); }catch(e){}
   renderAll();
 }
 
