@@ -3579,10 +3579,33 @@ function pprnCandidateCard(c, detailed){
   html += `</div>`;
   if(detailed && c.extra){
     const ex = c.extra;
-    const disc = ['Lingua Portuguesa','Historia do RN','Etica no Servico Publico','Direito Constitucional','Direito Administrativo','Direitos Humanos','Execucao Penal','Legislacao Especifica','Direito Penal e Processo Penal'];
+    const disc = [
+      { label: 'Língua Portuguesa', keys: ['lingua_portuguesa', 'lingua_portuguesa_e_aspectos_geoeconomicos_do_rn'] },
+      { label: 'História do RN', keys: ['historia_do_rn', 'historia_do_rn_e_aspectos_geoeconomicos_do_rn'] },
+      { label: 'Ética no Serviço Público', keys: ['etica_no_servico_publico'] },
+      { label: 'Direito Constitucional', keys: ['direito_constitucional'] },
+      { label: 'Direito Administrativo', keys: ['direito_administrativo'] },
+      { label: 'Direitos Humanos', keys: ['direitos_humanos'] },
+      { label: 'Execução Penal', keys: ['execucao_penal'] },
+      { label: 'Legislação Específica', keys: ['legislacao_especifica'] },
+      { label: 'Direito Penal e Processo Penal', keys: ['direito_penal_e_processo_penal'] }
+    ];
+    const findDiscVal = (keys) => {
+      if(!ex || typeof ex !== 'object') return '—';
+      for(const k of keys){
+        if(ex[k] != null && String(ex[k]).trim() !== '') return ex[k];
+      }
+      const exKeys = Object.keys(ex);
+      for(const k of keys){
+        const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const match = exKeys.find(ek => ek.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanK);
+        if(match && ex[match] != null && String(ex[match]).trim() !== '') return ex[match];
+      }
+      return '—';
+    };
     const rows = disc.map(d=>{
-      const v = ex[d] != null ? ex[d] : (ex[d.replace(/ /g,'_')] != null ? ex[d.replace(/ /g,'_')] : '—');
-      return `<tr><td>${esc(d)}</td><td class="right">${v}</td></tr>`;
+      const v = findDiscVal(d.keys);
+      return `<tr><td>${esc(d.label)}</td><td class="right">${esc(String(v))}</td></tr>`;
     }).join('');
     html += `<div class="card"><h2>📝 Notas por disciplina</h2><table class="tbl"><thead><tr><th>Disciplina</th><th class="right">Acertos</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
@@ -3717,10 +3740,90 @@ async function pprnRunSim(){
 }
 
 function pprnNormHeader(h){
-  return String(h==null?'':h).trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  if(h == null) return '';
+  let s = String(h).trim().toLowerCase();
+  const map = {
+    'á':'a','à':'a','ã':'a','â':'a','ä':'a','å':'a',
+    'é':'e','è':'e','ê':'e','ë':'e',
+    'í':'i','ì':'i','î':'i','ï':'i',
+    'ó':'o','ò':'o','õ':'o','ô':'o','ö':'o',
+    'ú':'u','ù':'u','û':'u','ü':'u',
+    'ç':'c','ñ':'n','ý':'y','ÿ':'y'
+  };
+  s = s.replace(/[áàãâäåéèêëíìîïóòõôöúùûüçñýÿ]/g, m => map[m] || m);
+  try {
+    s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  } catch(e){}
+  s = s.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return s;
 }
+
+function pprnCanonicalHeader(raw){
+  const h = pprnNormHeader(raw);
+  if(!h) return '';
+  if(/^inscri/i.test(h) || h === 'nr_inscricao' || h === 'num_inscricao' || h === 'inscricao_str' || h === 'inscric_a_o') {
+    return 'inscricao';
+  }
+  if(h === 'nome' || h === 'nome_do_candidato' || h === 'nome_candidato' || h === 'candidato' || h === 'nome_completo') {
+    return 'nome';
+  }
+  if(h === 'nota_objetiva' || h === 'nota' || h === 'pontos' || h === 'pontuacao' || h === 'pontuacao_objetiva' || h === 'nota_total' || h === 'total_pontos' || h === 'resultado_objetiva') {
+    return 'nota_objetiva';
+  }
+  if(h === 'posicao_geral' || h === 'posicao_original_definitiva' || h === 'posicao' || h === 'classificacao' || h === 'classificacao_geral' || h === 'posic_a_o_geral' || h === 'posic_a_o' || h === 'pos_geral' || h === 'ordem') {
+    return 'posicao_geral';
+  }
+  if(h === 'modalidade_concorrencia' || h === 'modalidade' || h === 'concorrencia' || h === 'tipo_concorrencia' || h === 'tipo_vaga' || h === 'cota') {
+    return 'modalidade_concorrencia';
+  }
+  if(/lingua_port/i.test(h) || /li_ng/i.test(h)) return 'lingua_portuguesa';
+  if(/historia_do_rn/i.test(h) || /histo_ria/i.test(h)) return 'historia_do_rn';
+  if(/etica/i.test(h) || /e_tica/i.test(h)) return 'etica_no_servico_publico';
+  if(/direito_const/i.test(h)) return 'direito_constitucional';
+  if(/direito_admin/i.test(h)) return 'direito_administrativo';
+  if(/direitos_human/i.test(h)) return 'direitos_humanos';
+  if(/execuc/i.test(h)) return 'execucao_penal';
+  if(/legislac/i.test(h)) return 'legislacao_especifica';
+  if(/direito_penal/i.test(h)) return 'direito_penal_e_processo_penal';
+  if(/status_cota/i.test(h)) return 'status_cota_preliminar';
+  if(/cota_etnico_apt/i.test(h)) return 'cota_etnico_apta_preliminar';
+  if(/cota_pcd_apt/i.test(h)) return 'cota_pcd_apta_preliminar';
+  if(/nova_pos.*etnico/i.test(h)) return 'nova_pos_lista_etnico';
+  if(/nova_pos.*pcd/i.test(h)) return 'nova_pos_lista_pcd';
+  if(/ganho.*etnico/i.test(h)) return 'ganho_pos_etnico';
+  if(/ganho.*pcd/i.test(h)) return 'ganho_pos_pcd';
+  if(/convocado.*taf/i.test(h)) return 'convocado_taf_preliminar';
+  if(/previsao_taf/i.test(h)) return 'previsao_taf';
+  if(/previsao_vaga/i.test(h)) return 'previsao_vagas_imediatas';
+  return h;
+}
+
+function pprnFindHeaderIndex(rows){
+  let hi = -1;
+  const maxScan = Math.min(rows.length, 25);
+  for(let i=0; i<maxScan; i++){
+    const r = rows[i];
+    if(!Array.isArray(r)) continue;
+    const filled = r.map(c => pprnNormHeader(c)).filter(Boolean);
+    if(filled.length < 2) continue;
+    const hasInsc = filled.some(c => /inscri/i.test(c));
+    const hasNome = filled.some(c => /nome|candidato/i.test(c));
+    if(hasInsc && hasNome){ hi = i; break; }
+  }
+  if(hi === -1){
+    for(let i=0; i<maxScan; i++){
+      const r = rows[i];
+      if(!Array.isArray(r)) continue;
+      const filled = r.map(c => pprnNormHeader(c)).filter(Boolean);
+      if(filled.length >= 2 && filled.some(c => /inscri|nome|candidato/i.test(c))){
+        hi = i; break;
+      }
+    }
+  }
+  return hi !== -1 ? hi : 0;
+}
+
 function pprnParseCsvText(text){
-  // retorna {headers:[], rows:[[]]}
   const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   const allRows = [];
   for(const ln of lines){
@@ -3744,14 +3847,9 @@ function pprnParseCsvText(text){
     allRows.push(cells);
   }
   if(!allRows.length) return {headers:[], rows:[]};
-  // detecta linha de cabeçalho
-  let hi = 0;
-  for(let i=0;i<Math.min(allRows.length,10);i++){
-    const cells = allRows[i].map(c=>String(c||'').toLowerCase());
-    if(cells.some(c=>/inscri|nome|candidato/.test(c))){ hi=i; break; }
-  }
-  const headers = allRows[hi].map(h=>pprnNormHeader(h));
-  const rows = allRows.slice(hi+1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+  const hi = pprnFindHeaderIndex(allRows);
+  const headers = allRows[hi].map(h => pprnCanonicalHeader(h));
+  const rows = allRows.slice(hi+1).filter(r => r.some(c => String(c||'').trim() !== ''));
   return {headers, rows};
 }
 
@@ -3767,58 +3865,60 @@ async function pprnParseFile(file){
   const ws = wb.Sheets[wb.SheetNames[0]];
   const aoa = (window.XLSX || XLSX).utils.sheet_to_json(ws, {header:1, defval:''});
   if(!aoa || !aoa.length) return {headers:[], rows:[]};
-  // detecta a linha de cabeçalho (pula títulos)
-  let hi = 0;
-  for(let i=0;i<Math.min(aoa.length,10);i++){
-    const cells = aoa[i].map(c=>String(c==null?'':c).toLowerCase());
-    if(cells.some(c=>/inscri|nome|candidato/.test(c))){ hi=i; break; }
-  }
-  const headers = aoa[hi].map(h=>pprnNormHeader(h));
-  const rows = aoa.slice(hi+1).filter(r=>r.some(c=>String(c==null?'':c).trim()!==''));
+  const hi = pprnFindHeaderIndex(aoa);
+  const headers = aoa[hi].map(h => pprnCanonicalHeader(h));
+  const rows = aoa.slice(hi+1).filter(r => r.some(c => String(c==null?'':c).trim() !== ''));
   return {headers, rows};
 }
 
 function pprnMergeParsed(parsedList){
-  // union de headers
   const headerSet = [];
   const idx = {};
   for(const p of parsedList){
     for(const h of p.headers){
-      if(!(h in idx)){ idx[h]=headerSet.length; headerSet.push(h); }
+      if(h && !(h in idx)){ idx[h] = headerSet.length; headerSet.push(h); }
     }
   }
-  // encontra coluna de inscricao
-  const inscIdx = headerSet.findIndex(h=>/inscricao/i.test(h));
+  const inscIdx = headerSet.indexOf('inscricao');
   const mergedMap = new Map();
   const mergedOrder = [];
-  const noInscRows = [];
   for(const p of parsedList){
-    const map = p.headers.map(h=>idx[h]);
+    const fileInscIdx = p.headers.indexOf('inscricao');
+    const map = p.headers.map(h => idx[h]);
     for(const r of p.rows){
       const row = new Array(headerSet.length).fill('');
-      for(let i=0;i<r.length;i++){
+      for(let i=0; i<r.length; i++){
         const v = r[i];
-        row[map[i]] = (v==null?'':String(v));
+        if(map[i] !== undefined){
+          row[map[i]] = (v == null ? '' : String(v));
+        }
       }
-      if(inscIdx >= 0 && row[inscIdx].trim()!==''){
-        const key = row[inscIdx].trim();
+      let key = '';
+      if(fileInscIdx >= 0 && r[fileInscIdx] != null){
+        key = String(r[fileInscIdx]).trim().replace(/\.0+$/, '').replace(/\D/g, '');
+      } else if(inscIdx >= 0 && row[inscIdx]){
+        key = String(row[inscIdx]).trim().replace(/\.0+$/, '').replace(/\D/g, '');
+      }
+      if(key && inscIdx >= 0){
+        row[inscIdx] = key;
+      }
+      if(key){
         if(mergedMap.has(key)){
           const existing = mergedMap.get(key);
-          for(let c=0;c<headerSet.length;c++){
-            if((existing[c]||'').trim()==='' && (row[c]||'').trim()!=='') existing[c]=row[c];
+          for(let c=0; c<headerSet.length; c++){
+            if((existing[c] == null || String(existing[c]).trim() === '') && (row[c] != null && String(row[c]).trim() !== '')){
+              existing[c] = row[c];
+            }
           }
         } else {
           mergedMap.set(key, row);
           mergedOrder.push(key);
         }
-      } else {
-        noInscRows.push(row);
       }
     }
   }
   const allRows = [];
   for(const key of mergedOrder) allRows.push(mergedMap.get(key));
-  for(const r of noInscRows) allRows.push(r);
   return {headers: headerSet, rows: allRows};
 }
 

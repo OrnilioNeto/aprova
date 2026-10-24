@@ -3,36 +3,39 @@
    PPRN — endpoints de bancas (incluído por index.php)
    ============================================================ */
 
-define('PPRN_VERSION', '2026-10-24-v7');
+define('PPRN_VERSION', '2026-10-24-v8');
 
 function pprn_ascii_map() {
     static $map = null;
     if ($map !== null) return $map;
     $map = array(
-        "\u{00e1}"=>'a',"\u{00e0}"=>'a',"\u{00e2}"=>'a',"\u{00e3}"=>'a',"\u{00e4}"=>'a',"\u{00e5}"=>'a',
-        "\u{00e9}"=>'e',"\u{00e8}"=>'e',"\u{00ea}"=>'e',"\u{00eb}"=>'e',
-        "\u{00ed}"=>'i',"\u{00ec}"=>'i',"\u{00ee}"=>'i',"\u{00ef}"=>'i',
-        "\u{00f3}"=>'o',"\u{00f2}"=>'o',"\u{00f4}"=>'o',"\u{00f5}"=>'o',"\u{00f6}"=>'o',
-        "\u{00fa}"=>'u',"\u{00f9}"=>'u',"\u{00fb}"=>'u',"\u{00fc}"=>'u',
-        "\u{00e7}"=>'c',"\u{00f1}"=>'n',"\u{00fd}"=>'y',
-        "\u{00c1}"=>'a',"\u{00c0}"=>'a',"\u{00c2}"=>'a',"\u{00c3}"=>'a',"\u{00c4}"=>'a',"\u{00c5}"=>'a',
-        "\u{00c9}"=>'e',"\u{00c8}"=>'e',"\u{00ca}"=>'e',"\u{00cb}"=>'e',
-        "\u{00cd}"=>'i',"\u{00cc}"=>'i',"\u{00ce}"=>'i',"\u{00cf}"=>'i',
-        "\u{00d3}"=>'o',"\u{00d2}"=>'o',"\u{00d4}"=>'o',"\u{00d5}"=>'o',"\u{00d6}"=>'o',
-        "\u{00da}"=>'u',"\u{00d9}"=>'u',"\u{00db}"=>'u',"\u{00dc}"=>'u',
-        "\u{00c7}"=>'c',"\u{00d1}"=>'n',"\u{00dd}"=>'y'
+        'á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a','å'=>'a',
+        'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+        'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
+        'ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
+        'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u',
+        'ç'=>'c','ñ'=>'n','ý'=>'y','ÿ'=>'y',
+        'Á'=>'a','À'=>'a','Â'=>'a','Ã'=>'a','Ä'=>'a','Å'=>'a',
+        'É'=>'e','È'=>'e','Ê'=>'e','Ë'=>'e',
+        'Í'=>'i','Ì'=>'i','Î'=>'i','Ï'=>'i',
+        'Ó'=>'o','Ò'=>'o','Ô'=>'o','Õ'=>'o','Ö'=>'o',
+        'Ú'=>'u','Ù'=>'u','Û'=>'u','Ü'=>'u',
+        'Ç'=>'c','Ñ'=>'n','Ý'=>'y'
     );
     return $map;
 }
 
 function pprn_ascii($s) {
     $s = (string)$s;
+    // Remove diacríticos combinatórios Unicode
+    $s = @preg_replace('/[\x{0300}-\x{036f}]/u', '', $s);
     $map = pprn_ascii_map();
     $s = strtr($s, $map);
-    // remove any remaining combining marks / non-ascii
     if (class_exists('Normalizer')) {
-        $t = Normalizer::normalize($s, Normalizer::FORM_KD);
-        if ($t !== false) $s = preg_replace('/\p{Mn}+/u', '', $t);
+        $t = @Normalizer::normalize($s, Normalizer::FORM_KD);
+        if ($t !== false && $t !== null) {
+            $s = @preg_replace('/\p{Mn}+/u', '', $t);
+        }
     }
     return $s;
 }
@@ -216,6 +219,8 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
         case 'pprn-upload': {
             if ($method !== 'POST') fail('Método inválido.', 405);
             $admin = require_admin($pdo, $config);
+            @ini_set('max_execution_time', '300');
+            @ini_set('memory_limit', '256M');
             try {
                 // Aceita upload via arquivo CSV OU via JSON (headers + rows)
                 $header = null;
@@ -260,7 +265,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     $name = isset($in['filename']) ? $in['filename'] : 'upload.json';
                 }
 
-                // Normaliza cabeçalhos
+                // Normaliza cabeçalhos (idempotente)
                 $norm = array();
                 foreach ($header as $h) {
                     $h = trim((string)$h);
@@ -269,20 +274,36 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     $h = strtolower($h);
                     $h = preg_replace('/[^a-z0-9]+/', '_', $h);
                     $h = trim($h, '_');
+                    // Correções de termos com mangling prévio
+                    $h = str_replace(
+                        array('inscric_a_o', 'posic_a_o', 'li_nga_portgesa', 'li_ngua_portuguesa', 'histo_ria', 'e_tica', 'servic_o', 'p_blico', 'execuc_a_o', 'legisla_c_a_o'),
+                        array('inscricao',   'posicao',   'lingua_portuguesa', 'lingua_portuguesa', 'historia',   'etica',  'servico',  'publico',  'execucao',   'legislacao'),
+                        $h
+                    );
                     $norm[] = $h;
                 }
                 $idx = array_flip($norm);
                 $detectedHeaders = $norm;
 
-                $get = function($row, $keys) use ($idx) {
+                $get = function($row, $keys) use ($idx, $norm) {
                     foreach ($keys as $k) {
                         if (isset($idx[$k]) && isset($row[$idx[$k]])) {
                             $v = trim((string)$row[$idx[$k]]);
                             if ($v !== '') return $v;
                         }
                     }
+                    // Fallback parcial de substring
+                    foreach ($keys as $k) {
+                        foreach ($norm as $colIndex => $colName) {
+                            if (strpos($colName, $k) !== false && isset($row[$colIndex])) {
+                                $v = trim((string)$row[$colIndex]);
+                                if ($v !== '') return $v;
+                            }
+                        }
+                    }
                     return null;
                 };
+
                 $toBool = function($v) {
                     if ($v === null) return null;
                     $l = strtolower(trim((string)$v));
@@ -291,12 +312,30 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     if (stripos($v, 'sim') !== false) return 1;
                     return null;
                 };
-                $toNum = function($v) { return ($v === null || $v === '') ? null : (is_numeric($v) ? (float)$v : null); };
+
+                $toInt = function($v) {
+                    if ($v === null || $v === '') return null;
+                    $s = trim((string)$v);
+                    $s = preg_replace('/[^\d\.\,\-]/', '', $s);
+                    $s = str_replace(',', '.', $s);
+                    return is_numeric($s) ? (int)round((float)$s) : null;
+                };
+
+                $toNum = function($v) {
+                    if ($v === null || $v === '') return null;
+                    $s = trim((string)$v);
+                    $s = preg_replace('/[^\d\.\,\-]/', '', $s);
+                    $s = str_replace(',', '.', $s);
+                    return is_numeric($s) ? (float)$s : null;
+                };
 
                 $rows = array();
                 $count = 0;
                 $skipped = 0;
+                $sampleSkipped = array();
+                $sampleSaved = null;
                 $uploadId = new_uuid();
+
                 // registra upload antes de inserir candidatos (FK)
                 $pdo->prepare('INSERT INTO pprn_uploads (id, filename, uploaded_at, row_count, uploaded_by) VALUES (?, ?, ?, ?, ?)')
                     ->execute(array($uploadId, $name, now_utc(), 0, $admin['id']));
@@ -305,26 +344,37 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     if (!is_array($row)) continue;
                     if (count($row) < 1) continue;
                     if (implode('', $row) === '') continue;
-                    // alinha tamanho da linha ao header
                     while (count($row) < count($norm)) $row[] = '';
-                    $nome = $get($row, array('nome'));
-                    $insc = $get($row, array('inscricao','inscricao_str'));
-                    if ($nome === null || $insc === null) { $skipped++; continue; }
-                    $insc = preg_replace('/[^0-9]/', '', $insc);
-                    $nota = $get($row, array('nota_objetiva'));
-                    $pos = $get($row, array('posicao_geral','posicao_original_definitiva'));
-                    $mod = $get($row, array('modalidade_concorrencia','modalidade'));
-                    $status = $get($row, array('status_cota_preliminar','status_cota'));
-                    $vaga = $get($row, array('previsao_vagas_imediatas','vaga_imediata','previsao_vagas_preliminar'));
-                    $taf = $get($row, array('previsao_taf','previsao_taf_preliminar'));
-                    $pvagas = $get($row, array('previsao_vagas','previsao_vagas_imediatas'));
-                    $conv = $get($row, array('convocado_taf_preliminar','convocado_taf'));
-                    $ce = $get($row, array('cota_etnico_apta_preliminar','cota_etnico_racial'));
-                    $cp = $get($row, array('cota_pcd_apta_preliminar','cota_pcd'));
-                    $pe = $get($row, array('nova_pos_lista_etnico','pos_etnico','pos_lista_etnico'));
-                    $pp = $get($row, array('nova_pos_lista_pcd','pos_pcd','pos_lista_pcd'));
-                    $ge = $get($row, array('ganho_pos_etnico','ganho_etnico'));
-                    $gp = $get($row, array('ganho_pos_pcd','ganho_pcd'));
+
+                    $nome = $get($row, array('nome', 'candidato', 'nome_candidato', 'nome_do_candidato', 'nome_completo'));
+                    $insc = $get($row, array('inscricao', 'inscricao_str', 'inscricao_candidato', 'nr_inscricao', 'num_inscricao', 'inscric_a_o', 'insc'));
+                    if ($nome === null || $insc === null) {
+                        if (count($sampleSkipped) < 5) {
+                            $sampleSkipped[] = array(
+                                'reason' => ($nome === null ? 'nome ausente; ' : '') . ($insc === null ? 'inscricao ausente;' : ''),
+                                'preview' => array_slice($row, 0, 4)
+                            );
+                        }
+                        $skipped++;
+                        continue;
+                    }
+                    $insc = preg_replace('/[^0-9]/', '', preg_replace('/\.0+$/', '', $insc));
+                    if ($insc === '') { $skipped++; continue; }
+
+                    $nota = $get($row, array('nota_objetiva', 'nota', 'pontos', 'pontuacao', 'pontuacao_objetiva', 'total_pontos', 'resultado_objetiva'));
+                    $pos = $get($row, array('posicao_geral', 'posicao_original_definitiva', 'posicao', 'classificacao', 'classificacao_geral', 'posic_a_o_geral', 'posic_a_o', 'pos_geral', 'ordem'));
+                    $mod = $get($row, array('modalidade_concorrencia', 'modalidade', 'concorrencia', 'tipo_vaga', 'cota'));
+                    $status = $get($row, array('status_cota_preliminar', 'status_cota', 'resultado_hetero', 'resultado_ppp', 'resultado_pcd', 'resultado'));
+                    $vaga = $get($row, array('previsao_vagas_imediatas', 'vaga_imediata', 'previsao_vagas_preliminar', 'vaga_imediata_sim_padrao', 'previsao_vagas'));
+                    $taf = $get($row, array('previsao_taf', 'previsao_taf_preliminar', 'previsao_taf_sim_padrao'));
+                    $pvagas = $get($row, array('previsao_vagas', 'previsao_vagas_imediatas'));
+                    $conv = $get($row, array('convocado_taf_preliminar', 'convocado_taf', 'convocado_taf_sim_padrao'));
+                    $ce = $get($row, array('cota_etnico_apta_preliminar', 'cota_etnico_racial', 'cota_etnico_apt'));
+                    $cp = $get($row, array('cota_pcd_apta_preliminar', 'cota_pcd', 'cota_pcd_apt'));
+                    $pe = $get($row, array('nova_pos_lista_etnico', 'pos_etnico', 'pos_lista_etnico', 'pos_etnico_sim_padrao'));
+                    $pp = $get($row, array('nova_pos_lista_pcd', 'pos_pcd', 'pos_lista_pcd', 'pos_pcd_sim_padrao'));
+                    $ge = $get($row, array('ganho_pos_etnico', 'ganho_etnico'));
+                    $gp = $get($row, array('ganho_pos_pcd', 'ganho_pcd'));
 
                     $nb = pprn_norm($nome);
 
@@ -335,13 +385,13 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     $json = json_encode($jsonArr, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
                     if ($json === false) $json = null;
 
-                    $rows[] = array(
+                    $cRow = array(
                         'inscricao' => $insc,
                         'nome' => $nome,
                         'nome_busca' => $nb,
                         'modalidade' => $mod,
-                        'nota' => $nota !== null ? (int)$nota : null,
-                        'pos' => $pos !== null ? (int)$pos : null,
+                        'nota' => $toInt($nota),
+                        'pos' => $toInt($pos),
                         'status' => $status,
                         'vaga' => $vaga,
                         'taf' => $taf,
@@ -355,6 +405,17 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                         'gp' => $toNum($gp),
                         'json' => $json
                     );
+
+                    if ($sampleSaved === null) {
+                        $sampleSaved = array(
+                            'inscricao' => $insc,
+                            'nome' => $nome,
+                            'nota' => $cRow['nota'],
+                            'posicao' => $cRow['pos']
+                        );
+                    }
+
+                    $rows[] = $cRow;
                     $count++;
                     if (count($rows) >= 500) {
                         insert_pprn_batch($pdo, $rows, $uploadId);
@@ -374,7 +435,15 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                 $rc = (int)$stmt->fetch()['c'];
                 $pdo->prepare('UPDATE pprn_uploads SET row_count = ? WHERE id = ?')->execute(array($rc, $uploadId));
 
-                json_out(array('ok' => true, 'upload_id' => $uploadId, 'row_count' => $rc, 'skipped' => $skipped, 'detected_headers' => $detectedHeaders));
+                json_out(array(
+                    'ok' => true,
+                    'upload_id' => $uploadId,
+                    'row_count' => $rc,
+                    'skipped' => $skipped,
+                    'detected_headers' => $detectedHeaders,
+                    'sample_saved' => $sampleSaved,
+                    'sample_skipped' => $sampleSkipped
+                ));
                 return true;
             } catch (Exception $e) {
                 fail('Erro no upload: ' . $e->getMessage(), 500);
