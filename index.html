@@ -3531,11 +3531,11 @@ async function pprnLoadUploads(){
 function pprnTabGo(t){ pprnResultadosTab = t; renderResultados(); }
 
 async function pprnSearch(q){
-  if(!q || q.trim().length < 2) return [];
+  if(!q || q.trim().length < 2) return {results:[], total:0, q_norm:q};
   try{
     const r = await apiCall('pprn-search?q='+encodeURIComponent(q.trim()), { method:'GET', auth:true });
-    return r.results || [];
-  }catch(e){ return []; }
+    return {results:r.results||[], total:r.total||0, q_norm:r.q_norm||q};
+  }catch(e){ return {results:[], total:0, q_norm:q}; }
 }
 
 async function pprnLinkInscricao(insc){
@@ -3689,8 +3689,8 @@ async function pprnDoSearch(){
   const res = await pprnSearch(q);
   const box = document.getElementById('pprn-search-results');
   if(!box) return;
-  if(!res.length){ box.innerHTML = '<div class="muted">Nenhum resultado.</div>'; return; }
-  box.innerHTML = res.map(r=>`
+  if(!res.results.length){ box.innerHTML = '<div class="muted">Nenhum resultado. (total no banco: '+(res.total!=null?res.total:'?')+', busca: "'+esc(res.q_norm||q)+'")</div>'; return; }
+  box.innerHTML = res.results.map(r=>`
     <div style="padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pprnShowDetail('${r.inscricao}')">
       <b>${esc(r.nome)}</b> <span class="muted" style="font-size:11px">(${r.inscricao})</span><br>
       <span class="muted" style="font-size:11px">${esc(r.modalidade||'')} · Nota ${r.nota} · Pos ${r.posicao} · ${esc(r.status_cota||'')}</span>

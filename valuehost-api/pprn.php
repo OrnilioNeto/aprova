@@ -3,6 +3,16 @@
    PPRN — endpoints de bancas (incluído por index.php)
    ============================================================ */
 
+function pprn_norm($s) {
+    $s = (string)$s;
+    if (class_exists('Normalizer')) {
+        $t = Normalizer::normalize($s, Normalizer::FORM_KD);
+        if ($t !== false) $s = $t;
+    }
+    $s = preg_replace('/\p{Mn}+/u', '', $s);
+    return strtoupper(trim($s));
+}
+
 function insert_pprn_batch(PDO $pdo, array $rows, $uploadId) {
     $sql = 'INSERT INTO pprn_candidates
         (upload_id, inscricao, nome, nome_busca, modalidade, nota_objetiva, posicao_geral,
@@ -85,18 +95,12 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             require_auth($pdo, $config);
             $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
             if ($q === '') json_out(array('ok' => true, 'results' => array()));
+            $nb = pprn_norm($q);
             if (preg_match('/^\d+$/', $q)) {
                 $stmt = $pdo->prepare('SELECT inscricao, nome, modalidade, nota_objetiva, posicao_geral, status_cota, vaga_imediata, previsao_taf FROM pprn_candidates WHERE inscricao = ? LIMIT 20');
                 $stmt->execute(array($q));
             } else {
-                $nb = strtoupper(strtr($q, array(
-                    'á'=>'A','à'=>'A','â'=>'A','ã'=>'A','ä'=>'A',
-                    'é'=>'E','è'=>'E','ê'=>'E','ë'=>'E',
-                    'í'=>'I','ì'=>'I','î'=>'I','ï'=>'I',
-                    'ó'=>'O','ò'=>'O','ô'=>'O','õ'=>'O','ö'=>'O',
-                    'ú'=>'U','ù'=>'U','û'=>'U','ü'=>'U',
-                    'ç'=>'C','ñ'=>'N'
-                )));
+                $nb = pprn_norm($q);
                 $stmt = $pdo->prepare('SELECT inscricao, nome, modalidade, nota_objetiva, posicao_geral, status_cota, vaga_imediata, previsao_taf FROM pprn_candidates WHERE nome_busca LIKE ? OR nome LIKE ? LIMIT 20');
                 $stmt->execute(array('%' . $nb . '%', '%' . $q . '%'));
             }
@@ -114,7 +118,8 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                     'previsao_taf' => $r['previsao_taf']
                 );
             }
-            json_out(array('ok' => true, 'results' => $out));
+            $total = (int)$pdo->query('SELECT COUNT(*) c FROM pprn_candidates')->fetch()['c'];
+            json_out(array('ok' => true, 'results' => $out, 'total' => $total, 'q_norm' => $nb));
             return true;
         }
 
@@ -240,8 +245,10 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             $rows = array();
             $count = 0;
             $skipped = 0;
-            $detectedHeaders = array();
             $uploadId = new_uuid();
+            // registra upload antes de inserir candidatos (FK)
+            $pdo->prepare('INSERT INTO pprn_uploads (id, filename, uploaded_at, row_count, uploaded_by) VALUES (?, ?, ?, ?, ?)')
+                ->execute(array($uploadId, $name, now_utc(), 0, $admin['id']));
             while (($row = fgetcsv($fh, 0, ',')) !== false) {
                 if (count($row) < 3) continue;
                 if (implode('', $row) === '') continue;
@@ -264,14 +271,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                 $ge = $get($row, array('ganho_pos_etnico','ganho_etnico'));
                 $gp = $get($row, array('ganho_pos_pcd','ganho_pcd'));
 
-                $nb = strtoupper(strtr($nome, array(
-                    'á'=>'A','à'=>'A','â'=>'A','ã'=>'A','ä'=>'A',
-                    'é'=>'E','è'=>'E','ê'=>'E','ë'=>'E',
-                    'í'=>'I','ì'=>'I','î'=>'I','ï'=>'I',
-                    'ó'=>'O','ò'=>'O','ô'=>'O','õ'=>'O','ö'=>'O',
-                    'ú'=>'U','ù'=>'U','û'=>'U','ü'=>'U',
-                    'ç'=>'C','ñ'=>'N'
-                )));
+                $nb = pprn_norm($nome);
 
                 $jsonArr = array();
                 foreach ($norm as $i => $h) {
@@ -307,10 +307,6 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
                 }
             }
             fclose($fh);
-
-            // registra upload
-            $pdo->prepare('INSERT INTO pprn_uploads (id, filename, uploaded_at, row_count, uploaded_by) VALUES (?, ?, ?, ?, ?)')
-                ->execute(array($uploadId, $name, now_utc(), 0, $admin['id']));
 
             // remove candidatos de uploads anteriores
             $pdo->prepare('DELETE FROM pprn_candidates WHERE upload_id <> ?')->execute(array($uploadId));
