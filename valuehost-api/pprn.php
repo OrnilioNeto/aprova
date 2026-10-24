@@ -185,6 +185,15 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'csv') {
                 fail('Envie um arquivo CSV. Converta o Excel para CSV antes (ou use o upload do painel que converte automaticamente).');
             }
+            // Normaliza encoding para UTF-8 (aceita CSV em Windows-1252/ISO-8859-1)
+            $raw = @file_get_contents($tmp);
+            if ($raw !== false) {
+                $enc = mb_detect_encoding($raw, array('UTF-8','Windows-1252','ISO-8859-1'), true);
+                if ($enc && $enc !== 'UTF-8') {
+                    $raw = mb_convert_encoding($raw, 'UTF-8', $enc);
+                    @file_put_contents($tmp, $raw);
+                }
+            }
             $fh = fopen($tmp, 'r');
             if (!$fh) fail('Não foi possível abrir o arquivo.');
             $bom = fread($fh, 3);
@@ -195,20 +204,19 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             foreach ($header as $h) {
                 $h = trim($h);
                 $h = str_replace("\xEF\xBB\xBF", '', $h);
+                if (class_exists('Normalizer')) {
+                    $tmp = Normalizer::normalize($h, Normalizer::FORM_KD);
+                    if ($tmp !== false) {
+                        $h = preg_replace('/\p{Mn}+/u', '', $tmp);
+                    }
+                }
                 $h = strtolower($h);
-                $h = strtr($h, array(
-                    'á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a',
-                    'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
-                    'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
-                    'ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
-                    'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u',
-                    'ç'=>'c','ñ'=>'n'
-                ));
                 $h = preg_replace('/[^a-z0-9]+/', '_', $h);
                 $h = trim($h, '_');
                 $norm[] = $h;
             }
             $idx = array_flip($norm);
+            $detectedHeaders = $norm;
 
             $get = function($row, $keys) use ($idx) {
                 foreach ($keys as $k) {
@@ -231,13 +239,15 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
 
             $rows = array();
             $count = 0;
+            $skipped = 0;
+            $detectedHeaders = array();
             $uploadId = new_uuid();
             while (($row = fgetcsv($fh, 0, ',')) !== false) {
                 if (count($row) < 3) continue;
                 if (implode('', $row) === '') continue;
                 $nome = $get($row, array('nome'));
                 $insc = $get($row, array('inscricao','inscricao_str'));
-                if ($nome === null || $insc === null) continue;
+                if ($nome === null || $insc === null) { $skipped++; continue; }
                 $insc = preg_replace('/[^0-9]/', '', $insc);
                 $nota = $get($row, array('nota_objetiva'));
                 $pos = $get($row, array('posicao_geral','posicao_original_definitiva'));
@@ -314,7 +324,7 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             $rc = (int)$stmt->fetch()['c'];
             $pdo->prepare('UPDATE pprn_uploads SET row_count = ? WHERE id = ?')->execute(array($rc, $uploadId));
 
-            json_out(array('ok' => true, 'upload_id' => $uploadId, 'row_count' => $rc));
+            json_out(array('ok' => true, 'upload_id' => $uploadId, 'row_count' => $rc, 'skipped' => $skipped, 'detected_headers' => $detectedHeaders));
             return true;
         } catch (Exception $e) {
             fail('Erro no upload: ' . $e->getMessage(), 500);
