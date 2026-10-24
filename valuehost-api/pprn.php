@@ -154,6 +154,9 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             }
             $tmp = $_FILES['file']['tmp_name'];
             $name = isset($_FILES['file']['name']) ? $_FILES['file']['name'] : 'upload.csv';
+            if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'csv') {
+                fail('Envie um arquivo CSV. Converta o Excel para CSV antes (ou use o upload do painel que converte automaticamente).');
+            }
             $fh = fopen($tmp, 'r');
             if (!$fh) fail('Não foi possível abrir o arquivo.');
             $bom = fread($fh, 3);

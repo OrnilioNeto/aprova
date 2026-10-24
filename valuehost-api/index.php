@@ -38,14 +38,14 @@ apply_cors($config['allowed_origins']);
 /* -------- Helpers de domínio -------- */
 
 function find_user_by_email(PDO $pdo, $email) {
-    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed, role FROM users WHERE email = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
     $stmt->execute(array($email));
     $row = $stmt->fetch();
     return $row ? $row : null;
 }
 
 function find_user_by_id(PDO $pdo, $id) {
-    $stmt = $pdo->prepare('SELECT id, email, password_hash, email_confirmed, role FROM users WHERE id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ? LIMIT 1');
     $stmt->execute(array($id));
     $row = $stmt->fetch();
     return $row ? $row : null;

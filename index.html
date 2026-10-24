@@ -536,6 +536,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
 
 <script src="api-config.js"></script>
 <script src="api.js"></script>
+<script src="assets/xlsx.full.min.js"></script>
 <script src="regras-extracao.js"></script>
 <script>
 const LS_KEY = 'desempenho-concurso-v1';
@@ -3654,7 +3655,7 @@ function renderResultados(){
         <h2>🛠️ Admin — subir lista das bancas</h2>
         <p class="hint" style="margin-bottom:10px">Envie o CSV exportado do Excel (UTF-8). ${pprnMeta? ('Último upload: '+esc(pprnMeta.filename)+' em '+esc(pprnMeta.uploaded_at)+' ('+pprnMeta.row_count+' linhas)') : 'Nenhum upload ainda.'}</p>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input id="pprn-upload-file" type="file" accept=".csv">
+          <input id="pprn-upload-file" type="file" accept=".csv,.xlsx" multiple>
           <button class="btn" onclick="pprnDoUpload()">Enviar</button>
         </div>
         <div id="pprn-admin-msg" class="hint" style="margin-top:8px">${esc(pprnAdminMsg)}</div>
@@ -3697,15 +3698,109 @@ async function pprnRunSim(){
   }catch(e){ alert('Erro: '+(e.message||e)); }
 }
 
+function pprnParseCsvText(text){
+  // retorna {headers:[], rows:[[]]}
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const rows = [];
+  for(const ln of lines){
+    if(ln.trim()==='') continue;
+    // parse simples com suporte a aspas
+    const cells = [];
+    let cur = '', inq = false;
+    for(let i=0;i<ln.length;i++){
+      const ch = ln[i];
+      if(inq){
+        if(ch === '"'){
+          if(ln[i+1] === '"'){ cur += '"'; i++; }
+          else inq = false;
+        } else cur += ch;
+      } else {
+        if(ch === '"') inq = true;
+        else if(ch === ','){ cells.push(cur); cur=''; }
+        else cur += ch;
+      }
+    }
+    cells.push(cur);
+    rows.push(cells);
+  }
+  if(!rows.length) return {headers:[], rows:[]};
+  const headers = rows[0].map(h=>h.trim());
+  return {headers, rows: rows.slice(1)};
+}
+
+async function pprnParseFile(file){
+  const name = (file.name||'').toLowerCase();
+  if(name.endsWith('.csv')){
+    const text = await file.text();
+    return pprnParseCsvText(text);
+  }
+  // xlsx via SheetJS
+  const buf = await file.arrayBuffer();
+  const wb = (window.XLSX || XLSX).read(buf, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const aoa = (window.XLSX || XLSX).utils.sheet_to_aoa(ws, {defval:''});
+  if(!aoa || !aoa.length) return {headers:[], rows:[]};
+  const headers = aoa[0].map(h=>String(h==null?'':h).trim());
+  const rows = aoa.slice(1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+  return {headers, rows};
+}
+
+function pprnMergeParsed(parsedList){
+  // union de headers
+  const headerSet = [];
+  const idx = {};
+  for(const p of parsedList){
+    for(const h of p.headers){
+      if(!(h in idx)){ idx[h]=headerSet.length; headerSet.push(h); }
+    }
+  }
+  const allRows = [];
+  for(const p of parsedList){
+    const map = p.headers.map(h=>idx[h]);
+    for(const r of p.rows){
+      const row = new Array(headerSet.length).fill('');
+      for(let i=0;i<r.length;i++){
+        const v = r[i];
+        row[map[i]] = (v==null?'':String(v));
+      }
+      allRows.push(row);
+    }
+  }
+  return {headers: headerSet, rows: allRows};
+}
+
+function pprnToCsv(headers, rows){
+  const esc = v => {
+    const s = String(v==null?'':v);
+    if(s.includes(',') || s.includes('"') || s.includes('\n')){
+      return '"'+s.replace(/"/g,'""')+'"';
+    }
+    return s;
+  };
+  const lines = [headers.map(esc).join(',')];
+  for(const r of rows) lines.push(r.map(esc).join(','));
+  return lines.join('\n');
+}
+
 async function pprnDoUpload(){
   const fileInput = document.getElementById('pprn-upload-file');
-  const file = fileInput && fileInput.files && fileInput.files[0];
-  if(!file){ pprnAdminMsg='Selecione um arquivo.'; renderResultados(); return; }
-  pprnAdminMsg = 'Enviando...';
+  const files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
+  if(!files.length){ pprnAdminMsg='Selecione ao menos um arquivo.'; renderResultados(); return; }
+  pprnAdminMsg = 'Processando arquivos...';
   renderResultados();
-  const fd = new FormData();
-  fd.append('file', file);
   try{
+    const parsed = [];
+    for(const f of files){
+      parsed.push(await pprnParseFile(f));
+    }
+    const merged = pprnMergeParsed(parsed);
+    if(!merged.rows.length){ pprnAdminMsg='Nenhuma linha encontrada nos arquivos.'; renderResultados(); return; }
+    const csv = pprnToCsv(merged.headers, merged.rows);
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const fd = new FormData();
+    fd.append('file', blob, 'listas_combinadas.csv');
+    pprnAdminMsg = 'Enviando '+merged.rows.length+' linhas...';
+    renderResultados();
     const token = getToken();
     const res = await fetch(apiUrl('pprn-upload'), {
       method:'POST',
@@ -3714,7 +3809,7 @@ async function pprnDoUpload(){
     });
     const payload = await res.json();
     if(!res.ok) throw new Error(payload.error||'Erro no upload');
-    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas.';
+    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas ('+files.length+' arquivo(s)).';
     await pprnLoadMeta();
   }catch(e){ pprnAdminMsg = 'Erro: '+(e.message||e); }
   renderResultados();
