@@ -182,152 +182,174 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             if ($method !== 'POST') fail('Método inválido.', 405);
             $admin = require_admin($pdo, $config);
             try {
-            if (!isset($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
-                fail('Arquivo não enviado.');
-            }
-            $tmp = $_FILES['file']['tmp_name'];
-            $name = isset($_FILES['file']['name']) ? $_FILES['file']['name'] : 'upload.csv';
-            if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'csv') {
-                fail('Envie um arquivo CSV. Converta o Excel para CSV antes (ou use o upload do painel que converte automaticamente).');
-            }
-            // Normaliza encoding para UTF-8 (aceita CSV em Windows-1252/ISO-8859-1)
-            $raw = @file_get_contents($tmp);
-            if ($raw !== false) {
-                $enc = mb_detect_encoding($raw, array('UTF-8','Windows-1252','ISO-8859-1'), true);
-                if ($enc && $enc !== 'UTF-8') {
-                    $raw = mb_convert_encoding($raw, 'UTF-8', $enc);
-                    @file_put_contents($tmp, $raw);
+                // Aceita upload via arquivo CSV OU via JSON (headers + rows)
+                $header = null;
+                $rawRows = null;
+                $name = 'upload.json';
+
+                if (isset($_FILES['file']) && is_uploaded_file($_FILES['file']['tmp_name'])) {
+                    $tmp = $_FILES['file']['tmp_name'];
+                    $name = isset($_FILES['file']['name']) ? $_FILES['file']['name'] : 'upload.csv';
+                    if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'csv') {
+                        fail('Envie um arquivo CSV. (O painel converte Excel automaticamente.)');
+                    }
+                    // Normaliza encoding para UTF-8
+                    $raw = @file_get_contents($tmp);
+                    if ($raw !== false) {
+                        $enc = mb_detect_encoding($raw, array('UTF-8','Windows-1252','ISO-8859-1'), true);
+                        if ($enc && $enc !== 'UTF-8') {
+                            $raw = mb_convert_encoding($raw, 'UTF-8', $enc);
+                            @file_put_contents($tmp, $raw);
+                        }
+                    }
+                    $fh = fopen($tmp, 'r');
+                    if (!$fh) fail('Não foi possível abrir o arquivo.');
+                    $bom = fread($fh, 3);
+                    if ($bom !== "\xEF\xBB\xBF") rewind($fh);
+                    $header = fgetcsv($fh, 0, ',');
+                    if (!$header) { fclose($fh); fail('Cabeçalho CSV inválido.'); }
+                    $rawRows = array();
+                    while (($row = fgetcsv($fh, 0, ',')) !== false) {
+                        if (count($row) < 1) continue;
+                        if (implode('', $row) === '') continue;
+                        $rawRows[] = $row;
+                    }
+                    fclose($fh);
+                } else {
+                    $in = json_input();
+                    if (!is_array($in) || !isset($in['headers']) || !isset($in['rows'])) {
+                        fail('Envie um arquivo ou um JSON com headers e rows.');
+                    }
+                    $header = $in['headers'];
+                    $rawRows = $in['rows'];
+                    $name = isset($in['filename']) ? $in['filename'] : 'upload.json';
                 }
-            }
-            $fh = fopen($tmp, 'r');
-            if (!$fh) fail('Não foi possível abrir o arquivo.');
-            $bom = fread($fh, 3);
-            if ($bom !== "\xEF\xBB\xBF") rewind($fh);
-            $header = fgetcsv($fh, 0, ',');
-            if (!$header) { fclose($fh); fail('Cabeçalho CSV inválido.'); }
-            $norm = array();
-            foreach ($header as $h) {
-                $h = trim($h);
-                $h = str_replace("\xEF\xBB\xBF", '', $h);
-                if (class_exists('Normalizer')) {
-                    $tmp = Normalizer::normalize($h, Normalizer::FORM_KD);
-                    if ($tmp !== false) {
-                        $h = preg_replace('/\p{Mn}+/u', '', $tmp);
+
+                // Normaliza cabeçalhos
+                $norm = array();
+                foreach ($header as $h) {
+                    $h = trim((string)$h);
+                    $h = str_replace("\xEF\xBB\xBF", '', $h);
+                    if (class_exists('Normalizer')) {
+                        $tmp = Normalizer::normalize($h, Normalizer::FORM_KD);
+                        if ($tmp !== false) $h = $tmp;
+                    }
+                    $h = preg_replace('/\p{Mn}+/u', '', $h);
+                    $h = strtolower($h);
+                    $h = preg_replace('/[^a-z0-9]+/', '_', $h);
+                    $h = trim($h, '_');
+                    $norm[] = $h;
+                }
+                $idx = array_flip($norm);
+                $detectedHeaders = $norm;
+
+                $get = function($row, $keys) use ($idx) {
+                    foreach ($keys as $k) {
+                        if (isset($idx[$k]) && isset($row[$idx[$k]])) {
+                            $v = trim((string)$row[$idx[$k]]);
+                            if ($v !== '') return $v;
+                        }
+                    }
+                    return null;
+                };
+                $toBool = function($v) {
+                    if ($v === null) return null;
+                    $l = strtolower(trim((string)$v));
+                    if ($l === '1' || $l === 'true' || $l === 'sim' || $l === 'yes') return 1;
+                    if ($l === '0' || $l === 'false' || $l === 'nao' || $l === 'não' || $l === 'no') return 0;
+                    if (stripos($v, 'sim') !== false) return 1;
+                    return null;
+                };
+                $toNum = function($v) { return ($v === null || $v === '') ? null : (is_numeric($v) ? (float)$v : null); };
+
+                $rows = array();
+                $count = 0;
+                $skipped = 0;
+                $uploadId = new_uuid();
+                // registra upload antes de inserir candidatos (FK)
+                $pdo->prepare('INSERT INTO pprn_uploads (id, filename, uploaded_at, row_count, uploaded_by) VALUES (?, ?, ?, ?, ?)')
+                    ->execute(array($uploadId, $name, now_utc(), 0, $admin['id']));
+
+                foreach ($rawRows as $row) {
+                    if (!is_array($row)) continue;
+                    if (count($row) < 1) continue;
+                    if (implode('', $row) === '') continue;
+                    // alinha tamanho da linha ao header
+                    while (count($row) < count($norm)) $row[] = '';
+                    $nome = $get($row, array('nome'));
+                    $insc = $get($row, array('inscricao','inscricao_str'));
+                    if ($nome === null || $insc === null) { $skipped++; continue; }
+                    $insc = preg_replace('/[^0-9]/', '', $insc);
+                    $nota = $get($row, array('nota_objetiva'));
+                    $pos = $get($row, array('posicao_geral','posicao_original_definitiva'));
+                    $mod = $get($row, array('modalidade_concorrencia','modalidade'));
+                    $status = $get($row, array('status_cota_preliminar','status_cota'));
+                    $vaga = $get($row, array('previsao_vagas_imediatas','vaga_imediata','previsao_vagas_preliminar'));
+                    $taf = $get($row, array('previsao_taf','previsao_taf_preliminar'));
+                    $pvagas = $get($row, array('previsao_vagas','previsao_vagas_imediatas'));
+                    $conv = $get($row, array('convocado_taf_preliminar','convocado_taf'));
+                    $ce = $get($row, array('cota_etnico_apta_preliminar','cota_etnico_racial'));
+                    $cp = $get($row, array('cota_pcd_apta_preliminar','cota_pcd'));
+                    $pe = $get($row, array('nova_pos_lista_etnico','pos_etnico','pos_lista_etnico'));
+                    $pp = $get($row, array('nova_pos_lista_pcd','pos_pcd','pos_lista_pcd'));
+                    $ge = $get($row, array('ganho_pos_etnico','ganho_etnico'));
+                    $gp = $get($row, array('ganho_pos_pcd','ganho_pcd'));
+
+                    $nb = pprn_norm($nome);
+
+                    $jsonArr = array();
+                    foreach ($norm as $i => $h) {
+                        $jsonArr[$h] = isset($row[$i]) ? $row[$i] : null;
+                    }
+                    $json = json_encode($jsonArr, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+                    if ($json === false) $json = null;
+
+                    $rows[] = array(
+                        'inscricao' => $insc,
+                        'nome' => $nome,
+                        'nome_busca' => $nb,
+                        'modalidade' => $mod,
+                        'nota' => $nota !== null ? (int)$nota : null,
+                        'pos' => $pos !== null ? (int)$pos : null,
+                        'status' => $status,
+                        'vaga' => $vaga,
+                        'taf' => $taf,
+                        'pvagas' => $pvagas,
+                        'conv' => $toBool($conv),
+                        'ce' => $toBool($ce),
+                        'cp' => $toBool($cp),
+                        'pe' => $toNum($pe),
+                        'pp' => $toNum($pp),
+                        'ge' => $toNum($ge),
+                        'gp' => $toNum($gp),
+                        'json' => $json
+                    );
+                    $count++;
+                    if (count($rows) >= 500) {
+                        insert_pprn_batch($pdo, $rows, $uploadId);
+                        $rows = array();
                     }
                 }
-                $h = strtolower($h);
-                $h = preg_replace('/[^a-z0-9]+/', '_', $h);
-                $h = trim($h, '_');
-                $norm[] = $h;
-            }
-            $idx = array_flip($norm);
-            $detectedHeaders = $norm;
 
-            $get = function($row, $keys) use ($idx) {
-                foreach ($keys as $k) {
-                    if (isset($idx[$k]) && isset($row[$idx[$k]])) {
-                        $v = trim($row[$idx[$k]]);
-                        if ($v !== '') return $v;
-                    }
-                }
-                return null;
-            };
-            $toBool = function($v) {
-                if ($v === null) return null;
-                $l = strtolower(trim($v));
-                if ($l === '1' || $l === 'true' || $l === 'sim' || $l === 'yes') return 1;
-                if ($l === '0' || $l === 'false' || $l === 'nao' || $l === 'não' || $l === 'no') return 0;
-                if (stripos($v, 'sim') !== false) return 1;
-                return null;
-            };
-            $toNum = function($v) { return ($v === null || $v === '') ? null : (is_numeric($v) ? (float)$v : null); };
+                // remove candidatos de uploads anteriores
+                $pdo->prepare('DELETE FROM pprn_candidates WHERE upload_id <> ?')->execute(array($uploadId));
 
-            $rows = array();
-            $count = 0;
-            $skipped = 0;
-            $uploadId = new_uuid();
-            // registra upload antes de inserir candidatos (FK)
-            $pdo->prepare('INSERT INTO pprn_uploads (id, filename, uploaded_at, row_count, uploaded_by) VALUES (?, ?, ?, ?, ?)')
-                ->execute(array($uploadId, $name, now_utc(), 0, $admin['id']));
-            while (($row = fgetcsv($fh, 0, ',')) !== false) {
-                if (count($row) < 3) continue;
-                if (implode('', $row) === '') continue;
-                $nome = $get($row, array('nome'));
-                $insc = $get($row, array('inscricao','inscricao_str'));
-                if ($nome === null || $insc === null) { $skipped++; continue; }
-                $insc = preg_replace('/[^0-9]/', '', $insc);
-                $nota = $get($row, array('nota_objetiva'));
-                $pos = $get($row, array('posicao_geral','posicao_original_definitiva'));
-                $mod = $get($row, array('modalidade_concorrencia','modalidade'));
-                $status = $get($row, array('status_cota_preliminar','status_cota'));
-                $vaga = $get($row, array('previsao_vagas_imediatas','vaga_imediata','previsao_vagas_preliminar'));
-                $taf = $get($row, array('previsao_taf','previsao_taf_preliminar'));
-                $pvagas = $get($row, array('previsao_vagas','previsao_vagas_imediatas'));
-                $conv = $get($row, array('convocado_taf_preliminar','convocado_taf'));
-                $ce = $get($row, array('cota_etnico_apta_preliminar','cota_etnico_racial'));
-                $cp = $get($row, array('cota_pcd_apta_preliminar','cota_pcd'));
-                $pe = $get($row, array('nova_pos_lista_etnico','pos_etnico','pos_lista_etnico'));
-                $pp = $get($row, array('nova_pos_lista_pcd','pos_pcd','pos_lista_pcd'));
-                $ge = $get($row, array('ganho_pos_etnico','ganho_etnico'));
-                $gp = $get($row, array('ganho_pos_pcd','ganho_pcd'));
-
-                $nb = pprn_norm($nome);
-
-                $jsonArr = array();
-                foreach ($norm as $i => $h) {
-                    $jsonArr[$h] = isset($row[$i]) ? $row[$i] : null;
-                }
-                $json = json_encode($jsonArr, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-                if ($json === false) $json = null;
-
-                $rows[] = array(
-                    'inscricao' => $insc,
-                    'nome' => $nome,
-                    'nome_busca' => $nb,
-                    'modalidade' => $mod,
-                    'nota' => $nota !== null ? (int)$nota : null,
-                    'pos' => $pos !== null ? (int)$pos : null,
-                    'status' => $status,
-                    'vaga' => $vaga,
-                    'taf' => $taf,
-                    'pvagas' => $pvagas,
-                    'conv' => $toBool($conv),
-                    'ce' => $toBool($ce),
-                    'cp' => $toBool($cp),
-                    'pe' => $toNum($pe),
-                    'pp' => $toNum($pp),
-                    'ge' => $toNum($ge),
-                    'gp' => $toNum($gp),
-                    'json' => $json
-                );
-                $count++;
-                if (count($rows) >= 500) {
+                if (count($rows) > 0) {
                     insert_pprn_batch($pdo, $rows, $uploadId);
-                    $rows = array();
                 }
+
+                $stmt = $pdo->prepare('SELECT COUNT(*) c FROM pprn_candidates WHERE upload_id = ?');
+                $stmt->execute(array($uploadId));
+                $rc = (int)$stmt->fetch()['c'];
+                $pdo->prepare('UPDATE pprn_uploads SET row_count = ? WHERE id = ?')->execute(array($rc, $uploadId));
+
+                json_out(array('ok' => true, 'upload_id' => $uploadId, 'row_count' => $rc, 'skipped' => $skipped, 'detected_headers' => $detectedHeaders));
+                return true;
+            } catch (Exception $e) {
+                fail('Erro no upload: ' . $e->getMessage(), 500);
+                return true;
             }
-            fclose($fh);
-
-            // remove candidatos de uploads anteriores
-            $pdo->prepare('DELETE FROM pprn_candidates WHERE upload_id <> ?')->execute(array($uploadId));
-
-            if (count($rows) > 0) {
-                insert_pprn_batch($pdo, $rows, $uploadId);
-            }
-
-            $stmt = $pdo->prepare('SELECT COUNT(*) c FROM pprn_candidates WHERE upload_id = ?');
-            $stmt->execute(array($uploadId));
-            $rc = (int)$stmt->fetch()['c'];
-            $pdo->prepare('UPDATE pprn_uploads SET row_count = ? WHERE id = ?')->execute(array($rc, $uploadId));
-
-            json_out(array('ok' => true, 'upload_id' => $uploadId, 'row_count' => $rc, 'skipped' => $skipped, 'detected_headers' => $detectedHeaders));
-            return true;
-        } catch (Exception $e) {
-            fail('Erro no upload: ' . $e->getMessage(), 500);
-            return true;
         }
-        }
-
         case 'pprn-simulate': {
             if ($method !== 'POST') fail('Método inválido.', 405);
             require_auth($pdo, $config);

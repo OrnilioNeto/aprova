@@ -3533,7 +3533,7 @@ function pprnTabGo(t){ pprnResultadosTab = t; renderResultados(); }
 async function pprnSearch(q){
   if(!q || q.trim().length < 2) return {results:[], total:0, q_norm:q};
   try{
-    const r = await apiCall('pprn-search', { method:'POST', auth:true, params:{ q: q.trim(), _: Date.now() } });
+    const r = await apiCall('pprn-search', { method:'GET', auth:true, params:{ q: q.trim(), _: Date.now() } });
     return {results:r.results||[], total:r.total||0, q_norm:r.q_norm||q};
   }catch(e){ return {results:[], total:0, q_norm:q}; }
 }
@@ -3859,21 +3859,17 @@ async function pprnDoUpload(){
     if(!okParsed.length){ pprnAdminMsg='Nenhum arquivo válido.'; renderResultados(); return; }
     const merged = pprnMergeParsed(okParsed);
     if(!merged.rows.length){ pprnAdminMsg='Nenhuma linha encontrada.'; renderResultados(); return; }
-    const csv = pprnToCsv(merged.headers, merged.rows);
-    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-    const fd = new FormData();
-    fd.append('file', blob, 'listas_combinadas.csv');
     pprnAdminMsg = 'Enviando '+merged.rows.length+' linhas...';
     renderResultados();
     const token = getToken();
     const res = await fetch(apiUrl('pprn-upload'), {
       method:'POST',
-      headers: token ? { 'Authorization':'Bearer '+token } : {},
-      body: fd
+      headers: Object.assign({'Content-Type':'application/json'}, token ? { 'Authorization':'Bearer '+token } : {}),
+      body: JSON.stringify({ headers: merged.headers, rows: merged.rows, filename: 'listas_combinadas' })
     });
     const payload = await res.json();
     if(!res.ok) throw new Error(payload.error||'Erro no upload');
-    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas ('+okParsed.length+' arquivo(s) válidos).';
+    pprnAdminMsg = 'Upload concluído: '+payload.row_count+' linhas ('+okParsed.length+' arquivo(s) válidos). Puladas: '+(payload.skipped||0)+'. Colunas: '+(payload.detected_headers||[]).join(', ');
     // marca todos os válidos como enviados
     for(const s of pprnUploadStatus){ if(s.ok) s.error = 'enviado'; }
     await pprnLoadMeta();
