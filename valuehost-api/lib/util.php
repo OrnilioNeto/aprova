@@ -40,7 +40,7 @@ function apply_cors($allowedOrigins) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Vary: Origin');
     }
-    header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Authorization, Content-Type');
     header('Access-Control-Max-Age: 86400');
     if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

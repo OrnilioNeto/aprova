@@ -195,6 +195,14 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             return true;
         }
 
+        case 'pprn-unlink': {
+            if ($method !== 'POST' && $method !== 'DELETE') fail('Método inválido.', 405);
+            $user = require_auth($pdo, $config);
+            $pdo->prepare('DELETE FROM user_candidate_links WHERE user_id = ?')->execute(array($user['id']));
+            json_out(array('ok' => true));
+            return true;
+        }
+
         case 'pprn-link': {
             $user = require_auth($pdo, $config);
             if ($method === 'DELETE') {
@@ -204,6 +212,11 @@ function handle_pprn($action, $method, PDO $pdo, $config) {
             }
             if ($method !== 'POST') fail('Método inválido.', 405);
             $in = json_input();
+            if (isset($in['action']) && $in['action'] === 'unlink') {
+                $pdo->prepare('DELETE FROM user_candidate_links WHERE user_id = ?')->execute(array($user['id']));
+                json_out(array('ok' => true));
+                return true;
+            }
             $insc = isset($in['inscricao']) ? trim((string)$in['inscricao']) : '';
             if ($insc === '') fail('Inscrição ausente.');
             $stmt = $pdo->prepare('SELECT inscricao FROM pprn_candidates WHERE inscricao = ? LIMIT 1');

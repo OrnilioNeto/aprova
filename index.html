@@ -3549,7 +3549,7 @@ async function pprnLinkInscricao(insc){
 async function pprnUnlink(){
   if(!confirm('Desvincular candidato?')) return;
   try{
-    await apiCall('pprn-link', { method:'DELETE', auth:true });
+    await apiCall('pprn-unlink', { method:'POST', auth:true });
     pprnLinked = null;
     renderAll();
   }catch(e){ alert('Erro: ' + (e.message||e)); }
