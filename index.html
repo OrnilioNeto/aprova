@@ -3738,7 +3738,7 @@ async function pprnParseFile(file){
   const buf = await file.arrayBuffer();
   const wb = (window.XLSX || XLSX).read(buf, {type:'array'});
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const aoa = (window.XLSX || XLSX).utils.sheet_to_aoa(ws, {defval:''});
+  const aoa = (window.XLSX || XLSX).utils.sheet_to_json(ws, {header:1, defval:''});
   if(!aoa || !aoa.length) return {headers:[], rows:[]};
   const headers = aoa[0].map(h=>String(h==null?'':h).trim());
   const rows = aoa.slice(1).filter(r=>r.some(c=>String(c||'').trim()!==''));
