@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://previaseg.com https://*.onrender.com https://*.supabase.co https://generativelanguage.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data:;">
 <title>Meu Desempenho — Concurso</title>
+<link rel="stylesheet" href="assets/leis/leis.css">
 <script src="vendor/pdf.min.js"></script>
+<script src="leis.js"></script>
 <style>
 :root{
   --bg:#0b1220; --card:#121a2e; --card2:#0f1626; --border:#1f2b45;
@@ -464,6 +466,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
   <button data-view="dashboard" class="active">📈 Painel</button>
   <button data-view="simulados">📝 Simulados</button>
   <button data-view="estudos">📚 Estudos</button>
+  <button data-view="leis">⚖️ Vade Mecum</button>
   <button data-view="resultados">📊 Resultados</button>
   <button data-view="metas">🎯 Metas</button>
   <button data-view="ajustes">⚙️ Ajustes</button>
@@ -474,6 +477,7 @@ details.card summary::-webkit-details-marker{color:var(--muted)}
   <section id="view-dashboard" class="view active"></section>
   <section id="view-simulados" class="view"></section>
   <section id="view-estudos" class="view"></section>
+  <section id="view-leis" class="view"></section>
   <section id="view-resultados" class="view"></section>
   <section id="view-metas" class="view"></section>
   <section id="view-ajustes" class="view"></section>
@@ -1733,9 +1737,11 @@ function estLeafRow(m, t, s){
   const del = kind==='sub'
     ? "estRemoveSubtopico('"+m.id+"','"+t.id+"','"+s.id+"')"
     : "estRemoveTopico('"+m.id+"','"+t.id+"')";
+  const leiSug = (typeof obterLeisParaTopico==='function') ? obterLeisParaTopico(leaf.name, m.name) : null;
+  const btnLei = leiSug ? '<button type="button" class="btn ghost sm" style="padding:1px 6px;font-size:10px;color:var(--accent);border-color:var(--accent);margin-left:6px;white-space:nowrap" onclick="event.stopPropagation();abrirLeitorLei(\''+leiSug.leiId+'\',\''+leiSug.art+'\')" title="Abrir '+leiSug.nome+' no Vade Mecum">⚖️ '+leiSug.nome+'</button>' : '';
   return '<tr class="'+(leaf.assistido?'tp-feito':'')+(kind==='sub'?' tp-sub':'')+'">'+
     '<td><input type="checkbox" '+(leaf.assistido?'checked':'')+' onchange="'+set('assistido','this.checked')+'" title="Assistido/estudado"></td>'+
-    '<td class="tp-name"><div class="tp-name-flex">'+(kind==='sub'?'<span class="tp-indent">↳</span>':'<span class="tp-badge">TÓPICO</span>')+'<input type="text" value="'+esc(leaf.name)+'" onchange="'+ren+'" style="border:none;background:transparent;padding:2px;flex:1;min-width:0;font-size:13px"></div></td>'+
+    '<td class="tp-name"><div class="tp-name-flex">'+(kind==='sub'?'<span class="tp-indent">↳</span>':'<span class="tp-badge">TÓPICO</span>')+'<input type="text" value="'+esc(leaf.name)+'" onchange="'+ren+'" style="border:none;background:transparent;padding:2px;flex:1;min-width:0;font-size:13px">'+btnLei+'</div></td>'+
     '<td class="t-ok"><input type="checkbox" '+(leaf.pdf?'checked':'')+' onchange="'+set('pdf','this.checked')+'" title="PDF"></td>'+
     '<td class="t-ok"><input type="checkbox" '+(leaf.va?'checked':'')+' onchange="'+set('va','this.checked')+'" title="Vídeo aula"></td>'+
     '<td><input type="number" min="0" value="'+(Number(leaf.qResolvidas)||0)+'" onchange="'+set('qResolvidas','this.value')+'"></td>'+
@@ -1771,11 +1777,14 @@ function estRenderTopicoBlock(m, t){
   const subs = t.subtopicos || [];
   const subsOk = subs.filter(s=>s.assistido).length;
   const conts = subs.reduce((a,s)=>a+(s.conteudos||[]).length,0);
+  const leiSugT = (typeof obterLeisParaTopico==='function') ? obterLeisParaTopico(t.name, m.name) : null;
+  const btnLeiT = leiSugT ? '<button type="button" class="btn ghost sm" style="padding:2px 8px;font-size:11px;color:var(--accent);border-color:var(--accent);margin-left:8px;white-space:nowrap" onclick="event.stopPropagation();abrirLeitorLei(\''+leiSugT.leiId+'\',\''+leiSugT.art+'\')" title="Abrir '+leiSugT.nome+' no Vade Mecum">⚖️ '+leiSugT.nome+'</button>' : '';
   let html = '<tbody class="tp-block">';
   if(subs.length){
     html += '<tr class="tp-head-row"><td colspan="8"><div class="tp-head">'+
         '<span class="tp-badge">TÓPICO</span>'+
         '<input type="text" class="tp-title" value="'+esc(t.name)+'" onchange="estRenameTopico(\''+m.id+'\',\''+t.id+'\',this.value)" title="Renomear tópico">'+
+        btnLeiT+
         '<span class="hint">'+subs.length+' subtópico(s) · '+subsOk+' OK · '+conts+' conteúdo(s)</span>'+
         '<button class="btn danger sm" onclick="estRemoveTopico(\''+m.id+'\',\''+t.id+'\')" title="Excluir tópico e seus subtópicos">🗑 Tópico</button>'+
       '</div></td></tr>';
@@ -1813,9 +1822,12 @@ function estRenderMateriaDetail(m){
   }).join('');
   return `
     <div class="card" style="margin-bottom:16px">
-      <h2 style="flex-wrap:wrap">📖
-        <input type="text" value="${esc(m.name)}" onchange="estRenameMateria('${m.id}',this.value)" style="width:auto;max-width:280px;font-weight:700;border:1px dashed var(--border)" title="Renomear matéria">
-      </h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <h2 style="flex-wrap:wrap;margin:0">📖
+          <input type="text" value="${esc(m.name)}" onchange="estRenameMateria('${m.id}',this.value)" style="width:auto;max-width:280px;font-weight:700;border:1px dashed var(--border)" title="Renomear matéria">
+        </h2>
+        <button class="btn sm" onclick="if(typeof abrirVadeMecumHub==='function')abrirVadeMecumHub()" style="background:#2563eb;color:#fff;font-weight:700">⚖️ Consultar Vade Mecum</button>
+      </div>
       <div class="kpi-grid" style="margin-bottom:14px">
         ${estKpi('Tópicos', nTop, '', 'k-blue')}
         ${estKpi('Subtópicos', nSub, '', 'k-blue')}
@@ -2701,7 +2713,7 @@ function renderAll(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===currentView));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+currentView));
   applyTema();
-  renderDashboard(); renderSimuladoView(); renderEstudos(); renderResultados(); renderMetas(); renderAjustes();
+  renderDashboard(); renderSimuladoView(); renderEstudos(); if(typeof renderLeisView==='function') renderLeisView(); renderResultados(); renderMetas(); renderAjustes();
 }
 
 function ringSVG(pct, label, sublabel){
@@ -4831,6 +4843,8 @@ function renderCaneteToolbar(simId){
     <div class="canete-size">${sizes.map(s=>`<button data-s="${s.s}" class="${s.s===caneteSize?'active':''}" onclick="setCaneteSize(${s.s})" title="${s.l}"><span style="width:${s.s+2}px;height:${s.s+2}px"></span></button>`).join('')}</div>
     <div class="canete-sep"></div>
     <button class="canete-tool" id="canete-toggle-eye" onclick="toggleAnotacoes()" title="Mostrar/ocultar anotações${kAno?' · atalho: '+kAno.toUpperCase():''}">${caneteShowAnnotations?'👁️':'🚫'}</button>
+    <div class="canete-sep"></div>
+    <button class="canete-tool" onclick="if(typeof abrirVadeMecumHub==='function')abrirVadeMecumHub();else if(typeof abrirLeitorLei==='function')abrirLeitorLei('lep')" title="Consultar Vade Mecum / Legislação do Concurso">⚖️ Vade Mecum</button>
   </div>`;
 }
 
@@ -4925,6 +4939,9 @@ function renderResponder(simId){
       ${sim.mini?'<span class="badge b-purple">⚡ Mini</span>':''}
       ${fin?'<span class="badge b-green">Finalizado</span>':'<span class="badge b-amber">Em andamento</span>'}
       ${prova.rascunho?`<span class="badge b-blue">💾 rascunho ${fmtDate(String(prova.rascunho).slice(0,10)).slice(0,5)} ${String(prova.rascunho).slice(11,16)}</span>`:''}
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn ghost sm" onclick="if(typeof abrirVadeMecumHub==='function')abrirVadeMecumHub();else if(typeof abrirLeitorLei==='function')abrirLeitorLei('lep')" style="color:var(--accent);border-color:var(--accent);font-weight:700">⚖️ Consultar Vade Mecum</button>
+      </div>
     </div>
     <div class="card" style="margin-bottom:12px">
       <div class="row" style="border:none;padding:6px 0">
