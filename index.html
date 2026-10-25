@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://previaseg.com https://*.onrender.com https://*.supabase.co; font-src 'self' data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://previaseg.com https://*.onrender.com https://*.supabase.co https://generativelanguage.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data:;">
 <title>Meu Desempenho — Concurso</title>
+<script src="vendor/pdf.min.js"></script>
 <style>
 :root{
   --bg:#0b1220; --card:#121a2e; --card2:#0f1626; --border:#1f2b45;
@@ -2090,23 +2091,66 @@ function getKeymap(){
 }
 function keymapAtivo(){ return !state || state.keymapAtivo!==false; }
 
-/* ===== WRAPPERS: delegam para regras-extracao.js ===== */
+/* ===== WRAPPERS DINÂMICOS: BASEADOS NAS MATÉRIAS DAS METAS ===== */
+function getConcursoPattern(){
+  const subs = (typeof cur === 'function' && cur() && cur().subjects && cur().subjects.length)
+    ? cur().subjects
+    : DEFAULT_SUBJECTS;
+  let curQ = 1;
+  const materias = subs.map(s => {
+    const qtd = (s.qtd && parseInt(s.qtd, 10) > 0) ? parseInt(s.qtd, 10) : 10;
+    const faixa = [curQ, curQ + qtd - 1];
+    curQ += qtd;
+    return {
+      id: s.id,
+      nome: s.name,
+      short: s.short || abbrev(s.name),
+      faixa: faixa,
+      qtd: qtd,
+      peso: s.weight || 1,
+      grupo: s.grupo || ''
+    };
+  });
+  const totalQuestoes = materias.reduce((acc, m) => acc + m.qtd, 0);
+  return {
+    id: cur() ? cur().id : 'concurso_ativo',
+    nome: (cur() && cur().name ? cur().name : 'Concurso Atual') + ' (' + subs.length + ' Matérias nas Metas)',
+    totalQuestoes: totalQuestoes,
+    materias: materias
+  };
+}
+
 function autoMapByRange(blocks){
-  const padrao = detectarPadrao(blocks) || REGRAS.padroes[0];
+  const padrao = getConcursoPattern();
   return autoMapPorFaixa(blocks, padrao);
 }
 function validatePPRN(blocks){
-  const padrao = detectarPadrao(blocks) || REGRAS.padroes[0];
+  const padrao = getConcursoPattern();
   return validarPadrao(blocks, padrao);
 }
 function autoMapAndValidate(blocks){
-  const padrao = detectarPadrao(blocks);
-  const auto = padrao ? autoMapPorFaixa(blocks, padrao) : autoMapByRange(blocks);
-  const val = padrao ? validarPadrao(blocks, padrao) : validatePPRN(blocks);
+  const padrao = getConcursoPattern();
+  const auto = autoMapPorFaixa(blocks, padrao);
+  // Auto-mapear blocos com base inteligente nas matérias cadastradas
+  (blocks || []).forEach(b => {
+    if(!auto[b.name] || auto[b.name] === '__new__'){
+      const sug = suggestSubject(b.name);
+      if(sug) auto[b.name] = sug;
+    }
+  });
+  const val = validarContraConcurso(blocks, cur().subjects);
   return {autoMap:auto, validation:val, padraoDetectado:padrao};
 }
 function validateAgainstConcurso(blocks){
   return validarContraConcurso(blocks, cur().subjects);
+}
+
+function getGeminiPromptWithMetas(){
+  const subs = (typeof cur === 'function' && cur() && cur().subjects) ? cur().subjects : [];
+  const basePrompt = (typeof REGRAS !== 'undefined' && REGRAS.promptIA) ? REGRAS.promptIA : 'Você é um extrator de provas de concurso público. Extraia as questões em blocos de matérias no formato JSON.';
+  if(!subs.length) return basePrompt;
+  const list = subs.map((s,i)=> `${i+1}. "${s.name}" (${s.qtd ? s.qtd + ' questões' : 'questões'}, peso ${s.weight || 1})`).join('\n');
+  return basePrompt + '\n\nATENÇÃO OBRIGATÓRIA - MATÉRIAS DO CONCURSO:\nAs matérias cadastradas para este concurso são EXATAMENTE estas ' + subs.length + ' matérias configuradas nas Metas:\n' + list + '\nVocê DEVE agrupar as questões nos blocos utilizando os nomes dessas matérias cadastradas.';
 }
 
 /* ===== INTEGRAÇÃO COM IA (Google Gemini) ===== */
@@ -2147,7 +2191,7 @@ async function extractWithAI(text){
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: REGRAS.promptIA }] },
+          system_instruction: { parts: [{ text: getGeminiPromptWithMetas() }] },
           contents: [{ parts: [{ text: trimmed }] }],
           generationConfig: cfg
         })
@@ -2230,12 +2274,28 @@ let currentView = 'dashboard';
 let filter = 'all';
 let typeFilter = 'all';
 let importMode = false;
+let cadastrarSimuladoMode = false;
+let cadastrarSimuladoTab = 'prova';
 let detailSimId = null;
 let responderSimId = null;
 let editingQ = null;
 let detailFiltro = { mat: 'all', status: 'all', peso: 'all', grupo: 'all', q: '' };
 const W = { blocks:null, questoes:null, oficial:null, map:{}, novos:{}, grupos:{} };
-const R = { oficial:null, oficTxt:'', emAndamento:false };
+const R = { oficial:null, oficTxt:'', emAndamento:false, modoObjetivo:'responder' };
+
+function openCadastrarSimulado(tab = 'prova'){
+  cadastrarSimuladoMode = true;
+  cadastrarSimuladoTab = tab;
+  renderSimuladoView();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function closeCadastrarSimulado(){
+  cadastrarSimuladoMode = false;
+  editingId = null;
+  R.emAndamento = false;
+  importMode = false;
+  renderSimuladoView();
+}
 
 function cur(){ return state.concursos.find(c=>c.id===state.currentConcursoId) || state.concursos[0]; }
 function curId(){ return state.currentConcursoId; }
@@ -3014,69 +3074,293 @@ function detailTable(){
 
 function renderSimuladoView(){
   const el = document.getElementById('view-simulados');
-  if(importMode){ renderWizard(); return; }
-  if(R.emAndamento){ renderRespWizard(); return; }
+  if(!el) return;
   if(responderSimId && cur().provas.find(p=>p.simuladoId===responderSimId)){ renderResponder(responderSimId); return; }
   if(detailSimId && cur().provas.find(p=>p.simuladoId===detailSimId)){ renderDetail(detailSimId); return; }
+  if(cadastrarSimuladoMode || editingId || importMode || R.emAndamento){
+    renderCadastrarSimuladoView();
+    return;
+  }
   editingQ = null;
+
+  // Auto-cura: se um simulado tem prova cadastrada mas NENHUMA resposta marcada ainda,
+  // garante que não fique marcado erroneamente como "finalizado" com nota 0%.
+  let autoSaved = false;
+  cur().simulados.forEach(s=>{
+    const p = cur().provas.find(pr=>pr.simuladoId===s.id);
+    if(p){
+      const respCount = (p.questoes||[]).filter(q=>q.sua).length;
+      if(respCount === 0 && s.finalizado){
+        s.finalizado = false;
+        s.respondendo = true;
+        p.finalizado = false;
+        p.respondendo = true;
+        cur().subjects.forEach(sb=>s.scores[sb.id]=null);
+        autoSaved = true;
+      }
+    }
+  });
+  if(autoSaved) save();
+
   const sims = sortedSims().slice().reverse();
-  const form = simFormHTML();
+  
+  // Estatísticas gerais
+  const validSims = sims.filter(s=>!s.mini && simWeighted(s)!=null);
+  const avgPct = validSims.length ? (validSims.reduce((acc,s)=>acc+simWeighted(s), 0) / validSims.length) : null;
+  const bestPct = validSims.length ? Math.max(...validSims.map(s=>simWeighted(s))) : null;
+  const nMat = cur().subjects.length;
+  const pat = getConcursoPattern();
+
   const list = sims.length ? sims.map(sim=>{
-    const pct = simWeighted(sim);
     const prova = cur().provas.find(p=>p.simuladoId===sim.id);
     const hasProva = !!prova;
     const temGab = !!prova && (prova.gabaritoCarregado || (prova.questoes||[]).some(q=>q.oficial));
     const nGab = hasProva ? (prova.questoes||[]).filter(q=>q.oficial).length : 0;
-    const emResp = sim.respondendo && !sim.finalizado;
-    const fin = sim.finalizado;
+    const nQ = hasProva ? (prova.questoes||[]).length : 0;
+    const respondidas = hasProva ? (prova.questoes||[]).filter(q=>q.sua).length : 0;
+    
+    // Simulado só é considerado realmente finalizado se foi respondido ou se foi lançado manualmente
+    const fin = sim.finalizado && (respondidas > 0 || !hasProva);
+    const pct = fin ? simWeighted(sim) : null;
+
     const chips = cur().subjects.map(s=>{
       const v = sim.scores[s.id];
       const q = qtdOf(s);
       const mx = subjMax(s);
-      if(v==null || v==='' || isNaN(Number(v))) return `<span class="chip c-none">${s.short}: —</span>`;
+      // Se não há respostas ainda, exibe travessão (—) para não dar falsa impressão de 0 acertos
+      if(v==null || v==='' || isNaN(Number(v)) || (hasProva && respondidas===0)) return `<span class="chip c-none">${s.short}: —</span>`;
       const p = q>0 ? Number(v)/q*100 : 0; const t = q>0 ? targetOf(s)/q*100 : 0;
       const c = p>=t ? 'c-green' : (p>=t-10 ? 'c-amber' : 'c-red');
       const pts = Number(v)*s.weight;
       const lbl = mx>0 && q>0 ? `${fmt(v)}/${q}q · ${fmt(pts)}/${mx} pts` : `${fmt(v)} pts`;
       return `<span class="chip ${c}" title="Acertos × peso ${s.weight} · Meta ${fmt(t)}%">${s.short}: ${lbl}</span>`;
     }).join('');
+
+    let statusBadge = '';
+    if(hasProva){
+      if(respondidas === 0){
+        statusBadge = `<span class="badge b-amber" style="margin-left:8px">📝 não respondido (${nQ}q)</span>`;
+      } else if(!fin){
+        statusBadge = `<span class="badge b-amber" style="margin-left:8px">📝 em andamento (${respondidas}/${nQ} respondidas)</span>`;
+      } else {
+        statusBadge = `<span class="badge b-blue" style="margin-left:8px">✅ finalizado</span>`;
+      }
+    } else {
+      statusBadge = `<span class="badge b-blue" style="margin-left:8px">✅ lançado manualmente</span>`;
+    }
+
+    let actionBtn = '';
+    if(hasProva){
+      if(respondidas === 0){
+        actionBtn = `<button class="btn sm" style="background:#2563eb;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(37,99,235,0.3)" onclick="reabrirSimulado('${sim.id}')">✍️ Responder Prova</button>`;
+      } else if(!fin){
+        actionBtn = `<button class="btn sm" style="background:#2563eb;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(37,99,235,0.3)" onclick="responderSimId='${sim.id}';renderSimuladoView()">✍️ Continuar Prova (${respondidas}/${nQ})</button>`;
+      } else {
+        actionBtn = `<button class="btn ghost sm" onclick="reabrirSimulado('${sim.id}')" title="Reabrir para responder novamente">🔄 Refazer Prova</button>`;
+      }
+    } else {
+      actionBtn = `<button class="btn ghost sm" onclick="editSim('${sim.id}')">✏️ Editar Notas</button>`;
+    }
+
     return `<div class="sim-card">
       <div class="sim-head">
         <div>
-          <b style="font-size:15px">${sim.name||'Simulado'}</b>
+          <b style="font-size:16px">${sim.name||'Simulado'}</b>
           <span class="muted" style="font-size:12px;margin-left:8px">${fmtDate(sim.date)}</span>
-          <span class="badge b-green" style="margin-left:8px">${pct!=null?fmtPct(pct):'—'}</span>
-          ${emResp?'<span class="badge b-amber">📝 em andamento</span>':''}
-          ${fin?'<span class="badge b-blue">✅ finalizado</span>':''}
+          ${fin && pct!=null ? `<span class="badge b-green" style="margin-left:8px">${fmtPct(pct)}</span>` : ''}
+          ${statusBadge}
           ${sim.mini?'<span class="badge b-purple">⚡ Mini</span>':''}
           ${hasProva?'<span class="badge b-blue">🔍 prova</span>':''}
           ${temGab?`<span class="badge b-green" title="Gabarito oficial já cadastrado${nGab?' ('+nGab+' questões)':''}">📗 gabarito</span>`:''}
           ${prova && prova.rascunho && !fin?'<span class="badge b-blue">💾 rascunho</span>':''}
         </div>
-        <div style="display:flex;gap:6px">
-          ${emResp?`<button class="btn sm" onclick="responderSimId='${sim.id}';renderSimuladoView()">✍️ Responder</button>`:''}
-          ${hasProva?`<button class="btn ghost sm" onclick="openDetail('${sim.id}')">🔍 Detalhe</button>`:''}
-          ${hasProva?`<button class="btn ghost sm" onclick="gabSim('${sim.id}')">${temGab?'✏️ Gabarito':'➕ Gabarito oficial'}</button>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${actionBtn}
+          ${hasProva && (fin || respondidas>0) ? `<button class="btn ghost sm" onclick="openDetail('${sim.id}')">🔍 Detalhes</button>` : ''}
+          ${hasProva ? `<button class="btn ghost sm" onclick="gabSim('${sim.id}')">${temGab?'✏️ Gabarito':'➕ Gabarito oficial'}</button>` : ''}
           <button class="btn ghost sm" onclick="editSim('${sim.id}')">✏️ Editar</button>
           <button class="btn danger sm" onclick="delSim('${sim.id}')">🗑️</button>
         </div>
       </div>
       <div class="chips">${chips}</div>
     </div>`;
-  }).join('') : `<div class="empty"><span class="big">📝</span>Nenhum simulado lançado ainda.<br><span class="hint">Lance manualmente, importe uma prova completa ou crie um simulado para responder.</span></div>`;
+  }).join('') : `<div class="empty"><span class="big">📝</span>Nenhum simulado lançado ainda.<br><span class="hint">Clique em <b>➕ Cadastrar Simulado</b> para importar uma prova em PDF/texto ou lançar suas notas.</span></div>`;
 
   el.innerHTML = `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-      <button class="btn" onclick="importMode=true;renderSimuladoView()">📄 Novo simulado (importar arquivos)</button>
-      <button class="btn ghost" onclick="R.emAndamento=true;renderSimuladoView()">📝 Novo simulado (responder)</button>
-      <button class="btn ghost sm" onclick="simBaixarModeloTXT()">⬇️ Modelo TXT</button>
-      <button class="btn ghost sm" onclick="simBaixarModeloJSON()">⬇️ Modelo JSON</button>
-      <span class="hint" style="align-self:center">Importar: prova + gabaritos prontos · Responder: você responde no sistema.</span>
+    <!-- Barra Superior com 1 ÚNICO BOTÃO de Cadastro -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div>
+        <h2 style="font-size:18px;font-weight:700;margin:0">📊 Meus Simulados</h2>
+        <span class="muted" style="font-size:12px">Acompanhe seu desempenho geral e por matéria (${nMat} matérias configuradas em Metas)</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn ghost sm" onclick="simBaixarModeloTXT()">⬇️ Modelo TXT</button>
+        <button class="btn ghost sm" onclick="simBaixarModeloJSON()">⬇️ Modelo JSON</button>
+        <button class="btn" style="background:#2563eb;color:#fff;font-weight:700;font-size:14px;padding:9px 18px;box-shadow:0 2px 8px rgba(37,99,235,0.3)" onclick="openCadastrarSimulado('prova')">➕ Cadastrar Simulado</button>
+      </div>
     </div>
-    <div class="grid" style="grid-template-columns:minmax(320px,440px) 1fr;align-items:start">
-      <div class="card">${form}</div>
-      <div><h2 style="font-size:15px;font-weight:700;margin-bottom:12px">Histórico (${cur().simulados.length})</h2>${list}</div>
+
+    <!-- Cards de Resumo das Estatísticas -->
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+      <div class="card" style="padding:14px">
+        <span class="muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Simulados Cadastrados</span>
+        <div style="font-size:24px;font-weight:800;color:var(--text);margin-top:4px">${sims.length}</div>
+      </div>
+      <div class="card" style="padding:14px">
+        <span class="muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Média Ponderada</span>
+        <div style="font-size:24px;font-weight:800;color:${avgPct!=null && avgPct>=70?'var(--green)':'var(--amber)'};margin-top:4px">${avgPct!=null?fmtPct(avgPct):'—'}</div>
+      </div>
+      <div class="card" style="padding:14px">
+        <span class="muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Melhor Desempenho</span>
+        <div style="font-size:24px;font-weight:800;color:var(--green);margin-top:4px">${bestPct!=null?fmtPct(bestPct):'—'}</div>
+      </div>
+      <div class="card" style="padding:14px">
+        <span class="muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Padrão Ativo (Metas)</span>
+        <div style="font-size:20px;font-weight:800;color:var(--blue);margin-top:4px">${nMat} matérias <span style="font-size:12px;font-weight:400;color:var(--muted)">(${pat.totalQuestoes}q)</span></div>
+      </div>
+    </div>
+
+    <!-- Lista de Histórico (Largura Completa) -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="font-size:15px;font-weight:700;margin:0">Histórico de Simulados (${sims.length})</h3>
+        <span class="hint" style="font-size:12px">Clique em <b>🔍 Detalhe</b> para ver estatísticas completas e caderno de erros.</span>
+      </div>
+      ${list}
     </div>`;
+}
+
+function renderCadastrarSimuladoView(){
+  const el = document.getElementById('view-simulados');
+  if(!el) return;
+  const isEditing = !!editingId;
+  const tab = isEditing ? 'manual' : (cadastrarSimuladoTab || 'prova');
+  const pattern = getConcursoPattern();
+  const nMat = cur().subjects.length;
+
+  el.innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn ghost sm" onclick="closeCadastrarSimulado()">← Voltar aos Simulados</button>
+        <h2 style="font-size:18px;font-weight:700;margin:0">${isEditing ? '✏️ Editar Simulado' : '➕ Cadastrar Novo Simulado'}</h2>
+        <span class="badge b-blue" style="font-size:12px" title="Sincronizado diretamente com a aba Metas">🎯 Padrão de Metas: ${nMat} matérias cadastradas (${pattern.totalQuestoes} questões)</span>
+      </div>
+      ${!isEditing ? `
+      <div style="display:flex;background:var(--card2);padding:3px;border-radius:10px;border:1px solid var(--border);gap:4px">
+        <button class="btn ${tab==='prova'?'':'ghost'} sm" onclick="openCadastrarSimulado('prova')" style="font-size:13px;font-weight:600">📄 Prova Completa (PDF ou Texto)</button>
+        <button class="btn ${tab==='manual'?'':'ghost'} sm" onclick="openCadastrarSimulado('manual')" style="font-size:13px;font-weight:600">⚡ Lançamento Manual de Notas</button>
+      </div>` : ''}
+    </div>
+
+    ${tab==='manual' ? `
+      <div class="card" style="max-width:850px;margin:0 auto">
+        ${simFormHTML()}
+      </div>
+    ` : `
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;align-items:start">
+        <!-- Passo 1: Prova / Extração -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h2 style="font-size:15px;font-weight:700;margin:0">1️⃣ Prova (PDF ou Texto)</h2>
+            <span class="badge b-purple" style="font-size:11px">Extração Inteligente</span>
+          </div>
+          <p class="hint" style="margin-bottom:10px">Suba o PDF da prova (layout de 2 colunas suportado) ou cole o texto. A extração organiza as questões automaticamente.</p>
+          
+          <div style="margin-bottom:10px;padding:10px;background:var(--card2);border:1px dashed var(--border);border-radius:8px">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">📎 Selecionar PDF da Prova:</label>
+            <input type="file" accept="application/pdf" id="rp-prova-file" onchange="rpProvaFile(this)" style="font-size:12px;width:100%">
+          </div>
+
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Ou cole o texto da prova:</label>
+          <textarea id="rp-prova-paste" rows="8" style="margin:4px 0 8px;font-size:12px;font-family:monospace;width:100%" placeholder="Cole aqui o texto da prova...&#10;&#10;Exemplo:&#10;LÍNGUA PORTUGUESA&#10;1. Assinale a alternativa correta...&#10;(A) Primeira opção&#10;(B) Segunda opção...&#10;QUESTÃO 02 - ..."></textarea>
+
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="btn sm" onclick="rpAIExtract()" id="rp-ai-btn" style="background:#8b5cf6;color:#fff">🤖 Extrair com IA</button>
+            <button class="btn ghost sm" onclick="rpProvaPaste()">📋 Extrair Localmente</button>
+            <span id="rp-ai-status" class="hint" style="align-self:center;font-size:11px"></span>
+          </div>
+          <span id="rp-prova-msg" class="hint" style="font-size:11px"></span>
+          <div id="rp-prova-status" class="hint" style="margin-top:6px;font-size:12px"></div>
+          
+          <details style="margin-top:10px"><summary class="hint" style="cursor:pointer;font-size:11px">🧩 Opções avançadas (importar JSON da IA)</summary>
+            <input type="file" accept=".json,application/json" id="rp-ai-json-file" onchange="rpImportAIJSON(this)" style="margin-top:6px;font-size:11px">
+          </details>
+        </div>
+
+        <!-- Passo 2: Matérias dos Blocos -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h2 style="font-size:15px;font-weight:700;margin:0">2️⃣ Matérias dos Blocos</h2>
+            <span class="badge b-green" style="font-size:11px">${nMat} Matérias de Metas</span>
+          </div>
+          <p class="hint" style="margin-bottom:10px">As matérias são associadas automaticamente ao padrão ativo em <b>Metas</b>. Você pode ajustar qualquer bloco se desejar.</p>
+          <div id="wg-map" style="max-height:480px;overflow-y:auto;padding-right:4px">
+            <div class="empty" style="padding:16px"><span class="hint">Carregue ou extraia a prova no passo 1 para visualizar os blocos de matérias.</span></div>
+          </div>
+        </div>
+
+        <!-- Passo 3: Gabarito Oficial e Respostas -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h2 style="font-size:15px;font-weight:700;margin:0">3️⃣ Gabarito Oficial <span class="muted" style="font-weight:400">(opcional)</span></h2>
+          </div>
+          <p class="hint" style="margin-bottom:10px">Se tiver o gabarito oficial, o sistema corrige as questões automaticamente.</p>
+          
+          <div style="margin-bottom:8px">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">📎 Subir PDF do Gabarito:</label>
+            <input type="file" accept="application/pdf" id="rp-ofic-file" onchange="rpOficFile(this)" style="font-size:12px;width:100%">
+            <span id="rp-ofic-msg" class="hint" style="font-size:11px"></span>
+          </div>
+
+          <details style="margin-bottom:8px"><summary class="hint" style="cursor:pointer;font-size:11px">ou colar texto do gabarito</summary>
+            <textarea id="rp-ofic-paste" rows="4" style="margin:6px 0;font-size:12px;font-family:monospace;width:100%" placeholder="1 - A&#10;2 - C&#10;...&#10;ou QUESTÃO: 01 / ALTERNATIVA: B"></textarea>
+            <button class="btn ghost sm" onclick="rpOficPaste()">Usar texto colado</button>
+          </details>
+
+          <textarea id="rp-ofic-txt" rows="4" placeholder="Gabarito oficial carregado (1-a, 2-c...)" style="margin:4px 0 8px;font-size:12px;font-family:monospace;width:100%"></textarea>
+          <button class="btn ghost sm" onclick="rpOficApply()">Aplicar gabarito</button>
+          <div id="rp-ofic-status" class="hint" style="margin-top:6px;font-size:12px"></div>
+        </div>
+
+        <!-- Passo 4: Finalização e Confirmação -->
+        <div class="card">
+          <h2 style="font-size:15px;font-weight:700;margin-bottom:8px">4️⃣ Finalização</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div><label style="font-size:12px;font-weight:600">Nome do Simulado</label><input id="rp-nome" type="text" placeholder="ex.: Simulado IV - PPRN" value="Simulado ${cur().simulados.length + 1}"></div>
+            <div><label style="font-size:12px;font-weight:600">Data</label><input id="rp-date" type="date" value="${todayISO()}"></div>
+          </div>
+          
+          <div style="margin-bottom:12px;padding:10px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">🎯 O que você deseja fazer após cadastrar?</label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;font-size:13px">
+              <input type="radio" name="rp-modo-obj" value="responder_agora" checked onchange="R.modoObjetivo='responder_agora'">
+              <span>✍️ <b>Responder agora no sistema</b> (abre a prova na tela imediatamente)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="radio" name="rp-modo-obj" value="responder_depois" onchange="R.modoObjetivo='responder_depois'">
+              <span>💾 <b>Salvar para responder depois</b> (salva a prova na lista com o botão "✍️ Responder")</span>
+            </label>
+          </div>
+
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px">
+            <input type="checkbox" id="rp-mini">
+            <span style="font-size:12px;font-weight:600">⚡ Este é um mini simulado <span class="muted" style="font-weight:400">(só algumas matérias — não afeta média geral)</span></span>
+          </label>
+
+          <div id="rp-rev" class="hint" style="margin-bottom:12px;font-size:12px"></div>
+          
+          <div style="display:flex;gap:8px">
+            <button class="btn" style="background:#2563eb;color:#fff;font-weight:700;flex:1;padding:10px" onclick="rpConfirmUnified()">💾 Cadastrar Simulado</button>
+            <button class="btn ghost sm" onclick="closeCadastrarSimulado()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    `}
+  `;
+  if(tab === 'prova' && W.blocks && W.blocks.length){
+    renderWizMap();
+    rpRev();
+  }
 }
 function gabSim(simId){
   const prova = cur().provas.find(p=>p.simuladoId===simId);
@@ -4887,6 +5171,12 @@ function respFinalizar(simId){
   if(!prova) return;
   if(!confirm('Finalizar o simulado? As respostas ficarão bloqueadas e não poderão mais ser alteradas.')) return;
   prova.finalizado = true;
+  prova.respondendo = false;
+  const sim = cur().simulados.find(s=>s.id===simId);
+  if(sim){
+    sim.finalizado = true;
+    sim.respondendo = false;
+  }
   if(prova.gabaritoCarregado) computeProva(prova.id);
   save();
   renderResponder(simId);
@@ -5103,117 +5393,92 @@ function parseProvaComBlocos(text){
   const lines = String(text||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const blocks = [];
   let curBlock = null, curAlt = null;
-  const BLACK = /simulado|sert[aã]o|banca|avalia|gabarito|concurso|correta|incorreta|alternativa|quest[aã]o|exceto|errad|verdadeir|fals|afirmativ|assinal|complet|texto|cronica|dispositivo|normativ|policial penal|policia penal|governo do estado|secretaria|nivel superior|nível superior|instrucoes|instruções|informacoes|informações|inscrição|nome completo|tipo de prova|assinatura|cartao|criterio|critério|não esqueça|ao fiscal|www\.|@ctcon|ctconcursos|licensed|sertão|detonando|banca avalia|prova objetiva|caderno de questão|cartão de resposta|duracao da|duração da|o sucesso|robert|mansão|rio grande do norte|e\) n\.d\.a|\(ppa\)|cadh\.|ppa/i;
-  const capsOK = l => l.length>=5 && l.length<=80
-    && /^[A-ZÀ-ÜÇ0-9 /:()\-.–—,&'ºª°%]+$/.test(l)
-    && !/^\d/.test(l) && !BLACK.test(l);
-  const subjectMatch = l => {
-    if(!/^[A-ZÀ-ÜÇ][A-ZÀ-ÜÇa-zà-üç0-9]/.test(l)) return false;
-    if(l.length < 3 || l.length > 80) return false;
-    const ln = normTxt(l);
-    return cur().subjects.some(s=>{
-      const sn = normTxt(s.name);
-      if(sn.length < 4) return false;
-      if(ln===sn) return true;
-      if(sn.includes(ln) && ln.length>=4) return true;
-      if(ln.includes(sn) && sn.length >= 6 && ln.length <= sn.length + 40) return true;
-      const variacoes = getVariacoes();
-      const canon = variacoes[l.toUpperCase()] || variacoes[normalizarMateria(l).toUpperCase()];
-      if(canon && normTxt(canon)===sn) return true;
-      return false;
-    });
+  const BLACK = /simulado|sert[aã]o|banca|avalia|gabarito|concurso|correta|incorreta|alternativa|exceto|errad|verdadeir|fals|afirmativ|assinal|complet|cronica|dispositivo|policial penal|policia penal|governo do estado|secretaria|nivel superior|nível superior|instrucoes|instruções|informacoes|informações|inscrição|nome completo|tipo de prova|assinatura|cartao|criterio|critério|não esqueça|ao fiscal|www\.|@ctcon|ctconcursos|licensed|detonando|banca avalia|prova objetiva|caderno de questão|cartão de resposta|duracao da|duração da|o sucesso|robert|mansão|rio grande do norte|e\) n\.d\.a|\(ppa\)|cadh\.|ppa|p[aá]gina \d/i;
+
+  const isSubjectHeader = l => {
+    if(l.length < 3 || l.length > 75) return false;
+    if(/^\s*\(?[A-Ea-e]\)?/i.test(l)) return false;
+    if(/^\s*\d/i.test(l)) return false;
+    if(/[.,;]$/.test(l)) return false;
+    if(BLACK.test(l)) return false;
+    const s = suggestSubject(l);
+    return !!s;
   };
-  const KNOWN_HEADERS = ['legislação específica','história do rn','história e aspectos geo','ética no serviço público','ética','direito penal e processo penal','execução penal','direito constitucional','direito administrativo','direitos humanos','língua portuguesa','portuguesa','leg. específica','lei específica'];
-  const knownMatch = l => {
-    const ln = normTxt(l);
-    return KNOWN_HEADERS.some(k=>{
-      const kn = normTxt(k);
-      if(ln===kn) return true;
-      if(ln.startsWith(kn)){
-        const rest = ln.slice(kn.length).trim();
-        return rest.length>0 && rest.length<=100 && (/[0-9“”"]/.test(rest) || rest.length<=30);
-      }
-      return false;
-    });
-  };
-  const isJunkHeader = l => {
-    if(/^ESQUENTA/i.test(l)) return true;
-    if(/^PROF\./i.test(l)) return true;
-    if(/^CADERNO DE QUEST[ÕO]ES/i.test(l)) return true;
-    if(/^MISS[ÃA]O/i.test(l)) return true;
-    if(/^ARTS\./i.test(l)) return true;
-    if(/^[A-ZÀ-ÜÇ0-9 .'ºª°-]+ - [A-ZÀ-ÜÇ0-9 .'ºª°-]+ - \d{4}$/i.test(l)) return true;
-    return false;
-  };
+
   let lastQNum = 0;
   for(let i=0; i<lines.length; i++){
     const l = lines[i];
-    if(/^[=\-]{3,}$/.test(l)) continue;
-    const qm = l.match(/^(\d{1,3})\s*[.)]\s*(?!\d)(.*)$/);
-    if(qm && Number(qm[1])>=1 && Number(qm[1])<=300 && Number(qm[1])>lastQNum){
-      lastQNum = Number(qm[1]);
-      if(!curBlock){ curBlock = {name:'', itens:[]}; blocks.push(curBlock); }
-      curBlock.itens.push({n:Number(qm[1]), texto:qm[2], alts:{}});
-      curAlt = null;
-      continue;
-    }
-    const qm2 = l.match(/^QUEST[ÃA]O\s*:?\s*(\d{1,3})(?:\s*\/\s*\d{1,3})?\s*(?!.*(?:alternativa|gabarito|corret))[.):\-]?\s*(.*)$/i);
-    if(qm2 && Number(qm2[1])>=1 && Number(qm2[1])<=300 && Number(qm2[1])>lastQNum){
-      lastQNum = Number(qm2[1]);
-      if(!curBlock){ curBlock = {name:'', itens:[]}; blocks.push(curBlock); }
-      curBlock.itens.push({n:Number(qm2[1]), texto:qm2[2], alts:{}});
-      curAlt = null;
-      continue;
-    }
-    const am = l.match(/^([A-Ea-e])\s*[.)]\s*(.*)$/);
+    if(/^[=\-—_]{3,}$/.test(l)) continue;
+
+    // 1. Alternativas: (A), (B) ou A), A., A - (inclusive alternativas inline)
+    const am = l.match(/^\s*(?:\(([A-Ea-e])\)|([A-Ea-e])\s*[\).:\-])\s*(.*)$/);
     if(am && curBlock && curBlock.itens.length){
       const q = curBlock.itens[curBlock.itens.length-1];
-      q.alts[am[1].toUpperCase()] = am[2];
-      curAlt = am[1].toUpperCase();
+      const letAlt = (am[1] || am[2]).toUpperCase();
+      const altTxt = am[3] || '';
+      const inlineParts = altTxt.split(/(?=\s*(?:\([B-Eb-e]\)|[B-Eb-e]\))\s+)/);
+      if(inlineParts.length > 1){
+        q.alts[letAlt] = inlineParts[0].trim();
+        for(let p=1; p<inlineParts.length; p++){
+          const subM = inlineParts[p].trim().match(/^\s*(?:\(([B-Eb-e])\)|([B-Eb-e])\s*[\).:\-])\s*(.*)$/);
+          if(subM){
+            q.alts[(subM[1]||subM[2]).toUpperCase()] = subM[3] || '';
+            curAlt = (subM[1]||subM[2]).toUpperCase();
+          }
+        }
+      } else {
+        q.alts[letAlt] = altTxt;
+        curAlt = letAlt;
+      }
       continue;
     }
-    if(isJunkHeader(l)) continue;
+
+    // 2. Número da Questão: "1.", "1)", "01 -", "QUESTÃO 01", ou número isolado na linha
+    const qm = l.match(/^(?:QUEST[ÃA]O\s*:?\s*(\d{1,3})(?:\s*\/\s*\d{1,3})?[.:\-–]?|(\d{1,3})\s*[.)\-–]\s*(?!\d))\s*(.*)$/i);
+    let qNum = null;
+    let qTxt = '';
+    if(qm){
+      qNum = Number(qm[1] || qm[2]);
+      qTxt = qm[3] || '';
+    } else if(/^\d{1,3}$/.test(l)){
+      const n = Number(l);
+      if((lastQNum === 0 && n === 1) || (n === lastQNum + 1 && n <= 200)){
+        qNum = n;
+        qTxt = '';
+      }
+    }
+
+    if(qNum && qNum >= 1 && qNum <= 300 && qNum > lastQNum){
+      lastQNum = qNum;
+      if(!curBlock){ curBlock = {name:'', itens:[]}; blocks.push(curBlock); }
+      curBlock.itens.push({n: qNum, texto: qTxt, alts:{}});
+      curAlt = null;
+      continue;
+    }
+
+    // 3. Cabeçalho de Matéria
     let h = l;
     const mm = l.match(/^MATÉRIA:\s*(.+)$/i);
     if(mm) h = mm[1].trim();
-    if(subjectMatch(h) || knownMatch(h)){
+
+    if(isSubjectHeader(h)){
       const curSubj = curBlock ? suggestSubject(curBlock.name) : null;
       const newSubj = suggestSubject(h);
-      if(curBlock && curSubj && newSubj && curSubj===newSubj){
-        if(knownMatch(h) || subjectMatch(h)) curBlock.name = h;
+      if(curBlock && curSubj && newSubj && curSubj === newSubj){
+        curBlock.name = h;
         continue;
       }
-      let name = h, j = i+1;
-      if(!suggestSubject(h)){
-        while(j<lines.length){
-          const nx = lines[j];
-          if(/^\d{1,3}\s*[.)]/.test(nx) || /^QUEST[ÃA]O\s*:?\s*\d/i.test(nx)) break;
-          if(/^[=\-]{3,}$/.test(nx)) break;
-          if(isJunkHeader(nx)) break;
-          const quoteStart = /^["""'\u201c\u201d(–—]/.test(nx);
-          const openEnd = /(nº|\s+e|,|–|—|"|"|")\s*$/.test(name);
-          if(capsOK(nx) || quoteStart || openEnd){ name += ' ' + nx; j++; }
-          else break;
-        }
-      }
-      i = j-1;
-      curBlock = {name, itens:[]};
+      curBlock = {name: h, itens:[]};
       blocks.push(curBlock);
       curAlt = null;
       continue;
     }
-    if(capsOK(h)){
-      const curIsSubj = curBlock ? !!suggestSubject(curBlock.name) : false;
-      if(curIsSubj) continue;
-      curBlock = {name:h, itens:[]};
-      blocks.push(curBlock);
-      curAlt = null;
-      continue;
-    }
+
+    // 4. Continuação de enunciado ou de alternativa
     if(curBlock && curBlock.itens.length){
       const q = curBlock.itens[curBlock.itens.length-1];
-      if(curAlt && q.alts[curAlt]!=null) q.alts[curAlt] += ' ' + l;
-      else q.texto += ' ' + l;
+      if(curAlt && q.alts[curAlt] != null) q.alts[curAlt] += ' ' + l;
+      else q.texto += (q.texto ? ' ' : '') + l;
     }
   }
   return blocks.filter(b=>b.itens.length>0);
@@ -5226,32 +5491,35 @@ function parseQuestoes(text){
   for(const raw of String(text||'').split(/\r?\n/)){
     const l = raw.trim();
     if(!l) continue;
-    const qm = l.match(/^(\d{1,3})\s*[.)]\s*(?!\d)(.*)$/);
-    if(qm && Number(qm[1])>=1 && Number(qm[1])<=300 && Number(qm[1])>lastQNum){
-      lastQNum = Number(qm[1]);
+    const qm = l.match(/^(?:QUEST[ÃA]O\s*:?\s*(\d{1,3})(?:\s*\/\s*\d{1,3})?[.:\-–]?|(\d{1,3})\s*[.)\-–]\s*(?!\d))\s*(.*)$/i);
+    let qNum = null;
+    let qTxt = '';
+    if(qm){
+      qNum = Number(qm[1] || qm[2]);
+      qTxt = qm[3] || '';
+    } else if(/^\d{1,3}$/.test(l)){
+      const n = Number(l);
+      if((lastQNum === 0 && n === 1) || (n === lastQNum + 1 && n <= 200)){
+        qNum = n;
+      }
+    }
+    if(qNum && qNum >= 1 && qNum <= 300 && qNum > lastQNum){
+      lastQNum = qNum;
       if(cur) quests.push(cur);
-      cur = {n:Number(qm[1]), texto:qm[2], alts:{}};
+      cur = {n: qNum, texto: qTxt, alts:{}};
       curAlt = null;
       continue;
     }
-    const qm2 = l.match(/^QUEST[ÃA]O\s*:?\s*(\d{1,3})(?:\s*\/\s*\d{1,3})?\s*(?!.*(?:alternativa|gabarito|corret))[.):\-]?\s*(.*)$/i);
-    if(qm2 && Number(qm2[1])>=1 && Number(qm2[1])<=300 && Number(qm2[1])>lastQNum){
-      lastQNum = Number(qm2[1]);
-      if(cur) quests.push(cur);
-      cur = {n:Number(qm2[1]), texto:qm2[2], alts:{}};
-      curAlt = null;
-      continue;
-    }
-    const am = l.match(/^([A-Ea-e])\s*[.)]\s*(.*)$/);
+    const am = l.match(/^\s*(?:\(([A-Ea-e])\)|([A-Ea-e])\s*[\).:\-])\s*(.*)$/);
     if(am && cur){
-      const k = am[1].toUpperCase();
-      cur.alts[k] = am[2];
+      const k = (am[1] || am[2]).toUpperCase();
+      cur.alts[k] = am[3] || '';
       curAlt = k;
       continue;
     }
     if(cur && !/^[()\s]*$/.test(l)){
       if(curAlt && cur.alts[curAlt] != null) cur.alts[curAlt] += ' ' + l;
-      else cur.texto += ' ' + l;
+      else cur.texto += (cur.texto ? ' ' : '') + l;
     }
   }
   if(cur) quests.push(cur);
@@ -5259,15 +5527,37 @@ function parseQuestoes(text){
 }
 function loadPdfJs(){
   return new Promise((res, rej)=>{
-    if(window.pdfjsLib) return res(window.pdfjsLib);
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload = ()=>{
-      try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){}
-      res(window.pdfjsLib);
-    };
-    s.onerror = ()=>rej(new Error('Não foi possível carregar a biblioteca de PDF (sem internet?). Use "colar texto".'));
-    document.head.appendChild(s);
+    if(window.pdfjsLib){
+      try{
+        if(!window.pdfjsLib.GlobalWorkerOptions.workerSrc){
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+        }
+      }catch(e){}
+      return res(window.pdfjsLib);
+    }
+    const sources = [
+      'vendor/pdf.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
+    ];
+    let idx = 0;
+    function tryNext(){
+      if(idx >= sources.length){
+        return rej(new Error('Não foi possível carregar a biblioteca de PDF. Verifique se o arquivo vendor/pdf.min.js existe ou use "colar texto".'));
+      }
+      const src = sources[idx++];
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = ()=>{
+        try{
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = src.startsWith('vendor/') ? 'vendor/pdf.worker.min.js' : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }catch(e){}
+        res(window.pdfjsLib);
+      };
+      s.onerror = tryNext;
+      document.head.appendChild(s);
+    }
+    tryNext();
   });
 }
 async function extractPdf(file){
@@ -5277,63 +5567,129 @@ async function extractPdf(file){
   const out = [];
   for(let p=1; p<=doc.numPages; p++){
     const page = await doc.getPage(p);
+    const viewport = page.getViewport({scale: 1.0});
+    const pageWidth = viewport.width || 595.3;
+    const pageHeight = viewport.height || 841.9;
     const tc = await page.getTextContent();
     const items = tc.items.filter(i=>i.str && String(i.str).trim());
-    let rising = 0, falling = 0;
-    for(let i=1; i<items.length; i++){
-      const d = items[i].transform[5] - items[i-1].transform[5];
-      if(d > 0.5) rising++;
-      else if(d < -0.5) falling++;
-    }
-    const reverse = falling > rising;
-    items.sort((a,b)=> (reverse ? b.transform[5]-a.transform[5] : a.transform[5]-b.transform[5]) || a.transform[4]-b.transform[4]);
-    const lines = [];
-    let cur = null, curY = null;
-    for(const it of items){
-      const y = Math.round(it.transform[5]*10);
-      if(curY==null || Math.abs(y-curY)<=2){
-        if(!cur) cur = [];
-        cur.push({x: it.transform[4], s: it.str});
-        if(curY==null) curY = y;
-      } else {
-        if(cur) lines.push(cur);
-        cur = [{x: it.transform[4], s: it.str}];
-        curY = y;
+    if(!items.length) continue;
+
+    // Filtrar rodapé e cabeçalho repetitivo (ruídos de borda)
+    const contentItems = items.filter(it => {
+      const y = it.transform[5];
+      if(y > pageHeight - 35 || y < 35){
+        if(/p[aá]gina \d|concurso|secretaria|pol[ií]cia/i.test(it.str)) return false;
       }
+      return true;
+    });
+
+    // Detectar se a página possui 2 colunas
+    const leftCount = contentItems.filter(it => it.transform[4] < pageWidth * 0.48).length;
+    const rightCount = contentItems.filter(it => it.transform[4] > pageWidth * 0.52).length;
+    const isTwoColumn = leftCount >= 8 && rightCount >= 8;
+
+    const processColumnItems = (colItems) => {
+      colItems.sort((a,b) => {
+        const dy = b.transform[5] - a.transform[5];
+        if(Math.abs(dy) > 3) return dy;
+        return a.transform[4] - b.transform[4];
+      });
+      const lines = [];
+      let curLine = [];
+      let curY = null;
+      for(const it of colItems){
+        const y = it.transform[5];
+        if(curY === null || Math.abs(y - curY) <= 3){
+          curLine.push(it);
+          if(curY === null) curY = y;
+        } else {
+          if(curLine.length) lines.push(curLine);
+          curLine = [it];
+          curY = y;
+        }
+      }
+      if(curLine.length) lines.push(curLine);
+      return lines.map(line => {
+        line.sort((a,b) => a.transform[4] - b.transform[4]);
+        return line.map(i => i.str).join(' ');
+      }).join('\n');
+    };
+
+    if(isTwoColumn){
+      const splitX = pageWidth / 2;
+      const leftItems = contentItems.filter(it => it.transform[4] < splitX);
+      const rightItems = contentItems.filter(it => it.transform[4] >= splitX);
+      const leftText = processColumnItems(leftItems);
+      const rightText = processColumnItems(rightItems);
+      out.push(leftText + '\n\n' + rightText);
+    } else {
+      out.push(processColumnItems(contentItems));
     }
-    if(cur) lines.push(cur);
-    out.push(lines.map(l=>l.sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ')).join('\n'));
   }
   return out.join('\n\n');
 }
 function suggestSubject(blockName){
-  const bn = normTxt(blockName);
-  const variacoes = getVariacoes();
-  const canon = variacoes[String(blockName||'').trim().toUpperCase()]
-    || variacoes[String(blockName||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()];
+  if(!blockName) return null;
+  const bn = normTxt(blockName).trim();
+  if(!bn) return null;
+
+  // 1. Variações conhecidas
+  const variacoes = (typeof getVariacoes === 'function') ? getVariacoes() : {};
+  const canon = variacoes[String(blockName).trim().toUpperCase()]
+    || variacoes[String(blockName).normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()];
   if(canon){
     const s = cur().subjects.find(x=>normTxt(x.name)===normTxt(canon));
     if(s) return s.id;
   }
-  for(const pat of REGRAS.padroes[0].materias){
-    const pn = normTxt(pat.nome);
-    if((bn.includes(pn) || pn.includes(bn)) && cur().subjects.find(x=>x.id===pat.id)) return pat.id;
+
+  // 2. Correspondência direta ou com nome limpo nos subjects de Metas
+  for(const s of cur().subjects){
+    const sn = normTxt(s.name);
+    if(sn === bn || sn.replace('nocoes de ', '') === bn || bn.replace('nocoes de ', '') === sn) return s.id;
+    if(s.short && normTxt(s.short) === bn) return s.id;
   }
+
+  // 3. Dicionário de Sinônimos/Aliases das 12 matérias do concurso
+  const aliases = {
+    'port': ['lingua portuguesa', 'portugues', 'portuguesa', 'lingua port', 'interpretacao de texto'],
+    'rlm': ['raciocinio logico', 'rlm', 'raciocinio logico e matematico', 'matematica e raciocinio logico'],
+    'info': ['informatica', 'nocoes de informatica', 'noções de informatica'],
+    'hist': ['historia do rn', 'historia e aspectos geoeconomicos do rn', 'geoeconomicos do rn', 'historia e geografia do rn', 'historia do rn e aspectos geo'],
+    'etica': ['etica no servico publico', 'etica', 'etica publica', 'noções de etica'],
+    'const': ['direito constitucional', 'nocoes de direito constitucional', 'constitucional'],
+    'adm': ['direito administrativo', 'nocoes de direito administrativo', 'administrativo'],
+    'penal': ['direito penal', 'nocoes de direito penal', 'direito penal e processo penal'],
+    'proc': ['direito processual penal', 'processo penal', 'nocoes de direito processual penal'],
+    'leg': ['legislacao especial', 'leis especiais', 'legislacao extravagante', 'legislacao especifica', 'legislação penal especial'],
+    'dh': ['direitos humanos', 'direitos humanos e cidadania', 'dudh', 'cidadania'],
+    'lep': ['lei de execucao penal', 'execucao penal', 'lep', 'lei de execucoes penais', 'lei de execucao penal - lep', 'lei de execucao penal – lep']
+  };
+
+  for(const [sid, alist] of Object.entries(aliases)){
+    const sObj = cur().subjects.find(s=>s.id === sid);
+    if(sObj){
+      for(const a of alist){
+        if(a === bn || bn.startsWith(a) || (bn.length <= a.length + 10 && bn.includes(a))){
+          return sObj.id;
+        }
+      }
+    }
+  }
+
+  // 4. Pontuação por sobreposição de termos
   let best = null, bestScore = 0;
   for(const s of cur().subjects){
     const sn = normTxt(s.name);
     let score = 0;
-    if(bn.includes(sn)) score += 3;
-    if(bn.includes('lep') && sn.includes('execu')) score += 5;
-    if(bn.includes('port') && sn.includes('portug')) score += 4;
-    if(bn.includes('dir') && sn.includes('direito')) score += 3;
-    if(bn.includes('pen') && sn.includes('execu')) score -= 2;
-    if(bn.includes('lei') && sn.includes('espec')) score += 4;
-    const kw = ['etica','etic','hist','geo','constituc','const','pen','execu','lep','adm','leg','hum','direit','espec'];
-    for(const k of kw){ if(bn.includes(k) && sn.includes(k)) score += 2; }
-    if(score>bestScore){ bestScore = score; best = s.id; }
+    if(bn.includes(sn)) score += 5;
+    if(sn.includes(bn)) score += 3;
+    const words = bn.split(/\s+/).filter(w=>w.length > 3);
+    for(const w of words){
+      if(sn.includes(w)) score += 2;
+    }
+    if(score > bestScore){ bestScore = score; best = s.id; }
   }
-  return best;
+  return bestScore >= 4 ? best : null;
 }
 function recuperarMateriaIds(c){
   if(!c || !Array.isArray(c.subjects) || !Array.isArray(c.provas) || typeof REGRAS === 'undefined' || !REGRAS) return false;
@@ -6164,9 +6520,11 @@ function renderRespWizard(){
 function rpProvaFile(input){
   const f = input.files[0];
   if(!f) return;
-  wizSet('⏳ Extraindo texto do PDF...', 'rp-prova-msg');
+  wizSet('⏳ Extraindo texto do PDF (layout duas colunas)...', 'rp-prova-msg');
   extractPdf(f).then(txt=>{
-    wizSet('✅ Texto extraído.', 'rp-prova-msg');
+    const pasteEl = document.getElementById('rp-prova-paste');
+    if(pasteEl) pasteEl.value = txt.slice(0, 4000) + (txt.length > 4000 ? '\n\n[... ' + (txt.length - 4000) + ' caracteres no buffer ...]' : '');
+    wizSet('✅ PDF extraído (' + txt.length + ' caracteres). Analisando questões...', 'rp-prova-msg');
     rpSetBlocks(txt);
   }).catch(err=>{ wizSet('<span style="color:var(--red)">'+err.message+'</span>', 'rp-prova-msg'); });
 }
@@ -6207,10 +6565,10 @@ async function rpAIExtract(){
     return;
   }
   if(btn) btn.disabled = true;
-  progress(1,'Enviando para a IA...',true);
+  progress(1,'Enviando para a IA com padrão de Metas ('+cur().subjects.length+' matérias)...',true);
   try {
     const raw = await extractWithAI(text);
-    progress(2,'Interpretando resposta...',true);
+    progress(2,'Interpretando resposta da IA...',true);
     const parsed = parseAIResponse(raw);
     const blocks = parsed.blocks;
     if(!blocks || !blocks.length){
@@ -6223,24 +6581,25 @@ async function rpAIExtract(){
     const {autoMap, validation} = autoMapAndValidate(blocks);
     W.map = autoMap;
     W.grupos = {};
+    const patObj = getConcursoPattern();
     blocks.forEach(b=>{
       const sid = autoMap[b.name];
-      const pat = REGRAS.padroes[0].materias.find(p=>p.id===sid);
-      if(pat && pat.grupo) W.grupos[b.name] = true;
+      const patMat = patObj.materias.find(p=>p.id===sid);
+      if(patMat && patMat.grupo) W.grupos[b.name] = true;
     });
     let statusHtml = '✅ IA extraiu <b>'+blocks.length+' blocos · '+total+' questões</b><br>'+
       blocks.map(b=>b.name+' ('+b.itens.length+'q → '+(autoMap[b.name]||'?')+')').join(' · ');
     if(!validation.ok){
-      statusHtml += '<br><span style="color:var(--amber)">⚠️ Padrão PPRN: '+validation.msgs.join(' · ')+'</span>';
+      statusHtml += '<br><span style="color:var(--amber)">⚠️ Padrão de Metas: '+validation.msgs.join(' · ')+'</span>';
     } else {
-      statusHtml += '<br><span style="color:var(--green)">✅ Padrão PPRN validado</span>';
+      statusHtml += '<br><span style="color:var(--green)">✅ Padrão validado com sucesso ('+cur().subjects.length+' matérias de Metas)</span>';
     }
     const vs = validateAgainstConcurso(blocks);
     if(!vs.ok){
       if(vs.extra.length) statusHtml += '<br><span style="color:var(--red)">❌ Matérias extras (não cadastradas): '+vs.extra.join(', ')+'</span>';
       if(vs.faltantes.length) statusHtml += '<br><span style="color:var(--amber)">⚠️ Matérias faltantes na prova: '+vs.faltantes.join(', ')+'</span>';
     } else {
-      statusHtml += '<br><span style="color:var(--green)">✅ Prova bate com as matérias do concurso</span>';
+      statusHtml += '<br><span style="color:var(--green)">✅ Prova bate com as 12 matérias cadastradas em Metas</span>';
     }
     if(parsed.titulo){
       const nomeEl = document.getElementById('rp-nome');
@@ -6263,23 +6622,24 @@ function rpSetBlocks(txt){
   const {autoMap, validation} = autoMapAndValidate(blocks);
   W.map = autoMap;
   W.grupos = {};
+  const patObj = getConcursoPattern();
   blocks.forEach(b=>{
     const sid = autoMap[b.name];
-    const pat = REGRAS.padroes[0].materias.find(p=>p.id===sid);
-    if(pat && pat.grupo) W.grupos[b.name] = true;
+    const patMat = patObj.materias.find(p=>p.id===sid);
+    if(patMat && patMat.grupo) W.grupos[b.name] = true;
   });
-  let statusHtml = '<b>'+blocks.length+' blocos · '+total+' questões</b><br>'+blocks.map(b=>b.name+' ('+b.itens.length+'q → '+(autoMap[b.name]||'?')+')').join(' · ');
+  let statusHtml = '<b>'+blocks.length+' blocos · '+total+' questões extraídas</b><br>'+blocks.map(b=>b.name+' ('+b.itens.length+'q → '+(autoMap[b.name]||'?')+')').join(' · ');
   if(!validation.ok){
-    statusHtml += '<br><span style="color:var(--amber)">⚠️ Padrão PPRN: '+validation.msgs.join(' · ')+'</span>';
+    statusHtml += '<br><span style="color:var(--amber)">⚠️ Padrão de Metas: '+validation.msgs.join(' · ')+'</span>';
   } else {
-    statusHtml += '<br><span style="color:var(--green)">✅ Padrão PPRN validado (100 questões, 9 blocos)</span>';
+    statusHtml += '<br><span style="color:var(--green)">✅ Padrão validado ('+total+' questões, '+cur().subjects.length+' matérias de Metas)</span>';
   }
   const vs = validateAgainstConcurso(blocks);
   if(!vs.ok){
     if(vs.extra.length) statusHtml += '<br><span style="color:var(--red)">❌ Matérias extras (não cadastradas): '+vs.extra.join(', ')+'</span>';
     if(vs.faltantes.length) statusHtml += '<br><span style="color:var(--amber)">⚠️ Matérias faltantes na prova: '+vs.faltantes.join(', ')+'</span>';
   } else {
-    statusHtml += '<br><span style="color:var(--green)">✅ Prova bate com as matérias do concurso</span>';
+    statusHtml += '<br><span style="color:var(--green)">✅ Prova bate com as 12 matérias cadastradas em Metas</span>';
   }
   wizSet(statusHtml, 'rp-prova-status');
   renderWizMap();
@@ -6305,7 +6665,7 @@ function rpApplyOfic(parsed){
   R.oficial = parsed;
   const el = document.getElementById('rp-ofic-txt');
   if(el) el.value = Object.keys(parsed).sort((a,b)=>a-b).map(n=>n+'-'+parsed[n]).join('\n');
-  wizSet('Gabarito carregado para <b>'+Object.keys(parsed).length+'</b> questões (oculto até finalizar).', 'rp-ofic-status');
+  wizSet('Gabarito carregado para <b>'+Object.keys(parsed).length+'</b> questões.', 'rp-ofic-status');
   rpRev();
 }
 function rpRev(){
@@ -6316,17 +6676,19 @@ function rpRev(){
   const semMap = W.blocks.filter(b=>!W.map[b.name]).map(b=>b.name);
   box.innerHTML = `
     <div style="margin-bottom:8px"><b>${total}</b> questões em <b>${W.blocks.length}</b> blocos
-      ${R.oficial?` · <span class="badge b-green">gabarito oficial carregado (${Object.keys(R.oficial).length})</span>`:' · <span class="badge b-amber">sem gabarito oficial</span>'}
+      ${R.oficial?` · <span class="badge b-green">gabarito oficial carregado (${Object.keys(R.oficial).length} questões)</span>`:' · <span class="badge b-amber">sem gabarito oficial</span>'}
     </div>
     ${semMap.length?`<div style="color:var(--red)">⚠️ defina a matéria de: ${semMap.join(', ')}</div>`:''}`;
 }
-function rpConfirm(){
-  if(!W.blocks || !W.blocks.length){ alert('Carregue a prova primeiro (passo 1).'); return; }
+function rpConfirmUnified(){
+  if(!W.blocks || !W.blocks.length){ alert('Carregue ou extraia a prova primeiro (passo 1).'); return; }
   const missing = W.blocks.filter(b=>!W.map[b.name]);
-  if(missing.length){ alert('Defina a matéria de todos os blocos (passo 2): '+missing.map(b=>b.name).join(', ')); return; }
-  const nome = document.getElementById('rp-nome').value.trim() || ('Simulado '+(cur().simulados.length+1));
-  const date = document.getElementById('rp-date').value || todayISO();
+  if(missing.length){ alert('Defina a matéria de todos os blocos no passo 2: '+missing.map(b=>b.name).join(', ')); return; }
+  const nome = (document.getElementById('rp-nome')?.value||'').trim() || ('Simulado '+(cur().simulados.length+1));
+  const date = document.getElementById('rp-date')?.value || todayISO();
   const mini = !!(document.getElementById('rp-mini') && document.getElementById('rp-mini').checked);
+  const modoObj = R.modoObjetivo || 'responder';
+
   const scores = {};
   cur().subjects.forEach(s=>scores[s.id]=null);
   const questoes = [];
@@ -6344,7 +6706,7 @@ function rpConfirm(){
     if(sid==='__new__' || !sidValido()){
       const i = W.blocks.indexOf(b);
       const name = (document.getElementById('wg-nn-'+i)?.value||'').trim() || b.name;
-      const w = parseInt(document.getElementById('wg-nw-'+i)?.value,10) || 2;
+      const w = parseInt(document.getElementById('wg-nw-'+i)?.value,10) || 1;
       const ns = { id: uid(), name, short: abbrev(name), weight: w, qtd: itens.length, grupo: ehExtra?'extravagante':'' };
       cur().subjects.push(ns);
       sid = ns.id;
@@ -6357,25 +6719,92 @@ function rpConfirm(){
       materias[sid] = itens.length;
     }
     itens.forEach(it=>{
-      questoes.push({
-        n: it.n, materiaId: sid, texto: it.texto, alts: it.alts||{},
-        sua: '', oficial: (R.oficial && R.oficial[it.n]) ? R.oficial[it.n] : '',
-        status: null, descartadas: [],
+      const q = {
+        n: it.n,
+        materiaId: sid,
+        texto: it.texto || '',
+        alts: it.alts || {},
+        sua: it.r ? it.r.toLowerCase() : '',
+        oficial: (R.oficial && R.oficial[it.n]) ? String(R.oficial[it.n]).toLowerCase() : '',
+        status: null,
+        descartadas: [],
         anotacoes: {caneta:[],riscados:[],comentarios:{},destaques:[]}
-      });
+      };
+      if(modoObj === 'finalizado' && q.oficial && q.sua){
+        q.status = q.sua === q.oficial ? 'certo' : 'errado';
+      }
+      questoes.push(q);
     });
   });
   questoes.sort((a,b)=>a.n-b.n);
+
+  if(modoObj === 'finalizado'){
+    cur().subjects.forEach(s=>{
+      const qsSubj = questoes.filter(q=>q.materiaId===s.id && q.sua);
+      if(qsSubj.length > 0){
+        const certas = qsSubj.filter(q=>q.oficial && q.sua.toLowerCase()===q.oficial.toLowerCase()).length;
+        scores[s.id] = certas;
+      }
+    });
+  }
+
   const provaId = uid();
-  const sim = { id: uid(), date, name: nome, scores, provaId, respondendo: true, finalizado: false };
+  const abrirAgora = modoObj !== 'responder_depois';
+
+  const sim = {
+    id: uid(),
+    date,
+    name: nome,
+    scores,
+    provaId,
+    respondendo: true,
+    finalizado: false
+  };
   if(mini){ sim.mini = true; sim.materias = materias; }
   cur().simulados.push(sim);
-  cur().provas.push({ id: provaId, simuladoId: sim.id, nome, questoes, respondendo: true, finalizado: false, rascunho: null, gabaritoCarregado: !!(R.oficial && Object.keys(R.oficial).length) });
+  cur().provas.push({
+    id: provaId,
+    simuladoId: sim.id,
+    nome,
+    questoes,
+    respondendo: true,
+    finalizado: false,
+    rascunho: null,
+    gabaritoCarregado: !!(R.oficial && Object.keys(R.oficial).length)
+  });
   save();
   R.emAndamento = false;
+  cadastrarSimuladoMode = false;
   R.oficial = null; R.oficTxt = '';
   W.blocks = null; W.map = {}; W.grupos = {};
-  responderSimId = sim.id;
+
+  if(abrirAgora){
+    responderSimId = sim.id;
+  } else {
+    responderSimId = null;
+  }
+  renderSimuladoView();
+}
+function rpConfirm(){
+  rpConfirmUnified();
+}
+function reabrirSimulado(simId){
+  const sim = cur().simulados.find(s=>s.id===simId);
+  const prova = cur().provas.find(p=>p.simuladoId===simId);
+  if(sim){
+    sim.finalizado = false;
+    sim.respondendo = true;
+    const respondidas = prova ? (prova.questoes||[]).filter(q=>q.sua).length : 0;
+    if(respondidas === 0){
+      cur().subjects.forEach(s=>sim.scores[s.id]=null);
+    }
+  }
+  if(prova){
+    prova.finalizado = false;
+    prova.respondendo = true;
+  }
+  save();
+  responderSimId = simId;
   renderSimuladoView();
 }
 function renderDetail(simId){
