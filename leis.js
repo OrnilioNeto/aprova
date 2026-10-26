@@ -1173,11 +1173,11 @@
   // VÍNCULO PRECISO COM OS TÓPICOS DO EDITAL (ABA ESTUDOS)
   window.obterLeisParaTopico = function(nomeTopico, materiaNome){
     if(!nomeTopico) return null;
-    const topico = String(nomeTopico).toLowerCase();
-    
-    // Normalização sem acentos para match exato
-    const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const t = norm(topico);
+    try {
+      // Normalização sem acentos para match exato
+      const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const t = norm(nomeTopico);
+      const materia = norm(materiaNome);
 
     // Mapeamento preciso por Tópico (evita cair sempre no Artigo 1)
     // 1. EXECUÇÃO PENAL (LEP)
@@ -1231,10 +1231,10 @@
     if(t.includes('fianca') || t.includes('liberdade provisoria')){
       return { leiId: 'cpp', nome: 'CPP (Art. 321)', art: '321' };
     }
-    if(t.includes('prova') || t.includes('pericia') || t.includes('exame de corpo de delito')){
+    if(/\bprovas?\b/.test(t) || t.includes('pericia') || t.includes('exame de corpo de delito')){
       return { leiId: 'cpp', nome: 'CPP (Art. 155)', art: '155' };
     }
-    if(t.includes('juri') || t.includes('tribunal do juri')){
+    if(/\bjuri\b/.test(t) || t.includes('tribunal do juri')){
       return { leiId: 'cpp', nome: 'CPP (Art. 406)', art: '406' };
     }
     if(t.includes('busca e apreensao') || t.includes('busca domiciliar')){
@@ -1269,7 +1269,7 @@
     if(t.includes('concurso de pessoas') || t.includes('coautoria') || t.includes('participacao')){
       return { leiId: 'cp', nome: 'CP (Art. 29)', art: '29' };
     }
-    if(t.includes('penas') || t.includes('privativa de liberdade') || t.includes('restritiva de direitos')){
+    if(/\bpenas?\b/.test(t) || t.includes('privativa de liberdade') || t.includes('restritiva de direitos')){
       return { leiId: 'cp', nome: 'CP (Art. 32)', art: '32' };
     }
     if(t.includes('concurso de crimes') || t.includes('concurso material') || t.includes('concurso formal') || t.includes('crime continuado')){
@@ -1410,8 +1410,15 @@
     if(t.includes('organizacao judiciaria de pe') || t.includes('lc 100') || t.includes('tjpe')){
       return { leiId: 'pe_coj', nome: 'COJ PE (LC 100)', art: '1' };
     }
+    if(t.includes('estatuto dos servidores de pe') || t.includes('6.123') || t.includes('6123') || (materia.includes('pernambuco') && (t.includes('estatuto') || t.includes('servidor')))){
+      return { leiId: 'lei6123_pe', nome: 'Estatuto PE (6.123)', art: '1' };
+    }
 
-    return null;
+      return null;
+    } catch(e) {
+      console.warn('obterLeisParaTopico erro silencioso:', e);
+      return null;
+    }
   };
 
   // Tecla de atalho Escape para fechar qualquer modal ou leitor

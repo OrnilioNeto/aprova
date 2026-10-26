@@ -1737,11 +1737,16 @@ function estLeafRow(m, t, s){
   const del = kind==='sub'
     ? "estRemoveSubtopico('"+m.id+"','"+t.id+"','"+s.id+"')"
     : "estRemoveTopico('"+m.id+"','"+t.id+"')";
-  const leiSug = (typeof obterLeisParaTopico==='function') ? obterLeisParaTopico(leaf.name, m.name) : null;
+  let leiSug = null;
+  try {
+    if(typeof obterLeisParaTopico==='function') leiSug = obterLeisParaTopico(leaf.name, m ? m.name : '');
+  } catch(e) {
+    console.warn('Erro ao sugerir lei:', e);
+  }
   const btnLei = leiSug ? '<button type="button" class="btn ghost sm" style="padding:1px 6px;font-size:10px;color:var(--accent);border-color:var(--accent);margin-left:6px;white-space:nowrap" onclick="event.stopPropagation();abrirLeitorLei(\''+leiSug.leiId+'\',\''+leiSug.art+'\')" title="Abrir '+leiSug.nome+' no Vade Mecum">⚖️ '+leiSug.nome+'</button>' : '';
   return '<tr class="'+(leaf.assistido?'tp-feito':'')+(kind==='sub'?' tp-sub':'')+'">'+
     '<td><input type="checkbox" '+(leaf.assistido?'checked':'')+' onchange="'+set('assistido','this.checked')+'" title="Assistido/estudado"></td>'+
-    '<td class="tp-name"><div class="tp-name-flex">'+(kind==='sub'?'<span class="tp-indent">↳</span>':'<span class="tp-badge">TÓPICO</span>')+'<input type="text" value="'+esc(leaf.name)+'" onchange="'+ren+'" style="border:none;background:transparent;padding:2px;flex:1;min-width:0;font-size:13px">'+btnLei+'</div></td>'+
+    '<td class="tp-name"><div class="tp-name-flex">'+(kind==='sub'?'<span class="tp-indent">↳</span>':'<span class="tp-badge">TÓPICO</span>')+'<input type="text" value="'+esc(leaf.name||'')+'" onchange="'+ren+'" style="border:none;background:transparent;padding:2px;flex:1;min-width:0;font-size:13px">'+btnLei+'</div></td>'+
     '<td class="t-ok"><input type="checkbox" '+(leaf.pdf?'checked':'')+' onchange="'+set('pdf','this.checked')+'" title="PDF"></td>'+
     '<td class="t-ok"><input type="checkbox" '+(leaf.va?'checked':'')+' onchange="'+set('va','this.checked')+'" title="Vídeo aula"></td>'+
     '<td><input type="number" min="0" value="'+(Number(leaf.qResolvidas)||0)+'" onchange="'+set('qResolvidas','this.value')+'"></td>'+
@@ -1777,7 +1782,12 @@ function estRenderTopicoBlock(m, t){
   const subs = t.subtopicos || [];
   const subsOk = subs.filter(s=>s.assistido).length;
   const conts = subs.reduce((a,s)=>a+(s.conteudos||[]).length,0);
-  const leiSugT = (typeof obterLeisParaTopico==='function') ? obterLeisParaTopico(t.name, m.name) : null;
+  let leiSugT = null;
+  try {
+    if(typeof obterLeisParaTopico==='function') leiSugT = obterLeisParaTopico(t.name, m ? m.name : '');
+  } catch(e) {
+    console.warn('Erro ao sugerir lei:', e);
+  }
   const btnLeiT = leiSugT ? '<button type="button" class="btn ghost sm" style="padding:2px 8px;font-size:11px;color:var(--accent);border-color:var(--accent);margin-left:8px;white-space:nowrap" onclick="event.stopPropagation();abrirLeitorLei(\''+leiSugT.leiId+'\',\''+leiSugT.art+'\')" title="Abrir '+leiSugT.nome+' no Vade Mecum">⚖️ '+leiSugT.nome+'</button>' : '';
   let html = '<tbody class="tp-block">';
   if(subs.length){
@@ -1815,7 +1825,13 @@ function estRenderMateriaDetail(m){
   const cm = estudo().cronometro;
   const running = cm && cm.running && cm.materiaId===m.id;
   const sessaoSec = cm && cm.materiaId===m.id ? Math.floor((Date.now()-cm.inicio)/1000) + (cm.sessao||0) : 0;
-  const rows = (m.topicos||[]).map(t=>estRenderTopicoBlock(m,t)).join('');
+  let rows = '';
+  try {
+    rows = (m.topicos||[]).map(t=>estRenderTopicoBlock(m,t)).join('');
+  } catch(e) {
+    console.error('Erro ao renderizar tópicos da matéria:', e);
+    rows = '<tbody><tr><td colspan="8" class="muted" style="color:var(--red)">Ocorreu um erro ao carregar os tópicos: '+esc(e.message)+'</td></tr></tbody>';
+  }
   const revs = [0,1,2].map(i=>{
     const v = (m.revisoes||[])[i] || '';
     return '<label>Rev '+(i+1)+' <input type="date" value="'+v+'" onchange="estSetRev(\''+m.id+'\','+i+',this.value)"></label>';
