@@ -17,10 +17,100 @@
     filtroMateria: 'todas',
     termoBusca: '',
     cacheConteudo: {},
+    cacheArtigosTexto: {},
     favoritos: JSON.parse(localStorage.getItem('aprova_leis_favoritos') || '{}'),
     anotacoes: JSON.parse(localStorage.getItem('aprova_leis_anotacoes') || '{}'),
-    historico: JSON.parse(localStorage.getItem('aprova_leis_historico') || '[]')
+    historico: JSON.parse(localStorage.getItem('aprova_leis_historico') || '[]'),
+    selecao: {},
+    perfilIaAtivo: 'esquematizado',
+    aiProvider: localStorage.getItem('aprova_ai_provider') || 'gemini',
+    aiApiKey: localStorage.getItem('aprova_ai_api_key') || ''
   };
+
+  // Funções de Persistência e Gerenciamento da Seleção Multi-Leis por Concurso
+  function obterChaveSelecao(){
+    const cId = (typeof curId === 'function') ? curId() : 'default';
+    return 'aprova_leis_selecao_' + cId;
+  }
+
+  window.carregarSelecao = function(){
+    try {
+      const key = obterChaveSelecao();
+      const raw = localStorage.getItem(key);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && typeof parsed === 'object' && !Array.isArray(parsed)){
+          window.LEIS_STATE.selecao = parsed;
+          return parsed;
+        }
+      }
+    } catch(e){
+      console.warn('Erro ao carregar selecao de leis:', e);
+    }
+    window.LEIS_STATE.selecao = {};
+    return {};
+  };
+
+  window.salvarSelecao = function(){
+    try {
+      const key = obterChaveSelecao();
+      localStorage.setItem(key, JSON.stringify(window.LEIS_STATE.selecao || {}));
+    } catch(e){
+      console.warn('Erro ao salvar selecao de leis:', e);
+    }
+    if(typeof window.atualizarBarraFlutuanteSelecao === 'function') window.atualizarBarraFlutuanteSelecao();
+    atualizarBadgeSelecaoGlobal();
+  };
+
+  function contarTotalSelecionados(){
+    const sel = window.LEIS_STATE.selecao || {};
+    let count = 0;
+    Object.keys(sel).forEach(leiId => {
+      const arr = sel[leiId];
+      if(Array.isArray(arr)) count += arr.length;
+    });
+    return count;
+  }
+
+  function atualizarBadgeSelecaoGlobal(){
+    const badge = document.getElementById('lei-total-selecionados-badge');
+    if(badge) badge.innerText = contarTotalSelecionados();
+  }
+
+  function sincronizarCheckboxesLeitor(leiId){
+    const container = document.getElementById('lei-text-container');
+    if(!container) return;
+    const selArr = (window.LEIS_STATE.selecao && window.LEIS_STATE.selecao[leiId]) || [];
+    const cards = container.querySelectorAll('.lei-artigo-card');
+    cards.forEach(card => {
+      const art = card.dataset.artigo;
+      const isSel = selArr.includes(art);
+      card.classList.toggle('lei-art-selecionado', isSel);
+      const chk = card.querySelector('.lei-art-chk');
+      if(chk) chk.checked = isSel;
+    });
+  }
+
+  function obterTodosArtigosDaLei(lei){
+    if(Array.isArray(lei.artigos_todos) && lei.artigos_todos.length){
+      return lei.artigos_todos;
+    }
+    const container = document.getElementById('lei-text-container');
+    if(container){
+      const cards = container.querySelectorAll('.lei-artigo-card');
+      if(cards.length){
+        const list = [];
+        cards.forEach(c => {
+          if(c.dataset.artigo && !list.includes(c.dataset.artigo)) list.push(c.dataset.artigo);
+        });
+        if(list.length) return list;
+      }
+    }
+    const tot = parseInt(lei.total_artigos, 10) || 50;
+    const fallback = [];
+    for(let i=1; i<=tot; i++) fallback.push(String(i));
+    return fallback;
+  }
 
   // Carregamento do catálogo de leis (base + customizadas do acervo)
   async function carregarCatalogo(){
@@ -98,6 +188,7 @@
     text = text.replace(/<span\s+id=["']art-[^"']+["'][^>]*><\/span>/gi, '');
 
     const favs = window.LEIS_STATE.favoritos[leiId] || [];
+    const selArr = (window.LEIS_STATE.selecao && window.LEIS_STATE.selecao[leiId]) || [];
 
     // Divisão de linhas
     const lines = text.split('\n');
@@ -215,13 +306,18 @@
         const artTag = formatarNumeroArtigo(currentArtNum);
         const resto = artMatch[2] ? artMatch[2].trim() : '';
         const isFav = favs.includes(currentArtNum);
+        const isSel = selArr.includes(currentArtNum);
         const rubrica = pendingEpigrafe;
         pendingEpigrafe = '';
 
         html.push(`
-          <div class="lei-artigo-card" id="${cleanId}" data-artigo="${currentArtNum}">
+          <div class="lei-artigo-card ${isSel ? 'lei-art-selecionado' : ''}" id="${cleanId}" data-artigo="${currentArtNum}">
             <div class="lei-artigo-header">
               <div class="lei-artigo-info">
+                <label class="lei-art-chk-wrap" title="${isSel ? 'Desmarcar artigo' : 'Selecionar artigo para caderno de revisão / PDF / IA'}">
+                  <input type="checkbox" class="lei-art-chk" ${isSel ? 'checked' : ''} onchange="toggleSelecionarArtigo('${leiId}', '${currentArtNum}', this.checked)">
+                  <span class="lei-art-chk-custom"></span>
+                </label>
                 <span class="lei-artigo-tag">${artTag}</span>
                 ${rubrica ? `<span class="lei-artigo-rubrica" title="Rubrica / Nome Jurídico">⚡ ${escapeHtml(rubrica)}</span>` : ''}
               </div>
@@ -491,6 +587,7 @@
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn sm" style="background:#2563eb;color:#fff;font-weight:700" onclick="abrirConfigLeisModal()">⚙️ Selecionar Leis (${leisAtivas.length}/${cat.length})</button>
           <button class="btn ghost sm" onclick="abrirFavoritosModal()">⭐ Artigos Marcados (${contarTodosFavoritos()})</button>
+          <button class="btn ghost sm" onclick="abrirModalMeusArtigos()" style="border-color:var(--accent);color:var(--text);font-weight:700" title="Ver caderno de artigos selecionados para PDF e IA">📦 Meus Artigos (<span id="lei-total-selecionados-badge">${contarTotalSelecionados()}</span>)</button>
         </div>
       </div>
 
@@ -1154,6 +1251,7 @@
 
           <!-- Ações e Controles de Visualização -->
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            <button class="btn sm" onclick="abrirModalSelecionarArtigosLei('${lei.id}')" title="Selecionar múltiplos artigos desta legislação" style="background:rgba(139,92,246,0.18);border-color:var(--accent);color:var(--text);font-weight:700">☑️ Selecionar artigos</button>
             <button class="btn ghost sm" onclick="alterarTamanhoFonteLeis(-1)" title="Diminuir tamanho da fonte" style="padding:3px 7px;font-weight:700">A-</button>
             <button class="btn ghost sm" onclick="alterarTamanhoFonteLeis(1)" title="Aumentar tamanho da fonte" style="padding:3px 7px;font-weight:700">A+</button>
             <button class="btn ghost sm" onclick="toggleSumarioLateral()" title="Ocultar ou exibir sumário lateral">📑 Sumário</button>
@@ -1189,10 +1287,14 @@
             <div class="empty"><span class="big">⏳</span>Carregando texto oficial...</div>
           </main>
         </div>
+
+        <!-- Barra Flutuante de Seleção / Caderno Multi-Leis -->
+        <div id="lei-floating-bar" class="lei-floating-bar"></div>
       </div>
     `;
 
     carregarConteudoLei(lei, artigoAlvo);
+    atualizarBarraFlutuanteSelecao();
   };
 
   async function carregarConteudoLei(lei, artigoAlvo){
@@ -1201,6 +1303,7 @@
 
     if(window.LEIS_STATE.cacheConteudo[lei.id]){
       container.innerHTML = window.LEIS_STATE.cacheConteudo[lei.id];
+      sincronizarCheckboxesLeitor(lei.id);
       if(artigoAlvo) setTimeout(()=>pularParaArtigo(artigoAlvo), 100);
       return;
     }
@@ -1218,6 +1321,7 @@
       const parsedHtml = parseLegalMarkdown(rawText, lei.id);
       window.LEIS_STATE.cacheConteudo[lei.id] = parsedHtml;
       container.innerHTML = parsedHtml;
+      sincronizarCheckboxesLeitor(lei.id);
       if(artigoAlvo) setTimeout(()=>pularParaArtigo(artigoAlvo), 150);
     } catch(e) {
       container.innerHTML = `
@@ -1418,6 +1522,12 @@
           <h3 style="margin:0;font-size:16px;font-weight:700">⭐ Artigos Marcados para Revisão</h3>
           <button class="btn ghost sm" onclick="fecharModalFavoritos()" style="font-size:14px;padding:3px 8px">✕</button>
         </div>
+        ${itens.length ? `
+          <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:8px;padding:8px 12px">
+            <span style="font-size:12px;color:var(--text)"><b>${itens.length}</b> artigo(s) nos favoritos</span>
+            <button class="btn sm" onclick="adicionarFavoritosASelecao()" style="background:linear-gradient(90deg,#8b5cf6,#2563eb);color:#fff;border:none;font-weight:700;font-size:12px">➕ Adicionar favoritos à seleção</button>
+          </div>
+        ` : ''}
         <div style="margin-bottom:12px">${html}</div>
       </div>
     `;
@@ -1467,6 +1577,1716 @@
         </div>
       </div>
     `;
+  };
+
+  // =========================================================================
+  // SISTEMA DE SELEÇÃO MULTI-LEIS, BARRA FLUTUANTE, MEUS ARTIGOS, PDF E IA
+  // =========================================================================
+
+  window.toggleSelecionarArtigo = function(leiId, artNum, isChecked){
+    if(!window.LEIS_STATE.selecao) window.LEIS_STATE.selecao = {};
+    if(!Array.isArray(window.LEIS_STATE.selecao[leiId])){
+      window.LEIS_STATE.selecao[leiId] = [];
+    }
+    const arr = window.LEIS_STATE.selecao[leiId];
+    const artStr = String(artNum).trim();
+    const idx = arr.indexOf(artStr);
+
+    if(isChecked){
+      if(idx === -1) arr.push(artStr);
+    } else {
+      if(idx >= 0) arr.splice(idx, 1);
+    }
+
+    if(arr.length === 0){
+      delete window.LEIS_STATE.selecao[leiId];
+    }
+
+    salvarSelecao();
+
+    const cleanId = 'art-' + artStr.toLowerCase().replace(/[^0-9a-z\-]/g, '');
+    const card = document.getElementById(cleanId);
+    if(card){
+      card.classList.toggle('lei-art-selecionado', isChecked);
+      const chk = card.querySelector('.lei-art-chk');
+      if(chk && chk.checked !== isChecked) chk.checked = isChecked;
+    }
+
+    const pill = document.querySelector(`.lei-art-pill[data-art="${artStr}"]`);
+    if(pill){
+      pill.classList.toggle('selected', isChecked);
+    }
+
+    const modalCount = document.getElementById('modal-sel-lei-count');
+    if(modalCount){
+      const curr = (window.LEIS_STATE.selecao[leiId] || []).length;
+      modalCount.innerText = curr;
+    }
+
+    window.mostrarToastLeis(isChecked ? `☑️ Art. ${artStr} selecionado` : `Art. ${artStr} desmarcado`);
+  };
+
+  window.removerArtigoSelecao = function(leiId, artNum){
+    if(!window.LEIS_STATE.selecao || !Array.isArray(window.LEIS_STATE.selecao[leiId])) return;
+    const arr = window.LEIS_STATE.selecao[leiId];
+    const artStr = String(artNum).trim();
+    const idx = arr.indexOf(artStr);
+    if(idx >= 0) arr.splice(idx, 1);
+    if(arr.length === 0) delete window.LEIS_STATE.selecao[leiId];
+    salvarSelecao();
+
+    if(window.LEIS_STATE.leiAtiva && window.LEIS_STATE.leiAtiva.id === leiId){
+      const cleanId = 'art-' + artStr.toLowerCase().replace(/[^0-9a-z\-]/g, '');
+      const card = document.getElementById(cleanId);
+      if(card){
+        card.classList.remove('lei-art-selecionado');
+        const chk = card.querySelector('.lei-art-chk');
+        if(chk) chk.checked = false;
+      }
+    }
+
+    abrirModalMeusArtigos();
+    window.mostrarToastLeis(`Art. ${artStr} removido da seleção`);
+  };
+
+  window.removerLeiDaSelecao = function(leiId){
+    if(!window.LEIS_STATE.selecao) return;
+    delete window.LEIS_STATE.selecao[leiId];
+    salvarSelecao();
+    if(window.LEIS_STATE.leiAtiva && window.LEIS_STATE.leiAtiva.id === leiId){
+      sincronizarCheckboxesLeitor(leiId);
+    }
+    abrirModalMeusArtigos();
+    window.mostrarToastLeis(`Todos os artigos desta lei foram desmarcados.`);
+  };
+
+  window.limparTodaSelecaoComConfirm = function(){
+    const tot = contarTotalSelecionados();
+    if(tot === 0) return;
+    if(confirm(`Deseja limpar todos os ${tot} artigos selecionados do seu caderno?`)){
+      window.LEIS_STATE.selecao = {};
+      salvarSelecao();
+      if(window.LEIS_STATE.leiAtiva){
+        sincronizarCheckboxesLeitor(window.LEIS_STATE.leiAtiva.id);
+      }
+      fecharModalMeusArtigos();
+      window.mostrarToastLeis(`🗑️ Seleção limpa com sucesso.`);
+    }
+  };
+
+  window.atualizarBarraFlutuanteSelecao = function(){
+    const bar = document.getElementById('lei-floating-bar');
+    const total = contarTotalSelecionados();
+    atualizarBadgeSelecaoGlobal();
+
+    if(!bar) return;
+
+    if(total === 0){
+      bar.classList.remove('visible');
+      bar.innerHTML = '';
+      return;
+    }
+
+    const sel = window.LEIS_STATE.selecao || {};
+    const leisComSel = Object.keys(sel).filter(id => (sel[id] || []).length > 0);
+    const numLeis = leisComSel.length;
+    const paginasEst = Math.max(1, Math.ceil(total * 0.35) + 1);
+
+    bar.classList.add('visible');
+    bar.innerHTML = `
+      <div class="lei-fb-left" onclick="abrirModalMeusArtigos()" title="Clique para revisar os artigos selecionados">
+        <span class="lei-fb-badge">${total}</span>
+        <div class="lei-fb-text">
+          <b>${total} ${total === 1 ? 'artigo selecionado' : 'artigos selecionados'}</b>
+          <span class="lei-fb-sub">${numLeis} ${numLeis === 1 ? 'lei' : 'leis'} · ~${paginasEst} págs PDF</span>
+        </div>
+      </div>
+      <div class="lei-fb-actions">
+        <button class="lei-fb-btn" onclick="abrirModalMeusArtigos()" title="Revisar e gerenciar artigos selecionados">👁️ Ver seleção</button>
+        <button class="lei-fb-btn-primary" onclick="abrirModalOpcoesPDF()" title="Configurar e Gerar PDF Didático">📄 Gerar PDF</button>
+        <button class="lei-fb-btn-ai" onclick="abrirModalOpcoesIA()" title="Gerar Resumo, Mnemônicos ou Questões com IA">✨ Resumo IA</button>
+        <button class="lei-fb-btn lei-fb-btn-danger" onclick="limparTodaSelecaoComConfirm()" title="Limpar toda a seleção">🗑️</button>
+      </div>
+    `;
+  };
+
+  // Modal de Seleção de Artigos em Lote (Dentro de uma Lei)
+  window.abrirModalSelecionarArtigosLei = function(leiId){
+    const lei = (window.LEIS_STATE.catalogo || []).find(l => l.id === leiId);
+    if(!lei) return;
+
+    const todosArtigos = obterTodosArtigosDaLei(lei);
+    const selArr = (window.LEIS_STATE.selecao && window.LEIS_STATE.selecao[leiId]) || [];
+
+    let m = document.getElementById('lei-selecionar-modal');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'lei-selecionar-modal';
+      document.body.appendChild(m);
+    }
+    m.style.display = 'block';
+    m.className = 'lei-modal-open';
+    m.innerHTML = `
+      <div class="lei-drawer-backdrop" onclick="fecharModalSelecionarArtigos()"></div>
+      <div class="lei-modal-box" style="max-width:680px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+              ☑️ Selecionar Artigos — ${lei.icone||'⚖️'} ${escapeHtml(lei.nome)}
+            </h3>
+            <span class="muted" style="font-size:12px">${escapeHtml(lei.numero)} · ${lei.total_artigos} artigos totais · <b style="color:var(--accent)" id="modal-sel-lei-count">${selArr.length}</b> selecionado(s)</span>
+          </div>
+          <button class="btn ghost sm" onclick="fecharModalSelecionarArtigos()" style="font-size:14px;padding:3px 8px" title="Fechar (Esc)">✕</button>
+        </div>
+
+        <!-- Seletor de Faixa e Ações Rápidas -->
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:700;color:var(--muted)">Faixa:</span>
+            <span style="font-size:12px">Do Art.</span>
+            <input type="number" id="lei-range-from" min="1" placeholder="1" style="width:60px;padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+            <span style="font-size:12px">ao</span>
+            <input type="number" id="lei-range-to" min="1" placeholder="30" style="width:60px;padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+            <button class="btn sm" onclick="marcarFaixaArtigosLei('${leiId}')" style="font-size:11.5px;padding:4px 10px;font-weight:700">Marcar Faixa</button>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn ghost sm" onclick="marcarTodosArtigosLei('${leiId}')" style="font-size:11.5px;padding:4px 8px">☑️ Todos (${todosArtigos.length})</button>
+            <button class="btn ghost sm" onclick="desmarcarTodosArtigosLei('${leiId}')" style="font-size:11.5px;padding:4px 8px">✕ Limpar</button>
+          </div>
+        </div>
+
+        <!-- Filtro Rápido por Número -->
+        <div style="margin-bottom:10px;position:relative">
+          <input type="text" id="lei-modal-pill-filter" placeholder="Buscar número do artigo nesta lei (ex: 5, 121, 144)..." oninput="filtrarPillsModal(this.value)" style="width:100%;padding:7px 12px 7px 30px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text)">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px">🔍</span>
+        </div>
+
+        <!-- Grade de Pílulas de Artigos -->
+        <div id="lei-pills-grid" style="display:flex;flex-wrap:wrap;gap:6px;max-height:46vh;overflow-y:auto;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:10px">
+          ${todosArtigos.map(art => {
+            const isSel = selArr.includes(String(art).trim());
+            return `<div class="lei-art-pill ${isSel ? 'selected' : ''}" data-art="${art}" onclick="togglePillModal('${leiId}', '${art}')">Art. ${art}</div>`;
+          }).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+          <span class="muted" style="font-size:12px">Clique em qualquer artigo para alternar a seleção.</span>
+          <button class="btn sm" onclick="fecharModalSelecionarArtigos()" style="background:#2563eb;color:#fff;font-weight:700">Concluído</button>
+        </div>
+      </div>
+    `;
+  };
+
+  window.fecharModalSelecionarArtigos = function(){
+    const m = document.getElementById('lei-selecionar-modal');
+    if(m){
+      m.className = '';
+      m.style.display = 'none';
+      m.innerHTML = '';
+    }
+  };
+
+  window.togglePillModal = function(leiId, artNum){
+    const arr = (window.LEIS_STATE.selecao && window.LEIS_STATE.selecao[leiId]) || [];
+    const artStr = String(artNum).trim();
+    const isCurrentlySel = arr.includes(artStr);
+    window.toggleSelecionarArtigo(leiId, artStr, !isCurrentlySel);
+  };
+
+  window.marcarTodosArtigosLei = function(leiId){
+    const lei = (window.LEIS_STATE.catalogo || []).find(l => l.id === leiId);
+    if(!lei) return;
+    const todos = obterTodosArtigosDaLei(lei);
+    if(!window.LEIS_STATE.selecao) window.LEIS_STATE.selecao = {};
+    window.LEIS_STATE.selecao[leiId] = todos.map(a => String(a).trim());
+    salvarSelecao();
+    sincronizarCheckboxesLeitor(leiId);
+    
+    document.querySelectorAll('#lei-pills-grid .lei-art-pill').forEach(p => p.classList.add('selected'));
+    const modalCount = document.getElementById('modal-sel-lei-count');
+    if(modalCount) modalCount.innerText = todos.length;
+
+    window.mostrarToastLeis(`☑️ Todos os ${todos.length} artigos marcados!`);
+  };
+
+  window.desmarcarTodosArtigosLei = function(leiId){
+    if(!window.LEIS_STATE.selecao) return;
+    delete window.LEIS_STATE.selecao[leiId];
+    salvarSelecao();
+    sincronizarCheckboxesLeitor(leiId);
+
+    document.querySelectorAll('#lei-pills-grid .lei-art-pill').forEach(p => p.classList.remove('selected'));
+    const modalCount = document.getElementById('modal-sel-lei-count');
+    if(modalCount) modalCount.innerText = 0;
+
+    window.mostrarToastLeis(`✕ Artigos desta lei desmarcados.`);
+  };
+
+  window.marcarFaixaArtigosLei = function(leiId){
+    const fromInp = document.getElementById('lei-range-from');
+    const toInp = document.getElementById('lei-range-to');
+    if(!fromInp || !toInp) return;
+    const de = parseInt(fromInp.value, 10);
+    const ate = parseInt(toInp.value, 10);
+    if(isNaN(de) || isNaN(ate) || de > ate){
+      window.mostrarToastLeis('⚠️ Informe uma faixa válida (ex: do 1 ao 30).');
+      return;
+    }
+    const lei = (window.LEIS_STATE.catalogo || []).find(l => l.id === leiId);
+    if(!lei) return;
+    const todos = obterTodosArtigosDaLei(lei);
+    if(!window.LEIS_STATE.selecao) window.LEIS_STATE.selecao = {};
+    if(!Array.isArray(window.LEIS_STATE.selecao[leiId])) window.LEIS_STATE.selecao[leiId] = [];
+    const arr = window.LEIS_STATE.selecao[leiId];
+
+    let countAdded = 0;
+    todos.forEach(art => {
+      const numOnly = parseInt(String(art).replace(/[^0-9]/g, ''), 10);
+      if(!isNaN(numOnly) && numOnly >= de && numOnly <= ate){
+        const artStr = String(art).trim();
+        if(!arr.includes(artStr)){
+          arr.push(artStr);
+          countAdded++;
+        }
+      }
+    });
+
+    salvarSelecao();
+    sincronizarCheckboxesLeitor(leiId);
+
+    document.querySelectorAll('#lei-pills-grid .lei-art-pill').forEach(p => {
+      const art = p.dataset.art;
+      if(arr.includes(art)) p.classList.add('selected');
+    });
+
+    const modalCount = document.getElementById('modal-sel-lei-count');
+    if(modalCount) modalCount.innerText = arr.length;
+
+    window.mostrarToastLeis(`☑️ ${countAdded} artigos da faixa ${de} a ${ate} marcados!`);
+  };
+
+  window.filtrarPillsModal = function(termo){
+    const q = (termo || '').toLowerCase().trim();
+    const pills = document.querySelectorAll('#lei-pills-grid .lei-art-pill');
+    pills.forEach(p => {
+      const txt = p.innerText.toLowerCase();
+      p.style.display = (!q || txt.includes(q)) ? 'inline-flex' : 'none';
+    });
+  };
+
+  window.adicionarFavoritosASelecao = function(){
+    const favs = window.LEIS_STATE.favoritos || {};
+    let adicionados = 0;
+    if(!window.LEIS_STATE.selecao) window.LEIS_STATE.selecao = {};
+    
+    Object.keys(favs).forEach(leiId => {
+      const arts = favs[leiId] || [];
+      if(!Array.isArray(window.LEIS_STATE.selecao[leiId])){
+        window.LEIS_STATE.selecao[leiId] = [];
+      }
+      arts.forEach(art => {
+        const artStr = String(art).trim();
+        if(!window.LEIS_STATE.selecao[leiId].includes(artStr)){
+          window.LEIS_STATE.selecao[leiId].push(artStr);
+          adicionados++;
+        }
+      });
+    });
+
+    salvarSelecao();
+    
+    if(window.LEIS_STATE.leiAtiva){
+      sincronizarCheckboxesLeitor(window.LEIS_STATE.leiAtiva.id);
+    }
+
+    fecharModalFavoritos();
+    window.mostrarToastLeis(`✨ ${adicionados} artigo(s) favorito(s) adicionado(s) à seleção!`);
+  };
+
+  // Modal "Meus Artigos" (Revisão da Seleção Multi-Leis)
+  window.abrirModalMeusArtigos = function(){
+    const sel = window.LEIS_STATE.selecao || {};
+    const cat = window.LEIS_STATE.catalogo || [];
+    const leisComSel = Object.keys(sel).filter(id => (sel[id] || []).length > 0);
+    const totalArtigos = contarTotalSelecionados();
+    const numLeis = leisComSel.length;
+    const paginasEst = Math.max(1, Math.ceil(totalArtigos * 0.35) + 1);
+    const totalCharsEst = totalArtigos * 650;
+    const chamadasIaEst = totalArtigos <= 30 ? 1 : Math.ceil(totalArtigos / 25);
+
+    let m = document.getElementById('lei-meus-artigos-modal');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'lei-meus-artigos-modal';
+      document.body.appendChild(m);
+    }
+    m.style.display = 'block';
+    m.className = 'lei-modal-open';
+
+    const isLarge = (totalArtigos > 60 || totalCharsEst > 120000);
+
+    const blocosHtml = leisComSel.map(leiId => {
+      const lei = cat.find(l => l.id === leiId) || { nome: leiId, icone: '⚖️' };
+      const arts = sel[leiId] || [];
+      return `
+        <div class="meus-art-law-block" id="meus-art-law-${leiId}">
+          <div class="meus-art-law-header">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">${lei.icone||'⚖️'}</span>
+              <div>
+                <b style="color:var(--text);font-size:14px">${escapeHtml(lei.nome)}</b>
+                <span class="muted" style="font-size:11px;margin-left:6px">${arts.length} artigo(s)</span>
+              </div>
+            </div>
+            <button class="btn danger sm" onclick="removerLeiDaSelecao('${leiId}')" style="font-size:11px;padding:2px 8px">Desmarcar Lei</button>
+          </div>
+          <div class="meus-art-chips">
+            ${arts.map(art => `
+              <span class="meus-art-chip">
+                Art. ${art}
+                <button onclick="removerArtigoSelecao('${leiId}', '${art}')" title="Remover Art. ${art}">✕</button>
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    m.innerHTML = `
+      <div class="lei-drawer-backdrop" onclick="fecharModalMeusArtigos()"></div>
+      <div class="lei-modal-box" style="max-width:680px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+              📦 Caderno de Artigos Selecionados
+            </h3>
+            <span class="muted" style="font-size:12px">Gerencie sua seleção multi-leis para impressão de PDF didático ou análise por IA</span>
+          </div>
+          <button class="btn ghost sm" onclick="fecharModalMeusArtigos()" style="font-size:14px;padding:3px 8px" title="Fechar (Esc)">✕</button>
+        </div>
+
+        ${totalArtigos === 0 ? `
+          <div class="empty" style="padding:30px 10px">
+            <span class="big">📭</span>
+            Nenhum artigo selecionado ainda.<br>
+            <span class="muted" style="font-size:12px">Abra qualquer lei e marque as caixas de seleção ☑️ para montar seu caderno de estudos.</span>
+          </div>
+        ` : `
+          <!-- Estatísticas da Seleção -->
+          <div class="meus-art-stats">
+            <div class="meus-art-stat-box">
+              <span class="meus-art-stat-val">${totalArtigos}</span>
+              <span class="meus-art-stat-lbl">Artigos Selecionados</span>
+            </div>
+            <div class="meus-art-stat-box">
+              <span class="meus-art-stat-val">${numLeis}</span>
+              <span class="meus-art-stat-lbl">Leis Abrangidas</span>
+            </div>
+            <div class="meus-art-stat-box">
+              <span class="meus-art-stat-val">~${paginasEst}</span>
+              <span class="meus-art-stat-lbl">Páginas no PDF</span>
+            </div>
+            <div class="meus-art-stat-box">
+              <span class="meus-art-stat-val">${chamadasIaEst}</span>
+              <span class="meus-art-stat-lbl">Bloco(s) IA</span>
+            </div>
+          </div>
+
+          ${isLarge ? `
+            <div class="meus-art-warning">
+              ⚠️ <b>Seleção extensa (${totalArtigos} artigos):</b> Para gerar o resumo com IA, o conteúdo será enviado em blocos inteligentes para não ultrapassar a janela de contexto. O PDF poderá ter cerca de ${paginasEst} páginas.
+            </div>
+          ` : ''}
+
+          <!-- Artigos Agrupados por Legislação -->
+          <div style="max-height:48vh;overflow-y:auto;padding-right:4px;margin-bottom:14px">
+            ${blocosHtml}
+          </div>
+
+          <!-- Ações do Rodapé -->
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-top:1px solid var(--border);padding-top:12px">
+            <button class="btn danger sm" onclick="limparTodaSelecaoComConfirm()" style="font-size:12px">🗑️ Limpar Tudo</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn sm" onclick="abrirModalOpcoesPDF()" style="background:linear-gradient(90deg,#2563eb,#1d4ed8);color:#fff;font-weight:700">📄 Gerar PDF Didático</button>
+              <button class="btn sm" onclick="abrirModalOpcoesIA()" style="background:linear-gradient(90deg,#8b5cf6,#d946ef);color:#fff;font-weight:700">✨ Resumo com IA</button>
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+  };
+
+  window.fecharModalMeusArtigos = function(){
+    const m = document.getElementById('lei-meus-artigos-modal');
+    if(m){
+      m.className = '';
+      m.style.display = 'none';
+      m.innerHTML = '';
+    }
+  };
+
+  // Parser de mapa de artigos a partir do markdown bruto
+  function parseArticlesMapFromMarkdown(rawText){
+    const lines = (rawText || '').split('\n');
+    const result = {};
+    let curArt = null;
+    let curLines = [];
+    let pendingRubrica = '';
+
+    for(let i=0; i<lines.length; i++){
+      let l = lines[i].trim();
+      if(!l || l.includes('lei-anchor')) continue;
+      if(l.startsWith('#')){
+        if(curArt){
+          result[curArt] = { lines: curLines, rubrica: pendingRubrica };
+          curArt = null;
+          curLines = [];
+          pendingRubrica = '';
+        }
+        continue;
+      }
+      const m = l.match(/^\s*\*\*(?:Art\.|Artigo)\s*([0-9]+[A-Za-z\-]*(?:-[A-Za-z0-9]+)?)[ºo\.]?\*\*\s*(?:[-–—.]\s*)?(.*)$/i);
+      if(m){
+        if(curArt){
+          result[curArt] = { lines: curLines, rubrica: pendingRubrica };
+        }
+        curArt = m[1].trim();
+        curLines = [l];
+        pendingRubrica = '';
+        continue;
+      }
+      if(curArt){
+        curLines.push(l);
+      } else {
+        if(l.length < 100 && !l.startsWith('(') && !l.startsWith('>')){
+          pendingRubrica = l.replace(/\*/g, '').trim();
+        }
+      }
+    }
+    if(curArt){
+      result[curArt] = { lines: curLines, rubrica: pendingRubrica };
+    }
+    return result;
+  }
+
+  async function extrairArtigosDaLeiAsync(leiId){
+    if(window.LEIS_STATE.cacheArtigosTexto[leiId]) return window.LEIS_STATE.cacheArtigosTexto[leiId];
+    const cat = window.LEIS_STATE.catalogo || [];
+    const lei = cat.find(l => l.id === leiId);
+    if(!lei) return {};
+
+    let raw = '';
+    const custom = localStorage.getItem('aprova_lei_raw_' + leiId);
+    if(custom){
+      raw = custom;
+    } else {
+      try {
+        const res = await fetch(lei.arquivo);
+        if(res.ok) raw = await res.text();
+      } catch(e){}
+    }
+    const map = parseArticlesMapFromMarkdown(raw);
+    window.LEIS_STATE.cacheArtigosTexto[leiId] = map;
+    return map;
+  }
+
+  // =========================================================================
+  // GERADOR DE PDF DIDÁTICO
+  // =========================================================================
+
+  window.abrirModalOpcoesPDF = function(){
+    const totalArtigos = contarTotalSelecionados();
+    if(totalArtigos === 0){
+      window.mostrarToastLeis('⚠️ Selecione ao menos um artigo para gerar o PDF.');
+      return;
+    }
+
+    let m = document.getElementById('lei-pdf-opcoes-modal');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'lei-pdf-opcoes-modal';
+      document.body.appendChild(m);
+    }
+    m.style.display = 'block';
+    m.className = 'lei-modal-open';
+
+    const c = (typeof cur === 'function') ? cur() : null;
+    const nomeConc = c && c.name ? c.name : 'Concurso Público';
+
+    m.innerHTML = `
+      <div class="lei-drawer-backdrop" onclick="fecharModalOpcoesPDF()"></div>
+      <div class="lei-modal-box" style="max-width:580px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+              📄 Configurar Caderno Didático em PDF
+            </h3>
+            <span class="muted" style="font-size:12px">Material com ${totalArtigos} artigos selecionados para <b>${escapeHtml(nomeConc)}</b></span>
+          </div>
+          <button class="btn ghost sm" onclick="fecharModalOpcoesPDF()" style="font-size:14px;padding:3px 8px" title="Fechar (Esc)">✕</button>
+        </div>
+
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px">
+          <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;color:var(--text)">
+            <input type="checkbox" id="pdf-opt-capa" checked style="width:16px;height:16px;cursor:pointer">
+            <span><b>Incluir Capa Didática</b> (Concurso, Data e relação de leis)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;color:var(--text)">
+            <input type="checkbox" id="pdf-opt-checklist" checked style="width:16px;height:16px;cursor:pointer">
+            <span><b>Incluir Checklist de Revisão</b> (Caixas R1, R2, R3, R4 em cada artigo)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;color:var(--text)">
+            <input type="checkbox" id="pdf-opt-destaque" checked style="width:16px;height:16px;cursor:pointer">
+            <span><b>Destacar Palavras-chave</b> (Prazos, vedações e exceções em destaque)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;color:var(--text)">
+            <input type="checkbox" id="pdf-opt-espaco-notas" checked style="width:16px;height:16px;cursor:pointer">
+            <span><b>Incluir Espaço para Anotações</b> (Linhas pautadas para anotações do estudante)</span>
+          </label>
+        </div>
+
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:12.5px;font-weight:700;margin-bottom:8px;color:var(--text)">Formato e Diagramação:</div>
+          <div style="display:flex;gap:16px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;color:var(--text)">
+              <input type="radio" name="pdf-layout-cols" value="2" checked style="cursor:pointer">
+              <span><b>2 Colunas</b> (Econômico / Otimizado para impressão)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;color:var(--text)">
+              <input type="radio" name="pdf-layout-cols" value="1" style="cursor:pointer">
+              <span><b>1 Coluna</b> (Leitura digital em tablet / tela)</span>
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);padding-top:12px">
+          <button class="btn ghost sm" onclick="fecharModalOpcoesPDF()">Cancelar</button>
+          <button class="btn sm" onclick="executarGeracaoPDFDidatico()" style="background:linear-gradient(90deg,#2563eb,#1d4ed8);color:#fff;font-weight:700">🖨️ Gerar PDF / Imprimir</button>
+        </div>
+      </div>
+    `;
+  };
+
+  window.fecharModalOpcoesPDF = function(){
+    const m = document.getElementById('lei-pdf-opcoes-modal');
+    if(m){
+      m.className = '';
+      m.style.display = 'none';
+      m.innerHTML = '';
+    }
+  };
+
+  window.executarGeracaoPDFDidatico = async function(){
+    const sel = window.LEIS_STATE.selecao || {};
+    const cat = window.LEIS_STATE.catalogo || [];
+    const leisComSel = Object.keys(sel).filter(id => (sel[id] || []).length > 0);
+    if(!leisComSel.length){
+      window.mostrarToastLeis('⚠️ Nenhum artigo selecionado.');
+      return;
+    }
+
+    const incCapa = document.getElementById('pdf-opt-capa') ? document.getElementById('pdf-opt-capa').checked : true;
+    const incChecklist = document.getElementById('pdf-opt-checklist') ? document.getElementById('pdf-opt-checklist').checked : true;
+    const incDestaque = document.getElementById('pdf-opt-destaque') ? document.getElementById('pdf-opt-destaque').checked : true;
+    const incEspacoNotas = document.getElementById('pdf-opt-espaco-notas') ? document.getElementById('pdf-opt-espaco-notas').checked : true;
+    const colSelected = document.querySelector('input[name="pdf-layout-cols"]:checked');
+    const cols = colSelected ? colSelected.value : '2';
+
+    window.mostrarToastLeis('⏳ Preparando material didático...');
+
+    const c = (typeof cur === 'function') ? cur() : null;
+    const nomeConc = c && c.name ? c.name : 'Concurso Público';
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    const totalArtigos = contarTotalSelecionados();
+
+    let artigosHtml = '';
+
+    for(const leiId of leisComSel){
+      const lei = cat.find(l => l.id === leiId) || { nome: leiId, numero: '' };
+      const arts = sel[leiId] || [];
+      const artMap = await extrairArtigosDaLeiAsync(leiId);
+
+      artigosHtml += `
+        <div class="pdf-law-section">
+          <div class="pdf-law-header">
+            <span class="pdf-law-badge">${escapeHtml(lei.nome)}</span>
+            <span class="pdf-law-meta">${escapeHtml(lei.numero)} · ${arts.length} artigo(s) selecionado(s)</span>
+          </div>
+      `;
+
+      arts.forEach(artNum => {
+        const item = artMap[artNum] || { lines: [`**Art. ${artNum}** Texto não indexado.`], rubrica: '' };
+        const lines = item.lines || [];
+        const rawContent = lines.join('\n');
+        let parsed = parseLegalMarkdown(rawContent, leiId);
+
+        if(!incDestaque){
+          parsed = parsed.replace(/<mark class="lei-mark[^"]*">/gi, '').replace(/<\/mark>/gi, '');
+        }
+
+        artigosHtml += `
+          <div class="pdf-art-card">
+            <div class="pdf-art-header">
+              <span class="pdf-art-title">Art. ${artNum}</span>
+              ${incChecklist ? `
+                <div class="pdf-checklist">
+                  <span class="pdf-chk-box"><span></span> R1</span>
+                  <span class="pdf-chk-box"><span></span> R2</span>
+                  <span class="pdf-chk-box"><span></span> R3</span>
+                  <span class="pdf-chk-box"><span></span> R4</span>
+                </div>
+              ` : ''}
+            </div>
+            <div class="pdf-art-body">
+              ${parsed}
+            </div>
+            ${incEspacoNotas ? `
+              <div class="pdf-notas-box">
+                <div class="pdf-notas-label">Anotações do Estudante:</div>
+                <div class="pdf-nota-line"></div>
+                <div class="pdf-nota-line"></div>
+                <div class="pdf-nota-line"></div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      artigosHtml += `</div>`;
+    }
+
+    const relacaoLeisText = leisComSel.map(id => {
+      const l = cat.find(x => x.id === id);
+      return l ? `${l.nome} (${(sel[id]||[]).length} arts.)` : id;
+    }).join(' • ');
+
+    const htmlDocument = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Caderno Didático de Legislação — ${escapeHtml(nomeConc)}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 10mm 12mm 10mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.45;
+      font-size: 10pt;
+      margin: 0;
+      padding: 0;
+    }
+    .pdf-capa {
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 85vh;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .pdf-capa-logo {
+      font-size: 42px;
+      margin-bottom: 8px;
+    }
+    .pdf-capa-title {
+      font-size: 26pt;
+      font-weight: 900;
+      color: #1e3a8a;
+      letter-spacing: -0.5px;
+      margin: 0 0 10px 0;
+    }
+    .pdf-capa-sub {
+      font-size: 14pt;
+      color: #475569;
+      margin: 0 0 35px 0;
+    }
+    .pdf-capa-box {
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 22px 28px;
+      max-width: 580px;
+      text-align: left;
+      margin-bottom: 30px;
+    }
+    .pdf-capa-item {
+      margin-bottom: 8px;
+      font-size: 11pt;
+    }
+    .pdf-capa-item b {
+      color: #0f172a;
+    }
+    .pdf-content-container {
+      column-count: ${cols};
+      column-gap: 20px;
+      column-rule: 1px solid #e2e8f0;
+    }
+    .pdf-law-section {
+      break-inside: avoid;
+      margin-bottom: 16px;
+    }
+    .pdf-law-header {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      break-after: avoid;
+    }
+    .pdf-law-badge {
+      font-size: 11pt;
+      font-weight: 800;
+    }
+    .pdf-law-meta {
+      font-size: 8.5pt;
+      opacity: 0.85;
+    }
+    .pdf-art-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      background: #ffffff;
+    }
+    .pdf-art-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .pdf-art-title {
+      font-size: 10.5pt;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+    .pdf-checklist {
+      display: flex;
+      gap: 6px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #475569;
+    }
+    .pdf-chk-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .pdf-chk-box span {
+      width: 10px;
+      height: 10px;
+      border: 1.2px solid #475569;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    .pdf-art-body {
+      font-size: 9.5pt;
+      line-height: 1.4;
+      color: #1e293b;
+    }
+    .pdf-art-body .lei-artigo-header,
+    .pdf-art-body .lei-artigo-actions,
+    .pdf-art-body .lei-art-chk-wrap {
+      display: none !important;
+    }
+    .pdf-art-body .lei-caput-art {
+      font-weight: 800;
+      color: #1e3a8a;
+      margin-right: 4px;
+    }
+    .pdf-art-body .lei-paragrafo-label {
+      font-weight: 700;
+      color: #0369a1;
+      margin-right: 4px;
+    }
+    .pdf-art-body .lei-inciso-num {
+      font-weight: 700;
+      color: #7c3aed;
+      margin-right: 4px;
+    }
+    .pdf-art-body .lei-pena-box {
+      background: #fef2f2;
+      border-left: 3px solid #ef4444;
+      padding: 4px 6px;
+      margin: 4px 0;
+      font-size: 8.5pt;
+    }
+    .pdf-art-body .lei-pena-badge {
+      font-weight: 800;
+      color: #b91c1c;
+      margin-right: 4px;
+    }
+    .pdf-art-body .lei-mark.mark-red { background: #fee2e2; color: #991b1b; padding: 0 2px; border-radius: 2px; }
+    .pdf-art-body .lei-mark.mark-amber { background: #fef3c7; color: #92400e; padding: 0 2px; border-radius: 2px; }
+    .pdf-art-body .lei-mark.mark-purple { background: #f3e8ff; color: #6b21a8; padding: 0 2px; border-radius: 2px; }
+    .pdf-art-body .lei-mark.mark-blue { background: #e0f2fe; color: #075985; padding: 0 2px; border-radius: 2px; }
+    .pdf-art-body .lei-mark.mark-cyan { background: #cffafe; color: #155e75; padding: 0 2px; border-radius: 2px; }
+    .pdf-notas-box {
+      margin-top: 8px;
+      padding-top: 4px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .pdf-notas-label {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .pdf-nota-line {
+      border-bottom: 1px dotted #94a3b8;
+      height: 14px;
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+<body>
+  ${incCapa ? `
+    <div class="pdf-capa">
+      <div class="pdf-capa-logo">⚖️</div>
+      <h1 class="pdf-capa-title">VADE MECUM DIDÁTICO</h1>
+      <p class="pdf-capa-sub">Caderno de Legislação e Dispositivos Selecionados</p>
+      <div class="pdf-capa-box">
+        <div class="pdf-capa-item"><b>Concurso / Foco:</b> ${escapeHtml(nomeConc)}</div>
+        <div class="pdf-capa-item"><b>Data de Emissão:</b> ${dataAtual}</div>
+        <div class="pdf-capa-item"><b>Total de Artigos:</b> ${totalArtigos} artigos</div>
+        <div class="pdf-capa-item"><b>Leis Incluídas:</b> ${escapeHtml(relacaoLeisText)}</div>
+        <div class="pdf-capa-item"><b>Plataforma:</b> Aprova — Inteligência para Concursos</div>
+      </div>
+      <div style="font-size:9pt;color:#64748b">Utilize o checklist de revisão (R1 a R4) para acompanhar seus ciclos de repetição espaçada.</div>
+    </div>
+  ` : ''}
+
+  <div class="pdf-content-container">
+    ${artigosHtml}
+  </div>
+</body>
+</html>`;
+
+    fecharModalOpcoesPDF();
+
+    const win = window.open('', '_blank');
+    if(win){
+      win.document.write(htmlDocument);
+      win.document.close();
+      win.focus();
+      setTimeout(()=>{
+        try { win.print(); } catch(e){}
+      }, 500);
+    } else {
+      window.mostrarToastLeis('⚠️ Permita pop-ups no navegador para abrir o PDF.');
+    }
+  };
+
+  // =========================================================================
+  // GERADOR DE RESUMO INTELIGENTE COM IA
+  // =========================================================================
+
+  window.abrirModalOpcoesIA = function(){
+    const totalArtigos = contarTotalSelecionados();
+    if(totalArtigos === 0){
+      window.mostrarToastLeis('⚠️ Selecione ao menos um artigo para gerar o resumo.');
+      return;
+    }
+
+    let m = document.getElementById('lei-ia-opcoes-modal');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'lei-ia-opcoes-modal';
+      document.body.appendChild(m);
+    }
+    m.style.display = 'block';
+    m.className = 'lei-modal-open';
+
+    const perfil = window.LEIS_STATE.perfilIaAtivo || 'esquematizado';
+    const numBlocos = totalArtigos <= 25 ? 1 : Math.ceil(totalArtigos / 25);
+    const apiKey = (window.LEIS_STATE.aiApiKey || '').trim();
+    const provider = window.LEIS_STATE.aiProvider || 'gemini';
+    const providerNome = provider === 'gemini' ? 'Google Gemini' : (provider === 'groq' ? 'Groq (Llama 3.3)' : 'OpenAI (ChatGPT)');
+
+    m.innerHTML = `
+      <div class="lei-drawer-backdrop" onclick="fecharModalOpcoesIA()"></div>
+      <div class="lei-modal-box" style="max-width:760px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+              ✨ Resumo & Análise com Inteligência Artificial
+            </h3>
+            <span class="muted" style="font-size:12px">Transforme ${totalArtigos} artigos selecionados em sínteses, mnemônicos, questões ou tabelas</span>
+          </div>
+          <button class="btn ghost sm" onclick="fecharModalOpcoesIA()" style="font-size:14px;padding:3px 8px" title="Fechar (Esc)">✕</button>
+        </div>
+
+        <!-- Banner de Conexão com a IA -->
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">${apiKey ? '🟢' : '⚡'}</span>
+            <div>
+              <b style="font-size:12.5px;color:var(--text)">Motor de IA:</b>
+              <span class="muted" style="font-size:12px">
+                ${apiKey ? `<span style="color:var(--green);font-weight:700">${providerNome} Conectado</span> (Respostas reais via API ao vivo)` : 'Síntese Estruturada Aprova (Offline / Local)'}
+              </span>
+            </div>
+          </div>
+          <button class="btn ghost sm" onclick="toggleConfiguracaoIA()" style="font-size:11.5px;padding:3px 8px;border-color:var(--accent);color:var(--text);font-weight:700">
+            ⚙️ ${apiKey ? 'Trocar / Gerenciar IA' : 'Conectar API de IA'}
+          </button>
+        </div>
+
+        <!-- Gaveta Colapsável de Configuração de Chave de API -->
+        <div id="lei-ia-config-drawer" style="display:none;background:var(--card);border:1.5px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <b style="font-size:13px;color:var(--text)">Configurar Provedor de IA em Tempo Real</b>
+            <button class="btn ghost sm" onclick="toggleConfiguracaoIA()" style="font-size:11px;padding:1px 6px">✕</button>
+          </div>
+          <div class="muted" style="font-size:11.5px;margin-bottom:10px">Sua chave é armazenada com total privacidade no seu próprio navegador (localStorage).</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:8px;margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text)">
+              <input type="radio" name="ai-provider" value="gemini" ${provider==='gemini'?'checked':''} onchange="salvarProvedorIA('gemini')">
+              <span><b>Google Gemini</b> (Grátis / Rápido)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text)">
+              <input type="radio" name="ai-provider" value="groq" ${provider==='groq'?'checked':''} onchange="salvarProvedorIA('groq')">
+              <span><b>Groq</b> (Llama 3.3 70B / Grátis)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text)">
+              <input type="radio" name="ai-provider" value="openai" ${provider==='openai'?'checked':''} onchange="salvarProvedorIA('openai')">
+              <span><b>OpenAI</b> (ChatGPT / GPT-4o-mini)</span>
+            </label>
+          </div>
+          <div style="display:flex;gap:6px">
+            <input type="password" id="lei-ia-api-key-inp" placeholder="Cole sua Chave de API aqui (ex: AIzaSy... ou gsk_... ou sk-...)" value="${apiKey||''}" style="flex:1;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--text)">
+            <button class="btn sm" onclick="salvarChaveIA()" style="background:#2563eb;color:#fff;font-weight:700">Salvar Chave</button>
+            ${apiKey ? `<button class="btn danger sm" onclick="removerChaveIA()">Remover</button>` : ''}
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:var(--muted)">
+            Obtenha sua chave gratuitamente em: 
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">Google AI Studio (Gemini)</a> • 
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">Groq Console</a> • 
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">OpenAI</a>
+          </div>
+        </div>
+
+        <!-- Seletor de Perfil Didático -->
+        <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:8px">Escolha o Perfil Didático:</div>
+        <div class="lei-ia-profiles-grid">
+          <div class="lei-ia-profile-card ${perfil==='esquematizado'?'active':''}" onclick="selecionarPerfilIA('esquematizado')">
+            <span class="p-title">🧠 Esquematizado</span>
+            <span class="p-desc">Tópicos diretos, síntese de conceitos e mnemônicos de memorização.</span>
+          </div>
+          <div class="lei-ia-profile-card ${perfil==='tabela'?'active':''}" onclick="selecionarPerfilIA('tabela')">
+            <span class="p-title">📊 Tabela Comparativa</span>
+            <span class="p-desc">Matriz cruzada comparando prazos, exceções, requisitos e penas.</span>
+          </div>
+          <div class="lei-ia-profile-card ${perfil==='pegadinhas'?'active':''}" onclick="selecionarPerfilIA('pegadinhas')">
+            <span class="p-title">⚠️ Pegadinhas de Prova</span>
+            <span class="p-desc">Mapeamento de armadilhas de bancas (Cebraspe/FGV/AOCP) e palavras perigosas.</span>
+          </div>
+          <div class="lei-ia-profile-card ${perfil==='questoes'?'active':''}" onclick="selecionarPerfilIA('questoes')">
+            <span class="p-title">📝 Questões Comentadas</span>
+            <span class="p-desc">Bateria de itens inéditos de concurso com gabarito fundamentado na lei.</span>
+          </div>
+        </div>
+
+        ${numBlocos > 1 ? `
+          <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span style="font-size:12px;color:var(--text)"><b>Divisão em blocos (${totalArtigos} artigos):</b> selecione o bloco para processar:</span>
+            <div style="display:flex;gap:6px" id="lei-ia-blocos-selector">
+              ${Array.from({length: numBlocos}).map((_, i) => `
+                <button class="btn sm ${i===0?'active':''}" style="font-size:11px;padding:3px 8px" onclick="executarSinteseIA('${perfil}', ${i+1})">Bloco ${i+1} (${i*25+1} a ${Math.min((i+1)*25, totalArtigos)})</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Ações Principais -->
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn sm" onclick="executarSinteseIA('${perfil}', 1)" style="background:linear-gradient(90deg,#8b5cf6,#d946ef);color:#fff;font-weight:700">
+            ${apiKey ? `✨ Gerar Análise com ${providerNome}` : '✨ Gerar Síntese no App'}
+          </button>
+          <button class="btn ghost sm" onclick="copiarPromptMestreIA()" title="Copiar prompt completo formatado com o texto dos artigos para rodar no ChatGPT ou Gemini">📋 Copiar Prompt Mestre para IA</button>
+        </div>
+
+        <!-- Área de Prévia e Leitura da Síntese -->
+        <div id="lei-ia-preview-container" class="lei-ia-preview-box">
+          <div class="empty" style="padding:25px 0">
+            <span class="big">💡</span>
+            Clique em <b>✨ Gerar Síntese no App</b> ou selecione outro perfil acima para visualizar o material didático aqui.
+          </div>
+        </div>
+
+        <!-- Barra de Ações do Resultado -->
+        <div id="lei-ia-actions-bar" style="display:none;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px;margin-top:10px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn sm" onclick="copiarResultadoIA()">📋 Copiar Texto</button>
+            <button class="btn sm" onclick="salvarResultadoIANotas()">📝 Salvar em Notas</button>
+            <button class="btn sm" onclick="gerarPDFApartirDaIA()" style="background:linear-gradient(90deg,#2563eb,#1d4ed8);color:#fff;font-weight:700">📄 Gerar PDF da Análise</button>
+          </div>
+          <button class="btn ghost sm" onclick="fecharModalOpcoesIA()">Concluir</button>
+        </div>
+      </div>
+    `;
+  };
+
+  window.fecharModalOpcoesIA = function(){
+    const m = document.getElementById('lei-ia-opcoes-modal');
+    if(m){
+      m.className = '';
+      m.style.display = 'none';
+      m.innerHTML = '';
+    }
+  };
+
+  window.toggleConfiguracaoIA = function(){
+    const drawer = document.getElementById('lei-ia-config-drawer');
+    if(!drawer) return;
+    drawer.style.display = (drawer.style.display === 'none' || !drawer.style.display) ? 'block' : 'none';
+  };
+
+  window.salvarProvedorIA = function(prov){
+    window.LEIS_STATE.aiProvider = prov;
+    localStorage.setItem('aprova_ai_provider', prov);
+  };
+
+  window.salvarChaveIA = function(){
+    const inp = document.getElementById('lei-ia-api-key-inp');
+    if(!inp) return;
+    const val = inp.value.trim();
+    if(!val){
+      window.mostrarToastLeis('⚠️ Cole uma chave de API válida.');
+      return;
+    }
+    window.LEIS_STATE.aiApiKey = val;
+    localStorage.setItem('aprova_ai_api_key', val);
+    window.mostrarToastLeis('✅ Chave de API conectada com sucesso!');
+    abrirModalOpcoesIA();
+  };
+
+  window.removerChaveIA = function(){
+    window.LEIS_STATE.aiApiKey = '';
+    localStorage.removeItem('aprova_ai_api_key');
+    window.mostrarToastLeis('🗑️ Chave de API removida.');
+    abrirModalOpcoesIA();
+  };
+
+  window.selecionarPerfilIA = function(perfil){
+    window.LEIS_STATE.perfilIaAtivo = perfil;
+    document.querySelectorAll('.lei-ia-profile-card').forEach(c => c.classList.remove('active'));
+    const cards = document.querySelectorAll('.lei-ia-profile-card');
+    if(perfil === 'esquematizado' && cards[0]) cards[0].classList.add('active');
+    if(perfil === 'tabela' && cards[1]) cards[1].classList.add('active');
+    if(perfil === 'pegadinhas' && cards[2]) cards[2].classList.add('active');
+    if(perfil === 'questoes' && cards[3]) cards[3].classList.add('active');
+    executarSinteseIA(perfil, 1);
+  };
+
+  // Formatador de Markdown retornado pelas IAs para HTML seguro e elegante
+  function formatarMarkdownParaHtml(md){
+    if(!md) return '';
+    let text = escapeHtml(md);
+
+    text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<b><i>$1</i></b>');
+    text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    text = text.replace(/\*(.*?)\*/g, '<i>$1</i>');
+    text = text.replace(/`([^`]+)`/g, '<code style="background:var(--card2);padding:2px 5px;border-radius:4px;font-size:12px">$1</code>');
+
+    const lines = text.split('\n');
+    let html = [];
+    let inList = false;
+    let inTable = false;
+    let tableRows = [];
+
+    function closeList(){
+      if(inList){ html.push('</ul>'); inList = false; }
+    }
+    function closeTable(){
+      if(inTable){
+        let tHtml = '<table>';
+        tableRows.forEach((row, idx) => {
+          const cells = row.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1);
+          if(idx === 0){
+            tHtml += '<thead><tr>' + cells.map(c => `<th>${c.trim()}</th>`).join('') + '</tr></thead><tbody>';
+          } else if(idx === 1 && cells.some(c => c.includes('---'))){
+            // linha separadora do markdown
+          } else {
+            tHtml += '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+          }
+        });
+        tHtml += '</tbody></table>';
+        html.push(tHtml);
+        inTable = false;
+        tableRows = [];
+      }
+    }
+
+    for(let line of lines){
+      const trimmed = line.trim();
+
+      if(trimmed.startsWith('|') && trimmed.endsWith('|')){
+        closeList();
+        inTable = true;
+        tableRows.push(trimmed);
+        continue;
+      } else {
+        closeTable();
+      }
+
+      if(trimmed.startsWith('### ')){
+        closeList();
+        html.push(`<h3>${trimmed.slice(4)}</h3>`);
+        continue;
+      }
+      if(trimmed.startsWith('## ')){
+        closeList();
+        html.push(`<h2>${trimmed.slice(3)}</h2>`);
+        continue;
+      }
+      if(trimmed.startsWith('# ')){
+        closeList();
+        html.push(`<h2>${trimmed.slice(2)}</h2>`);
+        continue;
+      }
+
+      if(trimmed.match(/^[-*•]\s+/)){
+        if(!inList){ html.push('<ul style="margin:8px 0;padding-left:22px">'); inList = true; }
+        html.push(`<li>${trimmed.replace(/^[-*•]\s+/, '')}</li>`);
+        continue;
+      } else {
+        closeList();
+      }
+
+      if(trimmed.startsWith('> ')){
+        html.push(`<blockquote style="border-left:3px solid var(--accent);padding-left:10px;margin:8px 0;color:var(--text);font-style:italic">${trimmed.slice(2)}</blockquote>`);
+        continue;
+      }
+
+      if(!trimmed){
+        html.push('<div style="height:6px"></div>');
+      } else {
+        html.push(`<p style="margin:4px 0">${trimmed}</p>`);
+      }
+    }
+
+    closeList();
+    closeTable();
+    return html.join('\n');
+  }
+
+  // Clientes de API para Inteligência Artificial
+  async function chamarGeminiAPI(apiKey, prompt){
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 3500
+        }
+      })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error?.message || `Erro HTTP ${res.status} no Gemini.`);
+    }
+    const data = await res.json();
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+    if(!text) throw new Error('O Gemini não retornou resposta.');
+    return text;
+  }
+
+  async function chamarGroqAPI(apiKey, prompt){
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: 'Você é um professor e especialista em concursos públicos brasileiro.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 3500
+      })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error?.message || `Erro HTTP ${res.status} no Groq.`);
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  async function chamarOpenAIAPI(apiKey, prompt){
+    const url = 'https://api.openai.com/v1/chat/completions';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'Você é um professor e especialista em concursos públicos brasileiro.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 3500
+      })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error?.message || `Erro HTTP ${res.status} na OpenAI.`);
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  window.executarSinteseIA = async function(perfil, blocoNum = 1){
+    const container = document.getElementById('lei-ia-preview-container');
+    const actionsBar = document.getElementById('lei-ia-actions-bar');
+    if(!container) return;
+
+    const apiKey = (window.LEIS_STATE.aiApiKey || '').trim();
+    const provider = window.LEIS_STATE.aiProvider || 'gemini';
+    const providerNome = provider === 'gemini' ? 'Google Gemini' : (provider === 'groq' ? 'Groq (Llama 3.3)' : 'OpenAI (ChatGPT)');
+
+    container.innerHTML = `<div class="empty"><span class="big">⏳</span>${apiKey ? `Consultando ${providerNome} em tempo real para os artigos...` : 'Sintetizando os dispositivos selecionados sob a ótica de concurso...'}</div>`;
+
+    const sel = window.LEIS_STATE.selecao || {};
+    const cat = window.LEIS_STATE.catalogo || [];
+    const leisComSel = Object.keys(sel).filter(id => (sel[id] || []).length > 0);
+
+    // Coleta artigos do bloco
+    let todosItens = [];
+    for(const leiId of leisComSel){
+      const lei = cat.find(l => l.id === leiId) || { nome: leiId, numero: '' };
+      const arts = sel[leiId] || [];
+      const artMap = await extrairArtigosDaLeiAsync(leiId);
+      arts.forEach(art => {
+        const item = artMap[art] || { lines: [`Art. ${art}`], rubrica: '' };
+        todosItens.push({ lei, art, lines: item.lines, rubrica: item.rubrica });
+      });
+    }
+
+    const startIdx = (blocoNum - 1) * 25;
+    const blocoItens = todosItens.slice(startIdx, startIdx + 25);
+
+    // Se houver chave de API configurada, chama a IA REAL!
+    if(apiKey){
+      try {
+        let artigosTextoBloco = '';
+        blocoItens.forEach(it => {
+          artigosTextoBloco += `\n[${it.lei.nome} - Art. ${it.art}]\n${it.lines.join('\n')}\n`;
+        });
+
+        const c = (typeof cur === 'function') ? cur() : null;
+        const nomeConc = c && c.name ? c.name : 'Concursos Públicos';
+
+        const promptIA = `Você é um professor renomado e especialista em preparação para concursos públicos focado no concurso "${nomeConc}".
+Analise minuciosamente os dispositivos legais fornecidos abaixo sob o perfil didático "${perfil.toUpperCase()}":
+
+DIRETRIZES DO PERFIL:
+- Se 'ESQUEMATIZADO': crie tópicos objetivos, mapas mentais textuais, conceitos-chave, mnemônicos práticos e destaques das regras gerais vs exceções.
+- Se 'TABELA': construa uma matriz comparativa estruturada em formato de tabela Markdown (com colunas: Legislação/Artigo | Núcleo da Regra | Prazos & Penas | Requisitos Legais | Vedações & Atenção Especial).
+- Se 'PEGADINHAS': identifique as pegadinhas clássicas das principais bancas examinadoras (Cebraspe, FGV, AOCP, Vunesp, FCC), termos perigosos (ex.: "salvo", "vedado", "independentemente", "privativamente") e jurisprudência vinculada.
+- Se 'QUESTOES': elabore 5 questões inéditas no formato de concurso (itens CERTO/ERRADO ou alternativas) com gabarito fundamentado com precisão na lei seca.
+
+DISPOSITIVOS LEGAIS SELECIONADOS:
+${artigosTextoBloco}
+
+Responda em português brasileiro com formatação rica em Markdown (títulos, tabelas e negrito).`;
+
+        let respostaTexto = '';
+        if(provider === 'gemini'){
+          respostaTexto = await chamarGeminiAPI(apiKey, promptIA);
+        } else if(provider === 'groq'){
+          respostaTexto = await chamarGroqAPI(apiKey, promptIA);
+        } else if(provider === 'openai'){
+          respostaTexto = await chamarOpenAIAPI(apiKey, promptIA);
+        }
+
+        const htmlResposta = formatarMarkdownParaHtml(respostaTexto);
+        container.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <span class="badge b-green" style="font-size:11px">✨ Gerado ao vivo via ${providerNome}</span>
+            <span class="muted" style="font-size:11px">Bloco ${blocoNum} · ${blocoItens.length} artigos analisados</span>
+          </div>
+          ${htmlResposta}
+        `;
+        if(actionsBar) actionsBar.style.display = 'flex';
+        return;
+      } catch(errApi){
+        console.error('Erro na API de IA:', errApi);
+        window.mostrarToastLeis(`⚠️ Erro na API do ${providerNome}: ${errApi.message}. Exibindo síntese local.`);
+      }
+    }
+
+    // Fallback: Síntese estruturada local do Aprova
+    let html = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+        <span class="badge b-purple" style="font-size:11px">⚡ Motor Didático Aprova (Local)</span>
+        <span class="muted" style="font-size:11px">Bloco ${blocoNum} · ${blocoItens.length} artigos analisados</span>
+      </div>
+    `;
+
+    if(perfil === 'esquematizado'){
+      html += `<h2>🧠 Esquematizado & Mnemônicos (Bloco ${blocoNum})</h2>`;
+      html += `<p class="muted">Síntese objetiva com pontos-chave de memorização dos dispositivos selecionados:</p>`;
+      blocoItens.forEach(it => {
+        const textSample = it.lines.slice(0, 4).join(' ').replace(/\*\*/g, '').slice(0, 180);
+        html += `
+          <div style="background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <b style="color:var(--accent);font-size:14px">${escapeHtml(it.lei.nome)} — Art. ${it.art}</b>
+              ${it.rubrica ? `<span class="badge b-purple" style="font-size:11px">⚡ ${escapeHtml(it.rubrica)}</span>` : ''}
+            </div>
+            <div style="font-size:13px;color:var(--text);margin-bottom:8px">${escapeHtml(textSample)}...</div>
+            <div style="background:rgba(139,92,246,0.08);padding:6px 10px;border-radius:6px;font-size:12px">
+              <b>💡 Esquema de Memorização:</b> Fixe a hipótese central, os sujeitos envolvidos e se há exceções expressas na lei seca.
+            </div>
+          </div>
+        `;
+      });
+    } else if(perfil === 'tabela'){
+      html += `<h2>📊 Matriz Comparativa de Dispositivos (Bloco ${blocoNum})</h2>`;
+      html += `
+        <table>
+          <thead>
+            <tr>
+              <th>Legislação</th>
+              <th>Artigo</th>
+              <th>Núcleo / Hipótese</th>
+              <th>Prazos / Penas / Requisitos</th>
+              <th>Atenção Especial</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${blocoItens.map(it => `
+              <tr>
+                <td><b>${escapeHtml(it.lei.nome)}</b></td>
+                <td><b>Art. ${it.art}</b></td>
+                <td>${it.rubrica ? escapeHtml(it.rubrica) : 'Regra geral'}</td>
+                <td>Verificar texto integral</td>
+                <td><span style="color:var(--red);font-weight:700">Vedações / Exceções</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } else if(perfil === 'pegadinhas'){
+      html += `<h2>⚠️ Mapeamento de Pegadinhas de Prova & Bancas (Bloco ${blocoNum})</h2>`;
+      blocoItens.forEach(it => {
+        html += `
+          <div style="background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <b style="color:var(--red);font-size:14px">🚨 ${escapeHtml(it.lei.nome)} — Art. ${it.art}</b>
+              <span class="badge b-red" style="font-size:10px">ALERTA DE BANCA</span>
+            </div>
+            <p style="margin:4px 0 6px 0;font-size:12.5px;color:var(--text)"><b>Armadilha clássica:</b> A banca costuma inverter expressões como <i>"independentemente de"</i> por <i>"mediante comprovação prévia"</i>, ou trocar <i>"reclusão"</i> por <i>"detenção"</i>.</p>
+            <div style="background:rgba(239,68,68,0.08);padding:6px 10px;border-radius:6px;font-size:11.5px;color:var(--text)">
+              <b>Fique atento:</b> Grife vedações absolutas e prazos peremptórios constantes neste dispositivo.
+            </div>
+          </div>
+        `;
+      });
+    } else if(perfil === 'questoes'){
+      html += `<h2>📝 Bateria de Itens Inéditos Comentados (Bloco ${blocoNum})</h2>`;
+      blocoItens.slice(0, 5).forEach((it, idx) => {
+        html += `
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px">
+            <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px">ITEM INÉDITO ${idx+1} · ${escapeHtml(it.lei.nome)} (Art. ${it.art})</div>
+            <p style="font-size:13px;line-height:1.5;color:var(--text);margin-bottom:10px">
+              (Inédita / Aprova) Acerca do regime legal previsto no Art. ${it.art} da referida legislação, julgue o item a seguir: O cumprimento dos requisitos legais prescinde de prévia autorização administrativa ressalvados os casos taxativamente expressos em lei.
+            </p>
+            <details style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12.5px">
+              <summary style="font-weight:700;color:var(--accent)">Ver Gabarito & Fundamentação Legal</summary>
+              <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text)">
+                <b>Gabarito: CERTO.</b><br>
+                <b>Fundamento:</b> O dispositivo do Art. ${it.art} consagra expressamente a disciplina em apreço na lei seca.
+              </div>
+            </details>
+          </div>
+        `;
+      });
+    }
+
+    container.innerHTML = html;
+    if(actionsBar) actionsBar.style.display = 'flex';
+  };
+
+  window.copiarPromptMestreIA = async function(){
+    const sel = window.LEIS_STATE.selecao || {};
+    const cat = window.LEIS_STATE.catalogo || [];
+    const leisComSel = Object.keys(sel).filter(id => (sel[id] || []).length > 0);
+    const perfil = window.LEIS_STATE.perfilIaAtivo || 'esquematizado';
+    const totalArtigos = contarTotalSelecionados();
+
+    if(!leisComSel.length){
+      window.mostrarToastLeis('⚠️ Nenhum artigo selecionado.');
+      return;
+    }
+
+    window.mostrarToastLeis('⏳ Gerando prompt completo com textos da lei...');
+
+    let artigosBlocoTxt = '';
+    for(const leiId of leisComSel){
+      const lei = cat.find(l => l.id === leiId) || { nome: leiId, numero: '' };
+      const arts = sel[leiId] || [];
+      const artMap = await extrairArtigosDaLeiAsync(leiId);
+      artigosBlocoTxt += `\n=== LEGISLAÇÃO: ${lei.nome} (${lei.numero}) ===\n`;
+      arts.forEach(art => {
+        const item = artMap[art] || { lines: [`Art. ${art}`] };
+        artigosBlocoTxt += item.lines.join('\n') + '\n\n';
+      });
+    }
+
+    const c = (typeof cur === 'function') ? cur() : null;
+    const nomeConc = c && c.name ? c.name : 'Concursos Públicos';
+
+    const promptFinal = `Você é um professor e especialista em preparação para concursos públicos de alto nível focado no certame "${nomeConc}".
+Analise minuciosamente os ${totalArtigos} artigos da legislação abaixo sob o perfil didático "${perfil.toUpperCase()}":
+
+DIRETRIZES DIDÁTICAS:
+1. Síntese Esquematizada: Extraia os conceitos centrais, regras gerais e exceções de forma ultra clara.
+2. Mnemônicos e Palavras-chave: Destaque os termos que as bancas mais alteram (prazos, competências privativas, vedações e requisitos).
+3. Pegadinhas de Prova: Indique armadilhas clássicas (troca de "reclusão" por "detenção", "vedado" por "permitido").
+4. Formatação: Organize em tópicos concisos com markdown rico.
+
+TEXTO OFICIAL DOS DISPOSITIVOS SELECIONADOS:
+${artigosBlocoTxt}
+`;
+
+    navigator.clipboard.writeText(promptFinal).then(()=>{
+      window.mostrarToastLeis('📋 Prompt mestre copiado! Cole no ChatGPT, Claude ou Gemini.');
+    }).catch(()=>{
+      window.mostrarToastLeis('📋 Prompt copiado com sucesso!');
+    });
+  };
+
+  window.copiarResultadoIA = function(){
+    const box = document.getElementById('lei-ia-preview-container');
+    if(!box) return;
+    navigator.clipboard.writeText(box.innerText).then(()=>{
+      window.mostrarToastLeis('📋 Síntese copiada com sucesso!');
+    });
+  };
+
+  window.salvarResultadoIANotas = function(){
+    const box = document.getElementById('lei-ia-preview-container');
+    if(!box) return;
+    const titulo = `Síntese IA — Legislação Selecionada (${new Date().toLocaleDateString('pt-BR')})`;
+    const conteudo = `<h3>${titulo}</h3>` + box.innerHTML;
+
+    if(typeof window.triliumCreateNote === 'function'){
+      window.triliumCreateNote(titulo, conteudo);
+      window.mostrarToastLeis('📝 Síntese salva no Trilium Notes!');
+    } else {
+      navigator.clipboard.writeText(box.innerText);
+      window.mostrarToastLeis('📝 Síntese copiada para o seu caderno de anotações!');
+    }
+  };
+
+  // Gerador de PDF específico da Análise da IA
+  window.gerarPDFApartirDaIA = function(){
+    const box = document.getElementById('lei-ia-preview-container');
+    if(!box || !box.innerText.trim()){
+      window.mostrarToastLeis('⚠️ Gere uma análise primeiro para poder exportar o PDF.');
+      return;
+    }
+
+    const c = (typeof cur === 'function') ? cur() : null;
+    const nomeConc = c && c.name ? c.name : 'Concurso Público';
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    const totalArtigos = contarTotalSelecionados();
+    const perfil = window.LEIS_STATE.perfilIaAtivo || 'esquematizado';
+
+    const nomesPerfis = {
+      'esquematizado': '🧠 Esquematizado & Mnemônicos',
+      'tabela': '📊 Tabela Comparativa de Dispositivos',
+      'pegadinhas': '⚠️ Mapeamento de Pegadinhas de Prova & Bancas',
+      'questoes': '📝 Bateria de Itens Inéditos Comentados'
+    };
+    const perfilNome = nomesPerfis[perfil] || 'Análise Jurídica com Inteligência Artificial';
+
+    const conteudoHtml = box.innerHTML;
+
+    const htmlDocument = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Análise IA — ${escapeHtml(perfilNome)} — ${escapeHtml(nomeConc)}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 14mm 12mm 14mm 12mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.5;
+      font-size: 10pt;
+      margin: 0;
+      padding: 0;
+    }
+    .pdf-header {
+      border-bottom: 2.5px solid #1e3a8a;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .pdf-logo {
+      font-size: 9.5pt;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pdf-title {
+      font-size: 19pt;
+      font-weight: 900;
+      color: #1e3a8a;
+      margin: 4px 0 2px 0;
+    }
+    .pdf-sub {
+      font-size: 11pt;
+      color: #475569;
+      margin: 0;
+    }
+    .pdf-meta-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      font-size: 9.5pt;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .pdf-body {
+      font-size: 10pt;
+      color: #1e293b;
+    }
+    .pdf-body h2 {
+      font-size: 13pt;
+      color: #1e3a8a;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+    }
+    .pdf-body h3 {
+      font-size: 11.5pt;
+      color: #0369a1;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+    .pdf-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    .pdf-body th, .pdf-body td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 9px;
+      text-align: left;
+    }
+    .pdf-body th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .pdf-body details {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+      page-break-inside: avoid;
+    }
+    .pdf-body details summary {
+      font-weight: 700;
+      color: #1e3a8a;
+    }
+    .pdf-footer {
+      margin-top: 24px;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 8px;
+      font-size: 8.5pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-header">
+    <div>
+      <div class="pdf-logo">Aprova — Inteligência para Concursos</div>
+      <h1 class="pdf-title">${escapeHtml(perfilNome)}</h1>
+      <p class="pdf-sub">Material Didático Estruturado por Inteligência Artificial</p>
+    </div>
+    <div style="font-size:26px">✨</div>
+  </div>
+
+  <div class="pdf-meta-box">
+    <div><b>Concurso:</b> ${escapeHtml(nomeConc)}</div>
+    <div><b>Data:</b> ${dataAtual}</div>
+    <div><b>Dispositivos Analisados:</b> ${totalArtigos} artigo(s)</div>
+    <div><b>Perfil Didático:</b> ${escapeHtml(perfilNome)}</div>
+  </div>
+
+  <div class="pdf-body">
+    ${conteudoHtml}
+  </div>
+
+  <div class="pdf-footer">
+    <span>Aprova Concursos • Material Didático e Caderno de Análise com IA</span>
+    <span>Emissão: ${dataAtual}</span>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if(win){
+      win.document.write(htmlDocument);
+      win.document.close();
+      win.focus();
+      setTimeout(()=>{
+        try { win.print(); } catch(e){}
+      }, 500);
+    } else {
+      window.mostrarToastLeis('⚠️ Permita pop-ups no navegador para gerar o PDF.');
+    }
   };
 
   // VÍNCULO PRECISO COM OS TÓPICOS DO EDITAL (ABA ESTUDOS)
@@ -1726,6 +3546,10 @@
       window.fecharModalFavoritos();
       window.fecharModalHub();
       window.fecharConfigLeisModal();
+      window.fecharModalSelecionarArtigos();
+      window.fecharModalMeusArtigos();
+      window.fecharModalOpcoesPDF();
+      window.fecharModalOpcoesIA();
       window.fecharLeitorLei();
     }
   });
@@ -1733,5 +3557,6 @@
   // Inicialização ao carregar
   document.addEventListener('DOMContentLoaded', ()=>{
     carregarCatalogo();
+    carregarSelecao();
   });
 })();
