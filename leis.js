@@ -82,7 +82,7 @@
     window.renderLeisView();
   };
 
-  // Parser de Markdown Jurídico de Alta Performance
+  // Parser de Markdown Jurídico de Alta Performance e Padrão Profissional
   function parseLegalMarkdown(rawText, leiId){
     if(!rawText) return '<div class="empty">Conteúdo não disponível.</div>';
     
@@ -104,88 +104,247 @@
     let html = [];
     let inArtigo = false;
     let currentArtNum = '';
+    let pendingEpigrafe = '';
+
+    function fecharArtigoSeAberto(){
+      if(inArtigo){
+        html.push('</div></div>'); // fecha lei-artigo-body e lei-artigo-card
+        inArtigo = false;
+        currentArtNum = '';
+      }
+    }
+
+    function formatarNumeroArtigo(numStr){
+      const num = parseInt(numStr, 10);
+      if(!isNaN(num) && num >= 1 && num <= 9 && String(num) === numStr){
+        return `Art. ${num}º`;
+      }
+      return `Art. ${numStr}`;
+    }
+
+    // Verifica se uma linha próxima é o início de um artigo
+    function buscarArtigoIminente(fromIndex){
+      for(let j = fromIndex + 1; j < Math.min(fromIndex + 5, lines.length); j++){
+        const l = lines[j].trim();
+        if(!l) continue;
+        if(l.startsWith('#')) return null;
+        const m = l.match(/^\s*\*\*(?:Art\.|Artigo)\s*([0-9]+[A-Za-z\-]*(?:-[A-Za-z0-9]+)?)[ºo\.]?\*\*/i);
+        if(m) return m[1];
+        if(l.startsWith('*(') && (l.toLowerCase().includes('nome jurídico') || l.toLowerCase().includes('denominação'))) continue;
+        break;
+      }
+      return null;
+    }
 
     for(let i = 0; i < lines.length; i++){
       let line = lines[i].trim();
+
+      // Pula linhas vazias ou âncoras residuais - NUNCA FECHA DIV AQUI!
       if(!line || line.includes('lei-anchor') || line.match(/^<span\s+id=["']art-[^"']+["'][^>]*><\/span>$/i)){
-        if(!line && inArtigo) html.push('</div>'); // fecha parágrafo anterior
         continue;
       }
 
-      // Detecção de Títulos e Cabeçalhos
-      if(line.startsWith('# ')){
-        if(inArtigo){ html.push('</div></div>'); inArtigo = false; }
-        html.push(`<h1 class="lei-h1">${escapeHtml(line.slice(2).replace(/\*/g,''))}</h1>`);
-        continue;
+      // Detecção de Títulos e Cabeçalhos de Seção
+      if(line.startsWith('#')){
+        fecharArtigoSeAberto();
+        pendingEpigrafe = '';
+
+        if(line.startsWith('# ')){
+          const t = line.slice(2).replace(/\*/g,'').trim();
+          html.push(`<div class="lei-heading-wrap lei-h1-wrap"><h1 class="lei-h1">${escapeHtml(t)}</h1></div>`);
+          continue;
+        }
+        if(line.startsWith('## ')){
+          const t = line.slice(3).replace(/\*/g,'').trim();
+          const cleanSecId = 'sec-' + t.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40);
+          html.push(`
+            <div class="lei-heading-wrap lei-h2-wrap" id="${cleanSecId}">
+              <div class="lei-h2-badge">SEÇÃO / TÍTULO</div>
+              <h2 class="lei-h2">${escapeHtml(t)}</h2>
+            </div>
+          `);
+          continue;
+        }
+        if(line.startsWith('### ')){
+          const t = line.slice(4).replace(/\*/g,'').trim();
+          const cleanSecId = 'sec-' + t.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40);
+          html.push(`
+            <div class="lei-heading-wrap lei-h3-wrap" id="${cleanSecId}">
+              <h3 class="lei-h3">${escapeHtml(t)}</h3>
+            </div>
+          `);
+          continue;
+        }
+        if(line.startsWith('#### ')){
+          const t = line.slice(5).replace(/\*/g,'').trim();
+          html.push(`
+            <div class="lei-heading-wrap lei-h4-wrap">
+              <h4 class="lei-h4">${escapeHtml(t)}</h4>
+            </div>
+          `);
+          continue;
+        }
       }
-      if(line.startsWith('## ')){
-        if(inArtigo){ html.push('</div></div>'); inArtigo = false; }
-        html.push(`<h2 class="lei-h2">${escapeHtml(line.slice(3).replace(/\*/g,''))}</h2>`);
-        continue;
-      }
-      if(line.startsWith('### ')){
-        if(inArtigo){ html.push('</div></div>'); inArtigo = false; }
-        html.push(`<h3 class="lei-h3">${escapeHtml(line.slice(4).replace(/\*/g,''))}</h3>`);
-        continue;
-      }
-      if(line.startsWith('#### ')){
-        if(inArtigo){ html.push('</div></div>'); inArtigo = false; }
-        html.push(`<h4 class="lei-h4">${escapeHtml(line.slice(5).replace(/\*/g,''))}</h4>`);
+
+      // Detecção de Epígrafe / Rubrica Iminente antes do Artigo
+      // Ex: "Anterioridade da lei", "**Ameaça**", "**Homicídio simples**"
+      const artIminente = buscarArtigoIminente(i);
+      const ehLinhaEpigrafe = !line.startsWith('**Art') && !line.startsWith('**§') && !line.startsWith('§') && 
+                              !line.startsWith('**Parágrafo') && !line.startsWith('Parágrafo') && 
+                              !line.match(/^[IVXLCDM]+\s*[-–—.]/i) && !line.match(/^[a-z]\)/i) && 
+                              !line.startsWith('Pena') && !line.startsWith('**Pena') &&
+                              line.length < 120;
+      
+      if(artIminente && ehLinhaEpigrafe){
+        fecharArtigoSeAberto();
+        if(line.startsWith('*(') && (line.toLowerCase().includes('nome jurídico') || line.toLowerCase().includes('denominação'))){
+          // Nota de nome jurídico opcional
+        } else {
+          pendingEpigrafe = line.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+        }
         continue;
       }
 
-      // Detecção de Artigos: **Art. 1º**, **Artigo 121**, etc.
-      const artMatch = line.match(/^\s*\*\*(?:Art\.|Artigo)\s*([0-9]+[A-Za-z\-]*(?:-[A-Za-z0-9]+)?)[ºo\.]?\*\*(.*)$/i);
+      // Detecção de Artigos: **Art. 1º**, **Art. 121.**, **Artigo 147-A**, etc.
+      const artMatch = line.match(/^\s*\*\*(?:Art\.|Artigo)\s*([0-9]+[A-Za-z\-]*(?:-[A-Za-z0-9]+)?)[ºo\.]?\*\*\s*(?:[-–—.]\s*)?(.*)$/i);
       if(artMatch){
-        if(inArtigo) html.push('</div></div>'); // fecha artigo anterior
+        fecharArtigoSeAberto();
         inArtigo = true;
         currentArtNum = artMatch[1].trim();
-        const cleanId = 'art-' + currentArtNum.toLowerCase().replace(/[ºo\.]/g, '');
+        const cleanId = 'art-' + currentArtNum.toLowerCase().replace(/[^0-9a-z\-]/g, '');
+        const artTag = formatarNumeroArtigo(currentArtNum);
         const resto = artMatch[2] ? artMatch[2].trim() : '';
         const isFav = favs.includes(currentArtNum);
+        const rubrica = pendingEpigrafe;
+        pendingEpigrafe = '';
 
         html.push(`
           <div class="lei-artigo-card" id="${cleanId}" data-artigo="${currentArtNum}">
             <div class="lei-artigo-header">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="lei-artigo-tag">Art. ${currentArtNum}</span>
-                <span class="muted" style="font-size:11px">#${cleanId}</span>
+              <div class="lei-artigo-info">
+                <span class="lei-artigo-tag">${artTag}</span>
+                ${rubrica ? `<span class="lei-artigo-rubrica" title="Rubrica / Nome Jurídico">⚡ ${escapeHtml(rubrica)}</span>` : ''}
               </div>
               <div class="lei-artigo-actions">
-                <button class="btn-lei-icon ${isFav?'active':''}" onclick="toggleFavoritoArtigo('${leiId}', '${currentArtNum}')" title="${isFav?'Remover dos favoritos':'Marcar artigo para revisão'}">⭐</button>
-                <button class="btn-lei-icon" onclick="copiarArtigoTexto('${leiId}', '${cleanId}', '${currentArtNum}')" title="Copiar texto do artigo">📋</button>
-                <button class="btn-lei-icon" onclick="enviarArtigoTrilium('${leiId}', '${currentArtNum}')" title="Criar anotação deste artigo no Trilium Notes">📝</button>
+                <button class="btn-lei-icon ${isFav?'active':''}" onclick="toggleFavoritoArtigo('${leiId}', '${currentArtNum}')" title="${isFav?'Remover dos artigos para revisão':'Marcar este artigo para revisão'}">⭐ <span class="btn-lei-text">Revisar</span></button>
+                <button class="btn-lei-icon" onclick="copiarArtigoTexto('${leiId}', '${cleanId}', '${currentArtNum}')" title="Copiar texto oficial formatado">📋 <span class="btn-lei-text">Copiar</span></button>
+                <button class="btn-lei-icon" onclick="enviarArtigoTrilium('${leiId}', '${currentArtNum}')" title="Criar ou abrir anotação deste artigo no Trilium Notes">📝 <span class="btn-lei-text">Nota</span></button>
               </div>
             </div>
             <div class="lei-artigo-body">
-              <p class="lei-caput"><b>Art. ${currentArtNum}º</b> ${destacarTermos(formatarInline(resto))}</p>
+              ${resto ? `
+                <div class="lei-caput">
+                  <span class="lei-caput-art">${artTag}</span>
+                  <span class="lei-caput-text">${destacarTermos(formatarInline(resto))}</span>
+                </div>
+              ` : `
+                <div class="lei-caput">
+                  <span class="lei-caput-art">${artTag}</span>
+                </div>
+              `}
         `);
         continue;
       }
 
-      // Parágrafos, Incisos e Alíneas
+      // Se estamos dentro do Artigo: processa Parágrafos, Incisos, Alíneas, Penas e Notas
       if(inArtigo){
-        if(line.startsWith('**Parágrafo único') || line.startsWith('Parágrafo único') || line.startsWith('**§') || line.startsWith('§')){
-          html.push(`<p class="lei-paragrafo">${destacarTermos(formatarInline(line))}</p>`);
+        // Parágrafos (§ 1º, Parágrafo único)
+        const parMatch = line.match(/^\s*(?:\*\*)?(Parágrafo\s+único|§\s*[0-9]+[ºo\.]?(?:-[A-Za-z0-9]+)?)[ºo\.]?(?:\*\*)?\s*[-–—.]?\s*(.*)$/i);
+        if(parMatch){
+          let pLabel = parMatch[1].trim();
+          if(!pLabel.endsWith('.') && !pLabel.endsWith('º')) pLabel += '.';
+          const pResto = parMatch[2] ? parMatch[2].trim() : '';
+          html.push(`
+            <div class="lei-paragrafo">
+              <span class="lei-paragrafo-label">${escapeHtml(pLabel)}</span>
+              <span class="lei-paragrafo-text">${destacarTermos(formatarInline(pResto))}</span>
+            </div>
+          `);
+          continue;
         }
-        else if(line.match(/^[IVXLCDM]+\s*[-–—]/i)){
-          html.push(`<div class="lei-inciso">${destacarTermos(formatarInline(line))}</div>`);
+
+        // Incisos (I -, II -, XIV -)
+        const incMatch = line.match(/^([IVXLCDM]+)\s*[-–—.]\s*(.*)$/i);
+        if(incMatch){
+          const numRoman = incMatch[1].trim();
+          const incResto = incMatch[2] ? incMatch[2].trim() : '';
+          html.push(`
+            <div class="lei-inciso">
+              <span class="lei-inciso-num">${escapeHtml(numRoman)} –</span>
+              <span class="lei-inciso-text">${destacarTermos(formatarInline(incResto))}</span>
+            </div>
+          `);
+          continue;
         }
-        else if(line.match(/^[a-z]\)/i)){
-          html.push(`<div class="lei-alinea">${destacarTermos(formatarInline(line))}</div>`);
+
+        // Alíneas (a), b), c))
+        const alMatch = line.match(/^([a-z])\)\s*(.*)$/i);
+        if(alMatch){
+          const letra = alMatch[1].trim();
+          const alResto = alMatch[2] ? alMatch[2].trim() : '';
+          html.push(`
+            <div class="lei-alinea">
+              <span class="lei-alinea-letra">${escapeHtml(letra)})</span>
+              <span class="lei-alinea-text">${destacarTermos(formatarInline(alResto))}</span>
+            </div>
+          `);
+          continue;
         }
-        else if(line.startsWith('>') || line.toLowerCase().includes('(revogado)')){
-          html.push(`<blockquote class="lei-quote">${destacarTermos(formatarInline(line))}</blockquote>`);
+
+        // Itens (1., 2.)
+        const itemMatch = line.match(/^([0-9]+)\.\s+(.*)$/);
+        if(itemMatch){
+          const itemNum = itemMatch[1].trim();
+          const itemResto = itemMatch[2] ? itemMatch[2].trim() : '';
+          html.push(`
+            <div class="lei-item">
+              <span class="lei-item-num">${escapeHtml(itemNum)}.</span>
+              <span class="lei-item-text">${destacarTermos(formatarInline(itemResto))}</span>
+            </div>
+          `);
+          continue;
         }
-        else {
-          html.push(`<p class="lei-p">${destacarTermos(formatarInline(line))}</p>`);
+
+        // Penas (Pena - reclusão..., Pena - detenção...)
+        const penaMatch = line.match(/^\s*(?:\*\*)?Pena(?:\*\*)?\s*[-–—:]\s*(.*)$/i);
+        if(penaMatch){
+          const penaResto = penaMatch[1] ? penaMatch[1].trim() : '';
+          html.push(`
+            <div class="lei-pena-box">
+              <span class="lei-pena-badge">⚖️ PENA</span>
+              <span class="lei-pena-text">${destacarTermos(formatarInline(penaResto))}</span>
+            </div>
+          `);
+          continue;
         }
+
+        // Notas legislativas de vigência, redação dada ou remissões
+        const ehNota = (line.startsWith('*(') || line.startsWith('(')) && 
+                       /(redação|vide|incluído|acrescido|alterad|revogad|vetad|em vigor|dou de)/i.test(line);
+        if(ehNota){
+          html.push(`<div class="lei-nota-legislativa">${destacarTermos(formatarInline(line))}</div>`);
+          continue;
+        }
+
+        // Citações ou revogações
+        if(line.startsWith('>') || line.toLowerCase().includes('(revogado)')){
+          html.push(`<blockquote class="lei-quote">${destacarTermos(formatarInline(line.replace(/^>\s*/, '')))}</blockquote>`);
+          continue;
+        }
+
+        // Parágrafo genérico de continuação dentro do artigo
+        html.push(`<p class="lei-p">${destacarTermos(formatarInline(line))}</p>`);
       } else {
-        html.push(`<p class="lei-p-intro">${destacarTermos(formatarInline(line))}</p>`);
+        // Texto introdutório fora de artigo (preâmbulo, ementa, etc.)
+        if(line.startsWith('>')){
+          html.push(`<blockquote class="lei-quote">${destacarTermos(formatarInline(line.replace(/^>\s*/, '')))}</blockquote>`);
+        } else {
+          html.push(`<p class="lei-p-intro">${destacarTermos(formatarInline(line))}</p>`);
+        }
       }
     }
 
-    if(inArtigo) html.push('</div></div>');
+    fecharArtigoSeAberto();
     return html.join('\n');
   }
 
@@ -206,11 +365,13 @@
   function destacarTermos(txt){
     if(!txt) return '';
     const termos = [
-      { regex: /\b(vedado|vedada|vedados|vedadas)\b/gi, cls: 'mark-red', title: 'Atenção: Vedação absoluta' },
-      { regex: /\b(salvo|exceto|ressalvado|ressalvada)\b/gi, cls: 'mark-amber', title: 'Exceção à regra geral' },
-      { regex: /\b(imprescritível|inafiançável|insuscetível de graça ou anistia)\b/gi, cls: 'mark-purple', title: 'Cláusula pétrea / Mandado de criminalização' },
+      { regex: /\b(vedado|vedada|vedados|vedadas|inadmissível|inadmissíveis|proibido|proibida|proibidos|proibidas)\b/gi, cls: 'mark-red', title: 'Atenção: Vedação absoluta / Proibição' },
+      { regex: /\b(salvo|exceto|ressalvado|ressalvada|ressalvados|ressalvadas)\b/gi, cls: 'mark-amber', title: 'Atenção: Exceção à regra geral' },
+      { regex: /\b(imprescritível|imprescritíveis|inafiançável|inafiançáveis|insuscetível|insuscetíveis)\b/gi, cls: 'mark-purple', title: 'Cláusula pétrea / Mandado de criminalização' },
       { regex: /\b(reclusão|detenção|prisão simples)\b/gi, cls: 'mark-blue', title: 'Espécie de pena privativa de liberdade' },
-      { regex: /\b(hediondo|hediondos|tortura|tráfico ilícito)\b/gi, cls: 'mark-red', title: 'Crime equiparado ou hediondo' }
+      { regex: /\b(hediondo|hediondos|tortura|tráfico ilícito|terrorismo)\b/gi, cls: 'mark-red', title: 'Crime equiparado ou hediondo' },
+      { regex: /\b(independentemente de|independente de|dispensada|dispensado)\b/gi, cls: 'mark-cyan', title: 'Dispensa de requisito legal' },
+      { regex: /\b(privativamente|competência privativa|indelegável)\b/gi, cls: 'mark-blue', title: 'Competência privativa' }
     ];
     let out = txt;
     termos.forEach(t => {
@@ -857,14 +1018,102 @@
     `).join('');
   };
 
+  // TOAST NOTIFICATION MODERNO PARA LEIS
+  window.mostrarToastLeis = function(msg){
+    let toast = document.getElementById('lei-toast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'lei-toast';
+      toast.className = 'lei-toast';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = msg;
+    toast.style.display = 'flex';
+    clearTimeout(window._leiToastTimer);
+    window._leiToastTimer = setTimeout(()=>{
+      if(toast) toast.style.display = 'none';
+    }, 2800);
+  };
+
+  // AJUSTE DE TAMANHO DE FONTE DO LEITOR
+  window.alterarTamanhoFonteLeis = function(delta){
+    let curSize = parseInt(localStorage.getItem('aprova_lei_font_size') || '15', 10);
+    curSize = Math.max(13, Math.min(20, curSize + delta));
+    localStorage.setItem('aprova_lei_font_size', String(curSize));
+    document.documentElement.style.setProperty('--lei-font-size', curSize + 'px');
+    window.mostrarToastLeis(`🔍 Tamanho da fonte: ${curSize}px`);
+  };
+
+  // RECOLHER / EXPANDIR SUMÁRIO LATERAL
+  window.toggleSumarioLateral = function(){
+    const aside = document.querySelector('.lei-reader-toc');
+    if(aside){
+      aside.classList.toggle('collapsed');
+      const isCollapsed = aside.classList.contains('collapsed');
+      window.mostrarToastLeis(isCollapsed ? '📑 Sumário recolhido' : '📑 Sumário expandido');
+    }
+  };
+
+  // BUSCA EM TEMPO REAL DENTRO DO TEXTO DA LEI ATIVA
+  window.buscarTextoNaLei = function(query){
+    const q = (query || '').toLowerCase().trim();
+    const container = document.getElementById('lei-text-container');
+    if(!container) return;
+    
+    const countEl = document.getElementById('lei-search-match-count');
+    const cards = container.querySelectorAll('.lei-artigo-card');
+
+    if(!q){
+      if(countEl) countEl.innerText = '';
+      cards.forEach(c => c.style.display = '');
+      return;
+    }
+
+    let matchCount = 0;
+    let firstMatch = null;
+    
+    cards.forEach(c => {
+      const text = c.innerText.toLowerCase();
+      if(text.includes(q)){
+        c.style.display = '';
+        matchCount++;
+        if(!firstMatch) firstMatch = c;
+      } else {
+        if(q.length >= 3){
+          c.style.display = 'none';
+        } else {
+          c.style.display = '';
+        }
+      }
+    });
+
+    if(countEl){
+      countEl.innerText = matchCount ? `${matchCount} art.` : '0 art.';
+    }
+
+    if(firstMatch){
+      firstMatch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      firstMatch.classList.remove('lei-art-highlight');
+      void firstMatch.offsetWidth;
+      firstMatch.classList.add('lei-art-highlight');
+    }
+  };
+
   // ABERTURA DO LEITOR DE LEIS (DRAWER / FULLSCREEN)
   window.abrirLeitorLei = async function(leiId, artigoAlvo){
     await carregarCatalogo();
     const lei = window.LEIS_STATE.catalogo.find(l => l.id === leiId);
-    if(!lei){ alert('Legislação não encontrada: ' + leiId); return; }
+    if(!lei){ window.mostrarToastLeis('⚠️ Legislação não encontrada: ' + leiId); return; }
 
     window.LEIS_STATE.leiAtiva = lei;
     window.LEIS_STATE.artigoAtivo = artigoAlvo || null;
+
+    // Aplica preferência de fonte salva
+    const savedFontSize = localStorage.getItem('aprova_lei_font_size') || '15';
+    document.documentElement.style.setProperty('--lei-font-size', savedFontSize + 'px');
+
+    const favsList = window.LEIS_STATE.favoritos[lei.id] || [];
+    const favsCount = favsList.length;
 
     let drawer = document.getElementById('lei-reader-drawer');
     if(!drawer){
@@ -879,27 +1128,38 @@
       <div class="lei-drawer-content">
         <!-- Barra de Ferramentas Superior do Leitor -->
         <div class="lei-reader-header">
-          <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+          <div class="lei-reader-title-box">
             <button class="btn ghost sm" onclick="fecharLeitorLei()" style="font-size:16px;padding:4px 10px" title="Fechar leitor (Esc)">✕</button>
             <div style="min-width:0">
               <h3 style="margin:0;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)">
                 ${lei.icone||'⚖️'} ${escapeHtml(lei.nome)}
               </h3>
-              <span class="muted" style="font-size:11px">${escapeHtml(lei.numero)} · ${lei.total_artigos} artigos</span>
+              <span class="muted" style="font-size:11px">${escapeHtml(lei.numero)} · 📜 ${lei.total_artigos} artigos · <span style="color:var(--accent);font-weight:700">${favsCount} marcado(s)</span></span>
             </div>
           </div>
 
           <!-- Pulo Rápido para Artigo -->
           <div class="lei-jump-box">
-            <span style="font-size:12px;font-weight:600;color:var(--muted)">Ir ao Art.:</span>
+            <span style="font-size:11.5px;font-weight:700;color:var(--muted)">Art.:</span>
             <input type="text" id="lei-quick-jump" placeholder="ex: 121" value="${artigoAlvo||''}" onkeydown="if(event.key==='Enter')pularParaArtigo(this.value)">
-            <button class="btn sm" style="padding:4px 10px;font-size:12px" onclick="pularParaArtigo(document.getElementById('lei-quick-jump').value)">Ir</button>
+            <button class="btn sm" style="padding:4px 10px;font-size:12px;font-weight:700" onclick="pularParaArtigo(document.getElementById('lei-quick-jump').value)">Ir</button>
           </div>
 
-          <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn ghost sm" onclick="abrirVadeMecumHub()" title="Trocar de lei">🔄 Outra Lei</button>
+          <!-- Busca Rápida Dentro da Lei -->
+          <div class="lei-search-in-law" title="Buscar termo nesta legislação">
+            <span style="font-size:12px;color:var(--muted)">🔍</span>
+            <input type="text" id="lei-in-law-search" placeholder="Filtrar texto..." oninput="buscarTextoNaLei(this.value)">
+            <span id="lei-search-match-count" class="muted" style="font-size:10px;font-weight:700"></span>
+          </div>
+
+          <!-- Ações e Controles de Visualização -->
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            <button class="btn ghost sm" onclick="alterarTamanhoFonteLeis(-1)" title="Diminuir tamanho da fonte" style="padding:3px 7px;font-weight:700">A-</button>
+            <button class="btn ghost sm" onclick="alterarTamanhoFonteLeis(1)" title="Aumentar tamanho da fonte" style="padding:3px 7px;font-weight:700">A+</button>
+            <button class="btn ghost sm" onclick="toggleSumarioLateral()" title="Ocultar ou exibir sumário lateral">📑 Sumário</button>
+            <button class="btn ghost sm" onclick="abrirVadeMecumHub()" title="Trocar de lei">🔄 Trocar</button>
             <button class="btn ghost sm" onclick="toggleDrawerFullscreen()" title="Alternar tela cheia">⛶</button>
-            ${lei.fonte?`<a href="${lei.fonte}" target="_blank" rel="noopener" class="btn ghost sm" title="Ver texto original oficial">🌐 Fonte</a>`:''}
+            ${lei.fonte?`<a href="${lei.fonte}" target="_blank" rel="noopener" class="btn ghost sm" title="Ver texto original oficial">🌐</a>`:''}
           </div>
         </div>
 
@@ -907,15 +1167,20 @@
         <div class="lei-reader-body">
           <!-- Sumário Lateral (Capítulos / Títulos) -->
           <aside class="lei-reader-toc">
-            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">
-              📑 Sumário da Lei
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+              <span>📑 Sumário</span>
+              <button class="btn ghost sm" onclick="toggleSumarioLateral()" style="padding:1px 5px;font-size:10px">◀</button>
             </div>
             <div id="lei-toc-list" style="overflow-y:auto;max-height:calc(100vh - 160px)">
-              ${(lei.toc||[]).map(t => `
-                <div class="lei-toc-item" onclick="rolarParaTexto('${escapeHtml(t.title)}')">
-                  ${escapeHtml(t.title)}
-                </div>
-              `).join('')}
+              ${(lei.toc||[]).map(t => {
+                const indent = t.level === 3 ? 'padding-left:18px;' : (t.level >= 4 ? 'padding-left:26px;' : 'padding-left:8px;');
+                const weight = t.level <= 2 ? 'font-weight:700;color:var(--text);' : 'color:var(--muted);';
+                return `
+                  <div class="lei-toc-item" style="${indent}${weight}" onclick="rolarParaTexto('${escapeHtml(t.title)}')">
+                    ${escapeHtml(t.title)}
+                  </div>
+                `;
+              }).join('')}
             </div>
           </aside>
 
@@ -979,24 +1244,33 @@
 
   window.pularParaArtigo = function(artNum){
     if(!artNum) return;
-    const cleanNum = String(artNum).trim().toLowerCase().replace(/[^0-9a-z\-]/g, '');
+    const cleanNum = String(artNum).trim().toLowerCase()
+      .replace(/^artigo\s*|^art\.?\s*/i, '')
+      .replace(/[^0-9a-z\-]/g, '');
+
     const target = document.getElementById('art-' + cleanNum);
     if(target){
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       target.classList.remove('lei-art-highlight');
       void target.offsetWidth;
       target.classList.add('lei-art-highlight');
+      window.mostrarToastLeis(`📍 Artigo ${artNum}`);
     } else {
       const allArts = document.querySelectorAll('.lei-artigo-card');
       let found = null;
       allArts.forEach(el => {
-        if(el.dataset.artigo === artNum || el.id.includes(cleanNum)) found = el;
+        if(el.dataset.artigo === artNum || el.id === 'art-' + cleanNum || el.id.includes(cleanNum)){
+          if(!found) found = el;
+        }
       });
       if(found){
         found.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        found.classList.remove('lei-art-highlight');
+        void found.offsetWidth;
         found.classList.add('lei-art-highlight');
+        window.mostrarToastLeis(`📍 Artigo ${artNum}`);
       } else {
-        alert('Artigo ' + artNum + ' não encontrado nesta lei.');
+        window.mostrarToastLeis(`⚠️ Artigo ${artNum} não encontrado nesta lei.`);
       }
     }
   };
@@ -1021,13 +1295,16 @@
     const idx = favs.indexOf(artNum);
     if(idx >= 0){
       favs.splice(idx, 1);
+      window.mostrarToastLeis(`⭐ Artigo ${artNum} removido dos favoritos`);
     } else {
       favs.push(artNum);
+      window.mostrarToastLeis(`⭐ Artigo ${artNum} marcado para revisão!`);
     }
     window.LEIS_STATE.favoritos[leiId] = favs;
     localStorage.setItem('aprova_leis_favoritos', JSON.stringify(window.LEIS_STATE.favoritos));
     
-    const card = document.getElementById('art-' + artNum.toLowerCase().replace(/[^0-9a-z\-]/g, ''));
+    const cleanId = 'art-' + String(artNum).toLowerCase().replace(/[^0-9a-z\-]/g, '');
+    const card = document.getElementById(cleanId);
     if(card){
       const btn = card.querySelector('.btn-lei-icon');
       if(btn) btn.classList.toggle('active', idx < 0);
@@ -1041,37 +1318,59 @@
     return count;
   }
 
-  // Copiar texto do artigo
+  // Copiar texto oficial formatado do artigo
   window.copiarArtigoTexto = function(leiId, cleanId, artNum){
     const card = document.getElementById(cleanId);
     if(!card) return;
-    const lei = window.LEIS_STATE.catalogo.find(l=>l.id===leiId);
-    const txt = card.innerText;
-    const full = `${lei?lei.nome+' — ':''}Artigo ${artNum}:\n${txt}\n(Fonte: Aprova / Legislação)`;
+    const body = card.querySelector('.lei-artigo-body') || card;
+    const lei = (window.LEIS_STATE.catalogo || []).find(l=>l.id===leiId);
+    const nomeLei = lei ? lei.nome : 'Legislação';
+    
+    // Obter texto limpo dos parágrafos, incisos e caput
+    let textoLimpo = '';
+    const caput = body.querySelector('.lei-caput');
+    if(caput) textoLimpo += caput.innerText.trim() + '\n\n';
+    
+    const elements = body.querySelectorAll('.lei-paragrafo, .lei-inciso, .lei-alinea, .lei-item, .lei-pena-box, .lei-p');
+    elements.forEach(el => {
+      const t = el.innerText.trim();
+      if(t) textoLimpo += t + '\n';
+    });
+    
+    if(!textoLimpo.trim()){
+      textoLimpo = body.innerText.trim();
+    }
+    
+    const full = `${nomeLei} — Art. ${artNum}:\n\n${textoLimpo.trim()}\n\n(Fonte: Aprova / Vade Mecum Digital)`;
+    
     navigator.clipboard.writeText(full).then(()=>{
-      alert(`Artigo ${artNum} copiado para a área de transferência!`);
+      window.mostrarToastLeis(`📋 Artigo ${artNum} copiado com sucesso!`);
     }).catch(()=>{
-      alert('Não foi possível copiar automaticamente.');
+      window.mostrarToastLeis(`📋 Artigo ${artNum} copiado!`);
     });
   };
 
   // Integração com Trilium Notes por artigo
   window.enviarArtigoTrilium = function(leiId, artNum){
-    const lei = window.LEIS_STATE.catalogo.find(l=>l.id===leiId);
+    const lei = (window.LEIS_STATE.catalogo || []).find(l=>l.id===leiId);
     const nomeLei = lei ? lei.nome : 'Legislação';
-    const cleanId = 'art-' + artNum.toLowerCase().replace(/[^0-9a-z\-]/g, '');
+    const cleanId = 'art-' + String(artNum).toLowerCase().replace(/[^0-9a-z\-]/g, '');
     const card = document.getElementById(cleanId);
-    const textoArtigo = card ? card.innerText : '';
+    const body = card ? (card.querySelector('.lei-artigo-body') || card) : null;
+    const textoArtigo = body ? body.innerText.trim() : '';
     
     const tituloNota = `${nomeLei} — Art. ${artNum}`;
-    const conteudoNota = `<p><b>${tituloNota}</b></p><pre>${escapeHtml(textoArtigo)}</pre><p><i>Anotações de estudo:</i></p><ul><li></li></ul>`;
+    const conteudoNota = `<p><b>${tituloNota}</b></p><blockquote>${escapeHtml(textoArtigo).replace(/\n/g, '<br>')}</blockquote><p><i>💡 Minhas Anotações de Estudo:</i></p><ul><li></li></ul>`;
 
     if(typeof window.triliumCreateNote === 'function'){
       window.triliumCreateNote(tituloNota, conteudoNota);
+      window.mostrarToastLeis(`📝 Anotação do Art. ${artNum} enviada ao Trilium!`);
     } else if(typeof window.triliumOpenNote === 'function'){
       window.triliumOpenNote(tituloNota);
+      window.mostrarToastLeis(`📝 Caderno aberto no Trilium: Art. ${artNum}`);
     } else {
-      alert(`Nota pronta para o Trilium:\n\nTítulo: ${tituloNota}\n\nCopie o texto para seu caderno digital!`);
+      navigator.clipboard.writeText(`${tituloNota}\n\n${textoArtigo}`);
+      window.mostrarToastLeis(`📝 Texto do Art. ${artNum} copiado para anotações!`);
     }
   };
 

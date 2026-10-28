@@ -1,15 +1,33 @@
 /* ============================================================
-   APROVA - ESTILOS DO VADE MECUM & LEITOR DE LEIS
+   APROVA - ESTILOS DO VADE MECUM & LEITOR DE LEIS PROFISSIONAL
+   Padrao visual juridico moderno, hierarquia limpa e alta legibilidade
    ============================================================ */
 
-/* Card da Lei no Grid */
-.lei-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+:root {
+  --lei-font-size: 15px;
 }
 
-/* Modal e Drawer do Leitor */
+/* Card da Lei no Grid Principal */
+.lei-card {
+  transition: transform .2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .2s, border-color .2s;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.lei-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+body.theme-light .lei-card:hover {
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.12);
+}
+
+/* ============================================================
+   DRAWER / LEITOR LATERAL & TELA CHEIA
+   ============================================================ */
 #lei-reader-drawer {
   display: none;
 }
@@ -21,8 +39,9 @@
 .lei-drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(4, 7, 14, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 9998;
   animation: fadeInBackdrop .2s ease-out;
 }
@@ -32,15 +51,15 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 840px;
+  width: 900px;
   max-width: 96vw;
   background: var(--bg);
   border-left: 1px solid var(--border);
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  box-shadow: -10px 0 40px rgba(0,0,0,0.5);
-  animation: slideInDrawer .25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -12px 0 45px rgba(0, 0, 0, 0.6);
+  animation: slideInDrawer .28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #lei-reader-drawer.lei-drawer-fullscreen .lei-drawer-content {
@@ -61,7 +80,7 @@
 
 /* Topbar do Leitor */
 .lei-reader-header {
-  padding: 10px 16px;
+  padding: 10px 18px;
   background: var(--card);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -70,6 +89,15 @@
   gap: 12px;
   flex-wrap: wrap;
   z-index: 10;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+.lei-reader-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+  flex: 1 1 200px;
 }
 
 .lei-jump-box {
@@ -83,11 +111,39 @@
 }
 
 .lei-jump-box input {
-  width: 65px;
+  width: 70px;
   text-align: center;
   font-weight: 700;
   padding: 4px;
   border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.lei-search-in-law {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 10px;
+}
+
+.lei-search-in-law input {
+  width: 130px;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  outline: none;
+}
+
+.lei-search-in-law input:focus {
+  width: 170px;
+  transition: width .2s ease;
 }
 
 /* Corpo Principal (TOC + Texto) */
@@ -100,17 +156,27 @@
 
 /* Sumário Lateral */
 .lei-reader-toc {
-  width: 250px;
-  min-width: 200px;
+  width: 270px;
+  min-width: 230px;
   background: var(--card2);
   border-right: 1px solid var(--border);
   padding: 14px 10px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  transition: width .2s ease, min-width .2s ease, padding .2s ease;
 }
 
-@media (max-width: 768px) {
+.lei-reader-toc.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+}
+
+@media (max-width: 820px) {
   .lei-reader-toc {
     display: none;
   }
@@ -119,231 +185,620 @@
 .lei-toc-item {
   font-size: 12px;
   color: var(--muted);
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   line-height: 1.4;
   margin-bottom: 2px;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, transform .1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lei-toc-item:hover {
   background: var(--card);
   color: var(--text);
+  transform: translateX(2px);
+}
+
+.lei-toc-item.active {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent);
+  font-weight: 700;
+  border-left: 2px solid var(--accent);
+}
+
+/* Custom Scrollbars para Leitor */
+.lei-reader-toc::-webkit-scrollbar,
+.lei-reader-text::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.lei-reader-toc::-webkit-scrollbar-thumb,
+.lei-reader-text::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+.lei-reader-toc::-webkit-scrollbar-track,
+.lei-reader-text::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Container de Leitura do Texto */
 .lei-reader-text {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
-  padding: 24px 28px;
+  overflow-x: hidden;
+  padding: 24px 32px 80px;
   scroll-behavior: smooth;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
 }
 
 @media (max-width: 600px) {
   .lei-reader-text {
-    padding: 16px;
+    padding: 14px 14px 60px;
   }
 }
 
-/* Tipografia Jurídica */
+/* ============================================================
+   BANNERS DE DIVISÃO (LIVRO, TÍTULO, CAPÍTULO, SEÇÃO)
+   ============================================================ */
+.lei-heading-wrap {
+  margin: 28px 0 16px;
+  scroll-margin-top: 80px;
+}
+
 .lei-h1 {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--text);
-  margin: 16px 0 12px;
+  margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 2px solid var(--accent);
+  letter-spacing: -0.2px;
+}
+
+.lei-h2-wrap {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.05));
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+body.theme-light .lei-h2-wrap {
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.08), rgba(14, 116, 144, 0.04));
+  border-left-color: var(--accent);
 }
 
 .lei-h2 {
-  font-size: 17px;
+  font-size: 15.5px;
   font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.lei-h2-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
   color: var(--accent);
-  margin: 22px 0 10px;
-  padding-bottom: 4px;
+  margin-bottom: 3px;
+}
+
+body.theme-light .lei-h2-badge {
+  color: var(--accent);
+}
+
+.lei-h3-wrap {
   border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-top: 22px;
 }
 
 .lei-h3 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text);
-  margin: 16px 0 8px;
+  color: var(--accent2);
   text-transform: uppercase;
-  letter-spacing: .3px;
+  letter-spacing: 0.4px;
+  margin: 0;
+}
+
+.lei-h4-wrap {
+  margin-top: 16px;
 }
 
 .lei-h4 {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--muted);
-  margin: 12px 0 6px;
+  margin: 0;
 }
 
 .lei-p-intro {
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.65;
   margin-bottom: 14px;
+  padding: 8px 12px;
+  background: var(--card2);
+  border-radius: 8px;
+  border-left: 3px solid var(--border);
 }
 
-/* Card do Artigo */
+/* ============================================================
+   CARD DO ARTIGO (CONTAINER PRINCIPAL - TUDO FICA DENTRO!)
+   ============================================================ */
 .lei-artigo-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
-  scroll-margin-top: 75px;
-  transition: border-color .2s, box-shadow .2s;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  scroll-margin-top: 80px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  position: relative;
+}
+
+body.theme-light .lei-artigo-card {
+  box-shadow: 0 2px 8px rgba(15, 40, 80, 0.06);
 }
 
 .lei-artigo-card:hover {
-  border-color: rgba(139,92,246,0.35);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 
+body.theme-light .lei-artigo-card:hover {
+  border-color: rgba(29, 78, 216, 0.4);
+}
+
+/* Destaque pulsante ao pular para artigo */
 .lei-art-highlight {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 20px rgba(139,92,246,0.4) !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.35), 0 8px 30px rgba(139, 92, 246, 0.28) !important;
   animation: pulseGlow 1.8s ease-out;
 }
 
+body.theme-light .lei-art-highlight {
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.3), 0 8px 24px rgba(29, 78, 216, 0.2) !important;
+}
+
 @keyframes pulseGlow {
-  0% { transform: scale(0.99); background: rgba(139,92,246,0.2); }
-  50% { transform: scale(1.01); background: rgba(139,92,246,0.12); }
+  0% { transform: scale(0.995); background: rgba(139, 92, 246, 0.16); }
+  50% { transform: scale(1.008); background: rgba(139, 92, 246, 0.08); }
   100% { transform: scale(1); }
 }
 
+/* Cabeçalho do Artigo */
 .lei-artigo-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px dashed var(--border);
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+body.theme-light .lei-artigo-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.lei-artigo-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .lei-artigo-tag {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
-  background: rgba(139,92,246,0.18);
+  letter-spacing: 0.2px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.2));
   color: #c4b5fd;
-  border: 1px solid rgba(139,92,246,0.4);
-  padding: 2px 8px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  padding: 3px 10px;
   border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+body.theme-light .lei-artigo-tag {
+  background: rgba(29, 78, 216, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(29, 78, 216, 0.3);
+}
+
+.lei-artigo-rubrica {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--card2);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+body.theme-light .lei-artigo-rubrica {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .lei-artigo-actions {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-lei-icon {
-  background: transparent;
+  background: var(--card2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  cursor: pointer;
-  padding: 3px 6px;
-  font-size: 12px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--muted);
-  transition: background .15s, color .15s;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all .15s;
 }
 
 .btn-lei-icon:hover {
-  background: var(--card2);
+  background: var(--card);
   color: var(--text);
   border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .btn-lei-icon.active {
-  background: rgba(251,191,36,0.2);
+  background: rgba(251, 191, 36, 0.2);
   border-color: var(--amber);
   color: var(--amber);
 }
 
-/* Conteúdo interno do artigo */
+.btn-lei-text {
+  font-size: 11px;
+}
+
+@media (max-width: 500px) {
+  .btn-lei-text {
+    display: none;
+  }
+}
+
+/* ============================================================
+   CORPO DO ARTIGO (CAPUT, PARÁGRAFOS, INCISOS, ALÍNEAS, PENAS)
+   ============================================================ */
+.lei-artigo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Caput */
 .lei-caput {
-  font-size: 15px;
+  font-size: var(--lei-font-size, 15px);
   line-height: 1.7;
   color: var(--text);
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
+.lei-caput-art {
+  font-weight: 800;
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+body.theme-light .lei-caput-art {
+  color: var(--accent);
+}
+
+/* Parágrafos (§ 1º, Parágrafo único) */
 .lei-paragrafo {
-  font-size: 14.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--lei-font-size, 14.5px);
   line-height: 1.65;
   color: var(--text);
-  margin: 6px 0 6px 14px;
-  padding-left: 10px;
-  border-left: 2px solid var(--border);
+  padding: 6px 12px;
+  margin: 4px 0 4px 10px;
+  border-left: 3px solid var(--accent);
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 0 8px 8px 0;
 }
 
+body.theme-light .lei-paragrafo {
+  background: rgba(29, 78, 216, 0.04);
+  border-left-color: var(--accent);
+}
+
+.lei-paragrafo-label {
+  font-weight: 800;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+body.theme-light .lei-paragrafo-label {
+  color: var(--accent);
+}
+
+.lei-paragrafo-text {
+  flex: 1;
+}
+
+/* Incisos (I, II, III, XIV) */
 .lei-inciso {
-  font-size: 14.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: var(--lei-font-size, 14.5px);
   line-height: 1.65;
   color: var(--text);
-  margin: 4px 0 4px 26px;
+  padding: 4px 10px 4px 22px;
+  border-radius: 6px;
+  transition: background .12s;
 }
 
+.lei-inciso:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-light .lei-inciso:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.lei-inciso-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  color: var(--accent2);
+  white-space: nowrap;
+  min-width: 32px;
+  letter-spacing: 0.3px;
+}
+
+body.theme-light .lei-inciso-num {
+  color: #0e7490;
+}
+
+.lei-inciso-text {
+  flex: 1;
+}
+
+/* Alíneas (a, b, c) */
 .lei-alinea {
-  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--lei-font-size, 14px);
   line-height: 1.6;
+  color: var(--text);
+  padding: 3px 10px 3px 44px;
+}
+
+.lei-alinea-letra {
+  font-weight: 700;
   color: var(--muted);
-  margin: 3px 0 3px 40px;
+  min-width: 22px;
+}
+
+.lei-alinea-text {
+  flex: 1;
+}
+
+/* Itens (1., 2.) */
+.lei-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--lei-font-size, 13.5px);
+  line-height: 1.6;
+  color: var(--text);
+  padding: 2px 10px 2px 64px;
+}
+
+.lei-item-num {
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 20px;
+}
+
+.lei-item-text {
+  flex: 1;
+}
+
+/* Box Especial de Pena Penal (Crime / Sanção) */
+.lei-pena-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-left: 4px solid var(--red);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: var(--lei-font-size, 14px);
+  color: var(--text);
+}
+
+body.theme-light .lei-pena-box {
+  background: rgba(220, 38, 38, 0.05);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.lei-pena-badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.lei-pena-text {
+  flex: 1;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+/* Notas Legislativas, Redação Dada, Remissões */
+.lei-nota-legislativa {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.5;
+  padding: 2px 8px;
+  border-left: 2px solid var(--border);
+  margin: 2px 0 4px 6px;
 }
 
 .lei-quote {
   background: var(--card2);
-  border-left: 3px solid var(--muted);
-  padding: 6px 12px;
-  margin: 6px 0;
-  font-size: 13px;
+  border-left: 3px solid var(--accent2);
+  padding: 8px 14px;
+  margin: 8px 0;
+  font-size: 13.5px;
   color: var(--muted);
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 8px 8px 0;
+  line-height: 1.6;
 }
 
 .lei-p {
-  font-size: 14.5px;
+  font-size: var(--lei-font-size, 14.5px);
   line-height: 1.65;
   color: var(--text);
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
-/* Grifos e Marcações Chave */
+/* Dispositivos Revogados */
+.lei-revogado {
+  opacity: 0.65;
+  text-decoration: line-through;
+}
+
+/* ============================================================
+   GRIFOS JURÍDICOS INTELIGENTES
+   ============================================================ */
 .lei-mark {
   padding: 1px 5px;
   border-radius: 4px;
   font-weight: 700;
   font-size: 0.95em;
+  transition: filter .15s;
+}
+
+.lei-mark:hover {
+  filter: brightness(1.2);
 }
 
 .mark-red {
-  background: rgba(248,113,113,0.18);
+  background: rgba(248, 113, 113, 0.18);
   color: var(--red);
-  border: 1px solid rgba(248,113,113,0.35);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+body.theme-light .mark-red {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.28);
 }
 
 .mark-amber {
-  background: rgba(251,191,36,0.18);
+  background: rgba(251, 191, 36, 0.18);
   color: var(--amber);
-  border: 1px solid rgba(251,191,36,0.35);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+body.theme-light .mark-amber {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.28);
 }
 
 .mark-purple {
-  background: rgba(139,92,246,0.18);
+  background: rgba(139, 92, 246, 0.18);
   color: #c4b5fd;
-  border: 1px solid rgba(139,92,246,0.35);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+body.theme-light .mark-purple {
+  background: rgba(109, 40, 217, 0.1);
+  color: #6d28d9;
+  border-color: rgba(109, 40, 217, 0.28);
 }
 
 .mark-blue {
-  background: rgba(96,165,250,0.18);
+  background: rgba(96, 165, 250, 0.18);
   color: var(--blue);
-  border: 1px solid rgba(96,165,250,0.35);
+  border: 1px solid rgba(96, 165, 250, 0.35);
 }
 
-/* Modais Genéricos de Leis */
+body.theme-light .mark-blue {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.mark-cyan {
+  background: rgba(6, 182, 212, 0.18);
+  color: var(--accent2);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+}
+
+/* ============================================================
+   TOAST NOTIFICATION MODERNO (SUBSTITUI ALERTAS NATIVOS)
+   ============================================================ */
+.lei-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastSlideUp .25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.theme-light .lei-toast {
+  box-shadow: 0 10px 30px rgba(15, 40, 80, 0.18);
+  border-color: var(--accent);
+}
+
+@keyframes toastSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   MODAIS GENÉRICOS (CONFIGURAÇÃO, FAVORITOS, HUB)
+   ============================================================ */
 #lei-favs-modal,
 #lei-hub-modal,
 #lei-config-modal {
@@ -368,10 +823,10 @@
   z-index: 99999;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-  padding: 18px 20px;
-  animation: zoomModal .2s ease-out;
+  border-radius: 14px;
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.65);
+  padding: 20px 24px;
+  animation: zoomModal .22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .config-cat-pill {
