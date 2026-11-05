@@ -3541,18 +3541,20 @@ function renderMetas(){
   const totalMax = examTotalMax();
   const cards = cur().subjects.map(s=>{
     const st = subjStats(s);
-    const stat = statusOf(st.targetPct - st.avgPct);
+    const stat = st.avgPct!=null ? statusOf(st.targetPct - st.avgPct) : null;
     return `<div class="card">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
         <input type="text" id="nm-${s.id}" value="${s.name}" onchange="saveName('${s.id}')" style="font-weight:700;font-size:14px;border:none;background:transparent;padding:4px 2px">
         ${s.grupo==='extravagante'?'<span class="badge b-amber" title="Faz parte de Legislação Extravagante">LEG. EXTRA</span>':''}
+        ${s.estudoId?'<span class="badge b-blue" title="Vinculada a uma matéria da aba Estudos">📚 Estudos</span>':''}
         <button class="btn danger sm" onclick="removeSubject('${s.id}')" title="Remover matéria">✕</button>
       </div>
       <div class="num-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
         <div><label>Peso</label>
           <select id="wt-${s.id}" onchange="saveWeight('${s.id}')">
-            <option value="1" ${s.weight===1?'selected':''}>Peso 1</option>
-            <option value="2" ${s.weight===2?'selected':''}>Peso 2</option>
+            <option value="0" ${Number(s.weight)===0?'selected':''}>Peso 0 (definir)</option>
+            <option value="1" ${Number(s.weight)!==0&&Number(s.weight)!==2?'selected':''}>Peso 1</option>
+            <option value="2" ${Number(s.weight)===2?'selected':''}>Peso 2</option>
           </select>
         </div>
         <div><label>Questões na prova</label><input type="number" id="qt-${s.id}" value="${s.qtd||0}" min="0" step="1" onchange="saveQtd('${s.id}')"></div>
@@ -3592,13 +3594,18 @@ function renderMetas(){
         <div class="row" style="padding:6px 0"><span class="muted" style="font-size:12px">Meta geral ponderada (simulado)</span><b>${fmtPct(overallTargetPct())}</b></div>
         <div class="row" style="padding:6px 0"><span class="muted" style="font-size:12px">Pontuação máxima da prova</span><b>${fmt(totalMax,0)} pts · ${examTotalQtd()} questões</b></div>
         <div class="row" style="padding:6px 0;border:none"><span class="muted" style="font-size:12px">Minha meta de pontos na prova</span><b>${fmt(examTotalTarget(),1)} pts</b></div>
-        <p class="hint" style="margin-top:10px">Edite direto nos cards: <b>peso</b> e <b>questões na prova</b> definem a pontuação máxima (peso 1 = 1 pt por questão, peso 2 = 2 pts) e a <b>meta</b> é a quantidade de acertos esperada. Meta vazia = 70% das questões.</p>
+        <p class="hint" style="margin-top:10px">Edite direto nos cards: <b>peso</b> e <b>questões na prova</b> definem a pontuação máxima (peso 1 = 1 pt por questão, peso 2 = 2 pts) e a <b>meta</b> é a quantidade de acertos esperada. Meta vazia = 70% das questões. <b>Peso 0</b> indica matéria ainda não configurada.</p>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <button class="btn" style="width:100%" onclick="openSyncMetasModal()">🔄 Atualizar matérias da aba Estudos</button>
+          <p class="hint" style="margin-top:8px;font-size:11px">Adiciona as matérias que faltam com <b>peso, questões, meta e grupo zerados</b>. As que já estão em Metas mantêm suas configurações.</p>
+          <p class="hint" style="margin-top:4px;font-size:11px">${estMaterias().length} matéria(s) em Estudos · ${cur().subjects.length} em Metas</p>
+        </div>
       </div>
       <div class="card">
         <h2>➕ Adicionar matéria</h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div style="grid-column:1/-1"><label>Nome da matéria</label><input id="ns-name" type="text" placeholder="ex.: Informática"></div>
-          <div><label>Peso</label><select id="ns-weight"><option value="1">Peso 1</option><option value="2">Peso 2</option></select></div>
+          <div><label>Peso</label><select id="ns-weight"><option value="1">Peso 1</option><option value="2">Peso 2</option><option value="0">Peso 0 (definir depois)</option></select></div>
           <div><label>Questões na prova</label><input id="ns-qtd" type="number" value="0" min="0"></div>
           <div style="grid-column:1/-1"><label>Grupo</label><select id="ns-grupo"><option value="">— sem grupo —</option><option value="extravagante">Leg. Extravagante</option></select></div>
           <div style="grid-column:1/-1"><button class="btn" style="width:100%" onclick="addSubject()">Adicionar matéria</button></div>
@@ -3608,7 +3615,105 @@ function renderMetas(){
       </div>
     </div>
     <h2 style="font-size:15px;font-weight:700;margin:22px 0 10px">📚 Matérias cadastradas <span class="muted" style="font-weight:400;font-size:12px">(${cur().subjects.length})</span></h2>
-    <div class="grid g-4">${cards}</div>`;
+    <div class="grid g-4">${cards}</div>
+    <div id="meta-sync-modal" class="modal-back dn" onclick="if(event.target===this)closeSyncMetasModal()">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2>🔄 Sincronizar matérias com Estudos</h2>
+          <button class="modal-x" onclick="closeSyncMetasModal()" title="Fechar">✕</button>
+        </div>
+        <div id="meta-sync-body"></div>
+      </div>
+    </div>`;
+}
+let syncMetasRows = [];
+function syncMetaKey(name){ return normTxt(name).replace(/[^a-z0-9]+/g,' ').trim(); }
+function openSyncMetasModal(){
+  const mats = estMaterias();
+  if(!mats.length){ alert('Cadastre pelo menos uma matéria na aba Estudos primeiro.'); return; }
+  const subs = cur().subjects;
+  const usados = new Set();
+  syncMetasRows = mats.map(m=>{
+    const key = syncMetaKey(m.name);
+    let achou = subs.find(s=>s.estudoId===m.id && !usados.has(s.id));
+    if(!achou) achou = subs.find(s=>!usados.has(s.id) && syncMetaKey(s.name)===key);
+    if(achou) usados.add(achou.id);
+    return { estudoId:m.id, name:m.name, action: achou ? ('link:'+achou.id) : 'new' };
+  });
+  const body = document.getElementById('meta-sync-body');
+  if(!body) return;
+  const rows = syncMetasRows.map((r,i)=>{
+    const opts = [
+      `<option value="new"${r.action==='new'?' selected':''}>➕ Adicionar como nova (zerada)</option>`,
+      `<option value="ignore"${r.action==='ignore'?' selected':''}>🚫 Ignorar</option>`,
+      ...subs.map(s=>`<option value="link:${s.id}"${r.action==='link:'+s.id?' selected':''}>🔗 Vincular a: ${esc(s.name)}</option>`)
+    ].join('');
+    return `<tr><td style="min-width:180px"><b>${esc(r.name)}</b></td><td><select class="sync-metas-action" data-idx="${i}" style="width:100%">${opts}</select></td></tr>`;
+  }).join('');
+  const jaVinculadas = syncMetasRows.filter(r=>r.action.startsWith('link:')).length;
+  body.innerHTML = `
+    <p class="hint" style="margin-bottom:12px">As matérias novas entram com <b>peso 0, questões 0, meta 0 e sem grupo</b>. As matérias já existentes mantêm peso, questões, meta e grupo — só são vinculadas/renomeadas se você escolher.</p>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px">
+      <input type="checkbox" id="sync-metas-rename" checked>
+      <span style="font-size:12px;font-weight:600">Atualizar o nome das matérias vinculadas conforme a aba Estudos</span>
+    </label>
+    <div style="max-height:46vh;overflow:auto;border:1px solid var(--border);border-radius:10px">
+      <table class="tbl"><thead><tr><th>Matéria em Estudos</th><th>Ação em Metas</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <p class="hint" style="margin-top:8px;font-size:11px">${jaVinculadas} matéria(s) de Estudos já têm correspondência em Metas. Nada é apagado de Metas.</p>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn" onclick="applySyncMetas()">✅ Aplicar sincronização</button>
+      <button class="btn ghost" onclick="closeSyncMetasModal()">Cancelar</button>
+    </div>`;
+  document.getElementById('meta-sync-modal').classList.remove('dn');
+}
+function closeSyncMetasModal(){
+  const el = document.getElementById('meta-sync-modal');
+  if(el) el.classList.add('dn');
+}
+function applySyncMetas(){
+  const sels = Array.from(document.querySelectorAll('.sync-metas-action'));
+  if(!sels.length || sels.length!==syncMetasRows.length){ closeSyncMetasModal(); return; }
+  const escolhas = syncMetasRows.map((r,i)=>({ estudoId:r.estudoId, action:(sels[i] && sels[i].value) || 'ignore' }));
+  const vistos = new Set();
+  for(const e of escolhas){
+    if(!e.action.startsWith('link:')) continue;
+    const id = e.action.slice(5);
+    if(vistos.has(id)){
+      const alvo = cur().subjects.find(s=>s.id===id);
+      alert('A matéria "'+(alvo?alvo.name:id)+'" foi escolhida para mais de uma matéria de Estudos. Ajuste a seleção.');
+      return;
+    }
+    vistos.add(id);
+  }
+  const renomear = !!document.getElementById('sync-metas-rename')?.checked;
+  let novas=0, vinculadas=0, renomeadas=0, ignoradas=0;
+  for(const e of escolhas){
+    const m = estMaterias().find(x=>x.id===e.estudoId);
+    if(!m) continue;
+    if(e.action==='ignore'){ ignoradas++; continue; }
+    if(e.action==='new'){
+      const s = { id:uid(), estudoId:m.id, name:m.name, short:abbrev(m.name), weight:0, qtd:0, grupo:'' };
+      cur().subjects.push(s);
+      cur().targets[s.id] = 0;
+      novas++;
+      continue;
+    }
+    const s = cur().subjects.find(x=>x.id===e.action.slice(5));
+    if(!s) continue;
+    s.estudoId = m.id;
+    if(renomear && s.name!==m.name){ s.name = m.name; s.short = abbrev(m.name); renomeadas++; }
+    vinculadas++;
+  }
+  save();
+  closeSyncMetasModal();
+  renderAll();
+  const partes = [];
+  if(novas) partes.push(novas+' nova(s)');
+  if(vinculadas) partes.push(vinculadas+' vinculada(s)');
+  if(renomeadas) partes.push(renomeadas+' renomeada(s)');
+  if(ignoradas) partes.push(ignoradas+' ignorada(s)');
+  alert('Sincronização concluída.'+(partes.length?'\n'+partes.join(' · '):'\nNenhuma alteração.'));
 }
 function saveMeta(id){
   const tg = parseFloat(document.getElementById('tg-'+id).value);
@@ -3635,7 +3740,8 @@ function saveName(id){
 function saveWeight(id){
   const s = cur().subjects.find(x=>x.id===id);
   if(!s) return;
-  s.weight = parseInt(document.getElementById('wt-'+id).value, 10) || 1;
+  const w = parseInt(document.getElementById('wt-'+id).value, 10);
+  s.weight = w===0 ? 0 : (w===2 ? 2 : 1);
   save();
   renderAll();
 }
